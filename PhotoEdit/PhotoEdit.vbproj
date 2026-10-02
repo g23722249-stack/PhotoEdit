@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 照片編輯器主程式：Aqua.Net 視窗 + PhotoEdit.Core。可帶參數啟動：PhotoEdit.exe "照片路徑"。 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>PhotoEditApp</RootNamespace>
+    <AssemblyName>PhotoEdit</AssemblyName>
+    <MyType>WindowsFormsWithCustomSubMain</MyType>
+    <StartupObject>PhotoEditApp.Program</StartupObject>
+    <OptionStrict>On</OptionStrict>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <OptionCompare>Binary</OptionCompare>
+    <Nullable>disable</Nullable>
+    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <!-- 貼圖資料夾：方案資料夾下的 Stick\主題\*.png，整個複製到輸出資料夾的 stick\（程式從這裡讀）。 -->
+  <ItemGroup>
+    <None Include="..\Stick\**\*" LinkBase="stick" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Import Include="System.Drawing" />
+    <Import Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhotoEdit.Core\PhotoEdit.Core.vbproj" />
+    <ProjectReference Include="..\PhotoEdit.Vision\PhotoEdit.Vision.vbproj" />
+    <ProjectReference Include="..\..\RunTime\Aqua.Net\Aqua.Net.vbproj" />
+  </ItemGroup>
+
+</Project>

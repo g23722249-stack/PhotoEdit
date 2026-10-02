@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PhotoEdit.Core 的自我測試（不依賴測試框架套件）：在 PhotoEdit 資料夾執行 dotnet run，專案指定 PhotoEdit.SelfTest。全部通過時結束代碼為 0。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>PhotoEditSelfTest</RootNamespace>
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Import Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhotoEdit.Core\PhotoEdit.Core.vbproj" />
+    <ProjectReference Include="..\PhotoEdit.Vision\PhotoEdit.Vision.vbproj" />
+  </ItemGroup>
+
+</Project>

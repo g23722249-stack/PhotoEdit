@@ -1,0 +1,13 @@
+﻿# Build output
+bin/
+obj/
+.vs/
+*.user
+*.suo
+Thumbs.db
+
+# Models are downloaded separately (see README); the background-removal ones exceed GitHub's 100 MB limit
+*.onnx
+
+# Local shortcuts
+*.lnk

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 影像處理核心：編輯配方、算圖管線、自動調整、復原紀錄。不含介面，方便自我測試與日後給 iPhoto.Net 共用。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>PhotoEdit</RootNamespace>
+    <AssemblyName>PhotoEdit.Core</AssemblyName>
+    <OptionStrict>On</OptionStrict>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <OptionCompare>Binary</OptionCompare>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+</Project>

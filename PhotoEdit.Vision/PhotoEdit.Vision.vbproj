@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 用到 OpenCV 的功能：YuNet 人臉偵測、磨皮/提亮/亮眼、污點移除、降噪、自動拉直。
+       模型 Models\face_detection_yunet_2023mar.onnx（OpenCV Zoo，Apache-2.0）不放進 git（.gitignore 排除 *.onnx），
+       缺檔時人像功能會停用，其他功能照常。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>PhotoEdit</RootNamespace>
+    <AssemblyName>PhotoEdit.Vision</AssemblyName>
+    <OptionStrict>On</OptionStrict>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <OptionCompare>Binary</OptionCompare>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20241108" />
+    <!-- 去背模型（IS-Net、U²-Net）用 ONNX Runtime 執行：OpenCV DNN 不支援 IS-Net 的部分運算。 -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhotoEdit.Core\PhotoEdit.Core.vbproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- -p:SkipModelCopy=true：模型下載中（檔案被占用）時仍可編譯測試。 -->
+    <None Include="Models\*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="Models" Condition="'$(SkipModelCopy)' != 'true'" />
+  </ItemGroup>
+
+</Project>
