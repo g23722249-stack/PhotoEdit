@@ -63,7 +63,7 @@ Partial Friend Class frmEditor
     End Property
 
     ''' <summary>圖層數（文字、貼圖、繪圖圖層）。</summary>
-    Private ReadOnly Property LayerCount As Integer
+    Private ReadOnly Property MergeLayerCount As Integer
         Get
             Return If(_recipe.Overlays?.Count, 0) + If(_recipe.Drawings?.Count, 0)
         End Get
@@ -213,9 +213,9 @@ Partial Friend Class frmEditor
         ExitCropMode(apply:=True)
         CommitCalloutEditor()
         Dim format = Path.GetExtension(file).TrimStart("."c).ToUpperInvariant()
-        If confirmMerge AndAlso LayerCount > 0 Then
+        If confirmMerge AndAlso MergeLayerCount > 0 Then
             Dim answer = MessageBox.Show(Me,
-                $"目前有 {LayerCount} 個圖層（文字、貼圖、繪圖）。存成 {format} 會把所有圖層合併成一張圖。" & vbCrLf & vbCrLf &
+                $"目前有 {MergeLayerCount} 個圖層（文字、貼圖、繪圖）。存成 {format} 會把所有圖層合併成一張圖。" & vbCrLf & vbCrLf &
                 "視窗裡的圖層會保留，可以繼續修改；要保留圖層下次接著改，請另存成 PhotoEdit 專案（.pedx）。" & vbCrLf & vbCrLf &
                 "要合併並存檔嗎？",
                 AppName, MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
@@ -226,7 +226,7 @@ Partial Friend Class frmEditor
             SyncLock _sourceLock
                 _photo.Export(_recipe, file, prepare:=SourcePrepare(_recipe), faces:=_faces)
             End SyncLock
-            SetStatusMessage($"已存成 {format}：{file}" & If(LayerCount > 0, "（圖層已合併到檔案裡；視窗裡仍可繼續編輯）", ""))
+            SetStatusMessage($"已存成 {format}：{file}" & If(MergeLayerCount > 0, "（圖層已合併到檔案裡；視窗裡仍可繼續編輯）", ""))
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                    TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ExternalException
             MessageBox.Show(Me, "存檔失敗：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
