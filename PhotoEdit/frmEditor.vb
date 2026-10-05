@@ -128,6 +128,7 @@ Partial Friend Class frmEditor
         AddHandler _canvas.OverlayRotated, AddressOf OnOverlayRotated
         AddHandler _canvas.OverlayWheel, AddressOf OnOverlayWheel
         AddHandler _canvas.Resize, Sub() UpdateStatus()
+        _canvas.AfterPaint = AddressOf PaintSelectionAnts
         AddHandler _canvas.DragEnter, AddressOf OnFileDragEnter
         AddHandler _canvas.DragDrop, AddressOf OnFileDragDrop
         AddHandler _canvas.DragOver, AddressOf OnFileDragEnter
@@ -169,7 +170,9 @@ Partial Friend Class frmEditor
         editMenu.AddItem(Item("undo", "復原 (Ctrl+Z)"))
         editMenu.AddItem(Item("redo", "重做 (Ctrl+Y)"))
         editMenu.AddItem(New Aqua.MenuItem("-"))
+        editMenu.AddItem(Item("cut", "剪下選取區 (Ctrl+X)"))
         editMenu.AddItem(Item("copy", "複製 (Ctrl+C)"))
+        editMenu.AddItem(Item("pasteobject", "貼成物件 (Ctrl+Alt+V)"))
         _pasteImageItem = editMenu.AddItem(Item("pasteimage", "貼成新影像 (Ctrl+V)"))
         editMenu.AddItem(New Aqua.MenuItem("-"))
         editMenu.AddItem(Item("copyadj", "複製調整 (Ctrl+Shift+C)"))
@@ -189,6 +192,19 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(New Aqua.MenuItem("-"))
         imageMenu.AddItem(Item("auto", "自動增強"))
         imageMenu.AddItem(Item("autowb", "自動白平衡"))
+
+        Dim selectMenu = root.AddItem(New Aqua.MenuItem("選取"))
+        selectMenu.AddItem(Item("selectall", "全選 (Ctrl+A)"))
+        selectMenu.AddItem(Item("deselect", "取消選取 (Ctrl+D)"))
+        selectMenu.AddItem(Item("invertsel", "反轉選取 (Ctrl+Shift+I)"))
+        selectMenu.AddItem(New Aqua.MenuItem("-"))
+        selectMenu.AddItem(Item("toobject", "複製成物件"))
+        selectMenu.AddItem(Item("seladjust", "只調整選取區"))
+        selectMenu.AddItem(Item("seldelete", "刪除選取區（變透明）"))
+        selectMenu.AddItem(Item("selfill", "填色…"))
+        selectMenu.AddItem(Item("selstroke", "描邊…"))
+        selectMenu.AddItem(Item("selcrop", "裁切到選取區"))
+        selectMenu.AddItem(Item("selcutout", "當作去背範圍"))
 
         Dim viewMenu = root.AddItem(New Aqua.MenuItem("檢視"))
         viewMenu.AddItem(Item("fit", "符合視窗 (Ctrl+0)"))
@@ -234,6 +250,7 @@ Partial Friend Class frmEditor
                                 AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
         End Select
         If _photo Is Nothing Then Return
+        If RunSelectCommand(name) Then Return
 
         Select Case name
             Case "save" : SaveDocument()
@@ -321,6 +338,7 @@ Partial Friend Class frmEditor
            {Keys.Control Or Keys.V, Keys.Control Or Keys.C, Keys.Control Or Keys.X, Keys.Control Or Keys.A}.Contains(keyData) Then
             Return MyBase.ProcessCmdKey(msg, keyData)
         End If
+        If SelKey(keyData) Then Return True
         If HandleDrawKey(keyData) Then Return True
         Dim cmd As String = Nothing
         Select Case keyData
@@ -329,6 +347,11 @@ Partial Friend Class frmEditor
             Case Keys.Control Or Keys.S : cmd = "save"
             Case Keys.Control Or Keys.Shift Or Keys.S : cmd = "saveas"
             Case Keys.Control Or Keys.C : cmd = "copy"
+            Case Keys.Control Or Keys.X : cmd = "cut"
+            Case Keys.Control Or Keys.Alt Or Keys.V : cmd = "pasteobject"
+            Case Keys.Control Or Keys.A : cmd = "selectall"
+            Case Keys.Control Or Keys.D : cmd = "deselect"
+            Case Keys.Control Or Keys.Shift Or Keys.I : cmd = "invertsel"
             Case Keys.Control Or Keys.E : cmd = "export"
             Case Keys.Control Or Keys.Z : cmd = "undo"
             Case Keys.Control Or Keys.Y, Keys.Control Or Keys.Shift Or Keys.Z : cmd = "redo"
@@ -761,6 +784,7 @@ Partial Friend Class frmEditor
         _overlayIndex = -1
         _drawIndex = -1
         _stackIndex = -1
+        CancelSelectionInProgress()
         _polyPoints = Nothing
         CommitCalloutEditor()
         SyncSliders()

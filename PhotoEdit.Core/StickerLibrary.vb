@@ -74,7 +74,7 @@ Public NotInheritable Class StickerLibrary
     ''' 同一張圖可能被預覽與背景算圖同時使用，繪製時請 SyncLock 該圖。
     ''' </summary>
     Public Shared Function GetImage(relative As String) As Bitmap
-        If String.IsNullOrWhiteSpace(relative) OrElse Path.IsPathRooted(relative) Then Return Nothing
+        ' 完整路徑：選取區「轉成物件」、「貼成物件」存的圖片。
         Return LoadCached(ResolveFile(relative))
     End Function
 

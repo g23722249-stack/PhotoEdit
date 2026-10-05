@@ -101,6 +101,7 @@ Partial Friend Class frmEditor
         BuildCutoutPage(_tabs.AddTab("去背"))
         BuildDrawPage(_tabs.AddTab("繪圖"))
         BuildLayersPage(_tabs.AddTab("圖層"))
+        BuildSelectPage(_tabs.AddTab("選取"))
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
         _help.SetDynamicHelp(_tabs, Function(p) HelpTexts.Get("tab." & _tabs.TabIndexAt(p)))

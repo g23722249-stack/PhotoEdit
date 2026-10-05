@@ -91,6 +91,12 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
         Dim opacity = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F
         If opacity <= 0 Then Return
+        If op.Region IsNot Nothing Then
+            Using fill = RegionBitmap(op, w, h)
+                If fill IsNot Nothing Then LayerBlend.Composite(bmp, fill, New Rectangle(0, 0, w, h), opacity, op.Blend)
+            End Using
+            Return
+        End If
         If op.Shape = DrawShape.Raster Then
             If op.Ops Is Nothing OrElse op.Ops.Count = 0 Then Return
             Dim nested = RasterBitmap(op, w, h)
@@ -135,6 +141,37 @@ Partial Public NotInheritable Class DrawingRenderer
             item.Bitmap.Dispose()
         End Try
     End Sub
+
+    ''' <summary>選取區填色／描邊畫成 w × h 的圖層。</summary>
+    Private Shared Function RegionBitmap(op As DrawLayer, w As Integer, h As Integer) As Bitmap
+        Dim mask = SelectionMask.Render(op.Region, w, h)
+        Dim px(w * h * 4 - 1) As Byte
+        If op.Filled Then
+            Dim c = Color.FromArgb(op.FillColorArgb)
+            For i = 0 To mask.Length - 1
+                If mask(i) = 0 Then Continue For
+                px(i * 4) = c.B : px(i * 4 + 1) = c.G : px(i * 4 + 2) = c.R : px(i * 4 + 3) = CByte(CInt(mask(i)) * c.A \ 255)
+            Next
+        End If
+        If op.Stroked Then
+            Dim line = SelectionMask.Outline(mask, w, h, CInt(Math.Max(1, Math.Round(op.StrokeWidth * h))), CInt(op.Param2))
+            Dim c = Color.FromArgb(op.StrokeColorArgb)
+            For i = 0 To line.Length - 1
+                If line(i) = 0 Then Continue For
+                ' 描邊蓋在填色上面（一般「正常」合成）。
+                Dim sa = CInt(line(i)) * c.A / 255.0 / 255.0
+                Dim da = px(i * 4 + 3) / 255.0
+                Dim oa = sa + da * (1 - sa)
+                px(i * 4) = CByte(Math.Round((c.B * sa + px(i * 4) * da * (1 - sa)) / oa))
+                px(i * 4 + 1) = CByte(Math.Round((c.G * sa + px(i * 4 + 1) * da * (1 - sa)) / oa))
+                px(i * 4 + 2) = CByte(Math.Round((c.R * sa + px(i * 4 + 2) * da * (1 - sa)) / oa))
+                px(i * 4 + 3) = CByte(Math.Round(oa * 255))
+            Next
+        End If
+        Dim bmp As New Bitmap(w, h, PixelFormat.Format32bppArgb)
+        Perspective.WritePixels(bmp, px)
+        Return bmp
+    End Function
 
     ''' <summary>接續前一個雜湊值（SHA1 取前 8 位元組），算出「前 k 筆」的快取鍵。</summary>
     Private Shared Function ChainHash(seed As ULong, text As String) As ULong

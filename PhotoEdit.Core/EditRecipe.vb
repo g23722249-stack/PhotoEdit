@@ -139,6 +139,9 @@ Public Class EditRecipe
     ''' </summary>
     Public Property LayerOrder As List(Of String)
 
+    ''' <summary>選取區（選取分頁）；不影響算圖，只決定複製、剪下、填色、局部調整等操作的範圍。Nothing 表示沒有選取。</summary>
+    Public Property Selection As SelectionSpec
+
     Public Function Clone() As EditRecipe
         Dim r = DirectCast(MemberwiseClone(), EditRecipe)
         r.Crop = Crop?.Clone()
@@ -148,6 +151,7 @@ Public Class EditRecipe
         r.Drawings = Drawings?.Select(Function(d) d.Clone()).ToList()
         r.Cutout = Cutout?.Clone()
         r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))
+        r.Selection = Selection?.Clone()
         Return r
     End Function
 
@@ -321,6 +325,7 @@ Public Class EditRecipe
         If r.Overlays IsNot Nothing AndAlso r.Overlays.Count = 0 Then r.Overlays = Nothing
         If r.Drawings IsNot Nothing AndAlso r.Drawings.Count = 0 Then r.Drawings = Nothing
         If r.LayerOrder IsNot Nothing AndAlso r.LayerOrder.Count = 0 Then r.LayerOrder = Nothing
+        If r.Selection IsNot Nothing AndAlso r.Selection.IsEmpty Then r.Selection = Nothing
         Return System.Text.Json.JsonSerializer.Serialize(r)
     End Function
 

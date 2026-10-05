@@ -7,6 +7,8 @@ Imports System.Threading.Tasks
 Public Enum LocalKind
     Gradient = 0
     Brush = 1
+    ''' <summary>選取區（選取分頁的「只調整選取區」）：範圍存在 Region。</summary>
+    Selection = 2
 End Enum
 
 ''' <summary>
@@ -21,6 +23,8 @@ Public Class LocalAdjustment
     Public Property EndY As Double
     ''' <summary>筆刷筆觸（半徑以原圖長邊為 1）。</summary>
     Public Property Strokes As List(Of SpotStroke) = New List(Of SpotStroke)()
+    ''' <summary>選取區範圍（Kind = Selection；畫面座標）。</summary>
+    Public Property Region As SelectionSpec
 
     Public Property Exposure As Double
     Public Property Contrast As Integer
@@ -30,6 +34,7 @@ Public Class LocalAdjustment
     Public Function Clone() As LocalAdjustment
         Dim c = DirectCast(MemberwiseClone(), LocalAdjustment)
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
+        c.Region = Region?.Clone()
         Return c
     End Function
 
@@ -218,6 +223,10 @@ Public NotInheritable Class Creative
     ''' <summary>局部調整的遮罩（0..255，每個像素一格）。</summary>
     Public Shared Function BuildLocalMask(adj As LocalAdjustment, recipe As EditRecipe, w As Integer, h As Integer,
                                           sourceWidth As Integer, sourceHeight As Integer) As Byte()
+        If adj.Kind = LocalKind.Selection Then
+            If adj.Region Is Nothing OrElse adj.Region.IsEmpty Then Return Nothing
+            Return SelectionMask.Render(adj.Region, w, h)
+        End If
         Dim mask(w * h - 1) As Byte
         If adj.Kind = LocalKind.Gradient Then
             Dim a = ToPixels(GeometryMapper.MapPoint(New PointF(CSng(adj.StartX), CSng(adj.StartY)), recipe, sourceWidth, sourceHeight, True), w, h)

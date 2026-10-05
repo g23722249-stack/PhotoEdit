@@ -55,6 +55,10 @@ Public Class CutoutSettings
     Public Property Strokes As List(Of CutoutStroke) = New List(Of CutoutStroke)()
     ''' <summary>魔術棒點擊（依序套用，在 AI 遮罩之後、修正筆觸之前）。</summary>
     Public Property Wand As List(Of WandClick) = New List(Of WandClick)()
+    ''' <summary>
+    ''' 只保留這些範圍（原圖座標的選取區，全部取交集）：選取分頁的「當作去背範圍」與「刪除」。
+    ''' </summary>
+    Public Property Regions As List(Of SelectionSpec)
     ''' <summary>魔術棒選取後清除雜點（小斑點、小破洞）。</summary>
     Public Property WandDespeckle As Boolean = True
     ''' <summary>背景色填充：從圖片四邊往內，把和背景色相近、而且與邊緣相連的區域去掉（白底插圖去背用）。</summary>
@@ -78,6 +82,7 @@ Public Class CutoutSettings
         Dim c = DirectCast(MemberwiseClone(), CutoutSettings)
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
         c.Wand = Wand?.Select(Function(w) w.Clone()).ToList()
+        c.Regions = Regions?.Select(Function(r) r.Clone()).ToList()
         Return c
     End Function
 

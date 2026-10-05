@@ -34,6 +34,7 @@ Module Program
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()
+            SelectionTestsRun(tempDir)
             FileTests(tempDir)
         Finally
             Directory.Delete(tempDir, recursive:=True)

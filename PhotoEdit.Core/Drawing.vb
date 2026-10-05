@@ -152,6 +152,11 @@ Public Class DrawLayer
     ''' 合併圖層時併進點陣圖層的文字或貼圖（只出現在 Ops 裡）；Param1 記合併時的照片寬高比，用來算範圍。
     ''' </summary>
     Public Property Item As Overlay
+    ''' <summary>
+    ''' 選取區填色或描邊（只出現在 Ops 裡；畫面座標）：Filled 用 FillColorArgb 填滿，Stroked 用 StrokeColorArgb 描邊，
+    ''' 線寬 StrokeWidth（照片高度單位），Param2 為描邊位置（0 內側、1 置中、2 外側），Param1 記照片寬高比。
+    ''' </summary>
+    Public Property Region As SelectionSpec
 
     Public Function Clone() As DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
@@ -159,6 +164,7 @@ Public Class DrawLayer
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
         c.Ops = Ops?.Select(Function(o) o.Clone()).ToList()
         c.Item = Item?.Clone()
+        c.Region = Region?.Clone()
         Return c
     End Function
 
@@ -710,6 +716,12 @@ Public NotInheritable Class DrawGeometry
         For Each op In layer.Ops
             If op.Eraser Then Continue For
             If op.Item IsNot Nothing Then add(OverlayBounds(op.Item, op.Param1)) : Continue For
+            If op.Region IsNot Nothing Then
+                Dim sb = SelectionMask.Bounds(op.Region)
+                Dim aspect = If(op.Param1 > 0, op.Param1, 1)
+                If Not sb.IsEmpty Then add(New RectangleF(CSng(sb.X * aspect), sb.Y, CSng(sb.Width * aspect), sb.Height))
+                Continue For
+            End If
             If op.Shape = DrawShape.Raster Then add(RasterBounds(op)) : Continue For ' 合併進來的點陣圖層（已含它的位移）
             Dim pts = Figures(op).SelectMany(Function(f) f.Points).ToList()
             If pts.Count = 0 Then Continue For
