@@ -718,6 +718,7 @@ Partial Friend Class frmEditor
 
     Private Sub DrawMouseDown(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseDown
         If _photo Is Nothing Then Return
+        If _tabs.SelectedIndex = TabSelect Then SelMouseDown(e) : Return
         CommitCalloutEditor()
         Dim u = ScreenToUnit(e.Location)
         If _polyPoints IsNot Nothing Then
@@ -816,6 +817,7 @@ Partial Friend Class frmEditor
 
     Private Sub DrawMouseMove(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseMove
         If _photo Is Nothing Then Return
+        If _tabs.SelectedIndex = TabSelect Then SelMouseMove(e) : Return
         Dim u = ScreenToUnit(e.Location)
         Dim shift = ModifierKeys.HasFlag(Keys.Shift)
         Select Case _dd
@@ -885,6 +887,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub DrawMouseUp(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseUp
+        If _tabs.SelectedIndex = TabSelect Then SelMouseUp(e) : Return
         Dim kind = _dd
         _dd = DrawDrag.None
         Select Case kind
@@ -902,6 +905,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub DrawDoubleClick(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawDoubleClick
+        If _tabs.SelectedIndex = TabSelect Then SelDoubleClick(e) : Return
         If _polyPoints IsNot Nothing Then
             FinishPolygon()
             Return
@@ -1125,6 +1129,7 @@ Partial Friend Class frmEditor
 
     Private Sub DrawPaint(g As Graphics) Implements PreviewCanvas.IDrawHost.DrawPaint
         If _photo Is Nothing Then Return
+        If _tabs.SelectedIndex = TabSelect Then SelPaint(g) : Return
         g.SmoothingMode = SmoothingMode.AntiAlias
         Dim px = PxPerUnit()
         Dim sel = SelDraw(_recipe)

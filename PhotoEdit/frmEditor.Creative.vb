@@ -153,7 +153,7 @@ Partial Friend Class frmEditor
                     If _healToggle.Checked Then tool = PreviewCanvas.CanvasTool.Heal
                 Case TabLocal
                     Dim sel = SelLocal(_recipe)
-                    If sel IsNot Nothing Then tool = If(sel.Kind = LocalKind.Gradient, PreviewCanvas.CanvasTool.Gradient, PreviewCanvas.CanvasTool.LocalBrush)
+                    If sel IsNot Nothing AndAlso sel.Kind <> LocalKind.Selection Then tool = If(sel.Kind = LocalKind.Gradient, PreviewCanvas.CanvasTool.Gradient, PreviewCanvas.CanvasTool.LocalBrush)
                 Case TabSticker, TabText
                     tool = PreviewCanvas.CanvasTool.Overlay
                 Case TabCutout
@@ -162,7 +162,7 @@ Partial Friend Class frmEditor
                     ElseIf MaskBrushActive AndAlso _recipe.Cutout IsNot Nothing Then
                         tool = PreviewCanvas.CanvasTool.MaskBrush
                     End If
-                Case TabDraw
+                Case TabDraw, TabSelect
                     tool = PreviewCanvas.CanvasTool.Draw
             End Select
         End If
@@ -269,7 +269,7 @@ Partial Friend Class frmEditor
         Dim wasSyncing = _syncing
         _syncing = True
         Try
-            Dim names = locals.Select(Function(a, i) $"{i + 1}. {If(a.Kind = LocalKind.Gradient, "漸層濾鏡", "局部筆刷")}").ToArray()
+            Dim names = locals.Select(Function(a, i) $"{i + 1}. {If(a.Kind = LocalKind.Gradient, "漸層濾鏡", If(a.Kind = LocalKind.Selection, "選取區調整", "局部筆刷"))}").ToArray()
             If Not names.SequenceEqual(_localList.Items.Cast(Of String)()) Then
                 _localList.Items.Clear()
                 _localList.Items.AddRange(names.Cast(Of Object)().ToArray())
@@ -280,8 +280,9 @@ Partial Friend Class frmEditor
             _localDelete.Enabled = sel IsNot Nothing
             _localBrushSize.Enabled = sel IsNot Nothing AndAlso sel.Kind = LocalKind.Brush
             _localHint.Text = If(sel Is Nothing, "按上方按鈕新增漸層濾鏡或局部筆刷。",
+                              If(sel.Kind = LocalKind.Selection, "範圍是建立時的選取區；用下面的滑桿調整選取區裡面的曝光、對比、飽和度與色溫。",
                               If(sel.Kind = LocalKind.Gradient, "在照片上從效果最強處拖曳到效果消失處。",
-                                 "在照片上塗抹要調整的區域（藍色）。右鍵拖曳可平移。"))
+                                 "在照片上塗抹要調整的區域（藍色）。右鍵拖曳可平移。")))
             For Each row In _rows.Where(Function(r) LocalKeys.Contains(r.Key))
                 row.Slider.Enabled = sel IsNot Nothing
             Next
@@ -301,6 +302,7 @@ Partial Friend Class frmEditor
             UpdateCutoutControls()
             UpdateDrawControls()
             UpdateLayersPanel()
+            UpdateSelectControls()
         Finally
             _syncing = wasSyncing
         End Try

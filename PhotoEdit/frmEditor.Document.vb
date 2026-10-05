@@ -244,6 +244,7 @@ Partial Friend Class frmEditor
     ''' 同時放 PNG（保留透明）與一般點陣圖（透明處為白色），畫面與文件都不變。
     ''' </summary>
     Private Sub CopyMergedImage()
+        If HasSelection Then CopySelection() : Return ' 有選取區時只複製選取區
         Dim recipe = _recipe.Clone()
         Cursor = Cursors.WaitCursor
         Try

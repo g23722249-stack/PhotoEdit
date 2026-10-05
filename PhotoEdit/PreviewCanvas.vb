@@ -512,7 +512,11 @@ Partial Friend Class PreviewCanvas
         If _tool = CanvasTool.Gradient Then DrawGradient(g, b)
         If _tool = CanvasTool.Overlay Then DrawOverlaySelection(g, b)
         If _tool = CanvasTool.Draw Then _drawHost?.DrawPaint(g)
+        AfterPaint?.Invoke(g)
     End Sub
+
+    ''' <summary>不論目前工具，最後再畫的東西（選取區的螞蟻線）。</summary>
+    Friend Property AfterPaint As Action(Of Graphics)
 
     Private Sub DrawGradient(g As Graphics, b As RectangleF)
         If Not _gradientLine.HasValue Then Return

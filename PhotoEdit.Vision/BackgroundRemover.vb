@@ -170,6 +170,19 @@ Public NotInheritable Class CutoutCompositor
             Dim sigma = settings.Feather / 100.0 * longSide * 0.006
             If sigma >= 0.3 Then Cv2.GaussianBlur(mask, mask, New OpenCvSharp.Size(0, 0), sigma)
         End If
+
+        ' 選取分頁的「當作去背範圍」與「刪除」：只保留選取區（各範圍取交集；選取區自己的羽化已算在內）。
+        If settings.Regions IsNot Nothing AndAlso settings.Regions.Count > 0 Then
+            Dim m(w * h - 1) As Byte
+            Runtime.InteropServices.Marshal.Copy(mask.Data, m, 0, m.Length)
+            For Each region In settings.Regions
+                Dim keep = SelectionMask.Render(region, w, h)
+                For i = 0 To m.Length - 1
+                    m(i) = CByte(CInt(m(i)) * keep(i) \ 255)
+                Next
+            Next
+            Runtime.InteropServices.Marshal.Copy(m, 0, mask.Data, m.Length)
+        End If
         Return mask
     End Function
 
