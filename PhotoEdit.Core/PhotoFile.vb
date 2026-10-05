@@ -17,6 +17,10 @@ Public Class PhotoFile
     Public ReadOnly Property Path As String
     ''' <summary>已轉正的 32bppArgb 原圖。</summary>
     Public ReadOnly Property Image As Bitmap
+    ''' <summary>原檔記錄的解析度（像素／英吋）；匯出時沿用，列印尺寸才會一致。</summary>
+    Public ReadOnly Property Resolution As Single
+    ''' <summary>原檔的位元組（原封不動，含 EXIF），存專案檔時直接放進去。</summary>
+    Public ReadOnly Property OriginalBytes As Byte()
     Private ReadOnly _properties As PropertyItem()
 
     ''' <summary>拍攝日期、相機、GPS（從 EXIF 讀；沒有的欄位為 Nothing）。</summary>
@@ -38,10 +42,12 @@ Public Class PhotoFile
         Return result
     End Function
 
-    Private Sub New(path As String, image As Bitmap, properties As PropertyItem())
+    Private Sub New(path As String, image As Bitmap, properties As PropertyItem(), resolution As Single, originalBytes As Byte())
         Me.Path = path
         Me.Image = image
+        Me.OriginalBytes = originalBytes
         _properties = properties
+        Me.Resolution = If(resolution > 0, resolution, 96.0F)
     End Sub
 
     Public Shared ReadOnly SupportedExtensions As String() = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".gif"}
@@ -51,7 +57,8 @@ Public Class PhotoFile
     End Function
 
     Public Shared Function Open(path As String) As PhotoFile
-        Using ms As New MemoryStream(File.ReadAllBytes(path))
+        Dim bytes = File.ReadAllBytes(path)
+        Using ms As New MemoryStream(bytes)
             Using original = System.Drawing.Image.FromStream(ms, useEmbeddedColorManagement:=True, validateImageData:=True)
                 Dim props = original.PropertyItems
                 Dim upright As New Bitmap(original.Width, original.Height, PixelFormat.Format32bppArgb)
@@ -60,7 +67,7 @@ Public Class PhotoFile
                 End Using
                 Dim rft = OrientationToRotateFlip(ReadOrientation(props))
                 If rft <> RotateFlipType.RotateNoneFlipNone Then upright.RotateFlip(rft)
-                Return New PhotoFile(path, upright, props)
+                Return New PhotoFile(path, upright, props, original.HorizontalResolution, bytes)
             End Using
         End Using
     End Function
@@ -88,7 +95,7 @@ Public Class PhotoFile
         End Select
     End Function
 
-    ''' <summary>以原圖全尺寸算圖並另存 JPG。不允許覆寫原始照片。prepare 見 ImagePipeline.Render（人像修飾）。</summary>
+    ''' <summary>以原圖全尺寸算圖並另存成 JPG、PNG 或 BMP（依副檔名）。不允許覆寫原始照片。prepare 見 ImagePipeline.Render（人像修飾）。</summary>
     Public Sub Export(recipe As EditRecipe, targetPath As String, Optional quality As Long = 92,
                       Optional prepare As Func(Of Bitmap, Bitmap) = Nothing,
                       Optional faces As IReadOnlyList(Of FaceRegion) = Nothing)
@@ -96,29 +103,43 @@ Public Class PhotoFile
             Throw New InvalidOperationException("不能覆寫原始照片，請換一個檔名。")
         End If
         Using rendered = ImagePipeline.Render(Image, recipe, prepare:=prepare, faces:=faces)
-            If String.Equals(IO.Path.GetExtension(targetPath), ".png", StringComparison.OrdinalIgnoreCase) Then
-                ' PNG：保留透明（去背）。
-                rendered.Save(targetPath, ImageFormat.Png)
+            SaveImage(rendered, targetPath, quality)
+        End Using
+    End Sub
+
+    ''' <summary>
+    ''' 把算好的圖依副檔名存成 PNG（保留透明）、BMP 或 JPG（透明處變白色；JPG 保留拍攝日期等 EXIF）。解析度沿用原檔。
+    ''' </summary>
+    Public Sub SaveImage(rendered As Bitmap, targetPath As String, Optional quality As Long = 92)
+        rendered.SetResolution(Resolution, Resolution)
+        Dim ext = IO.Path.GetExtension(targetPath).ToLowerInvariant()
+        If ext = ".png" Then
+            ' PNG：保留透明（去背）。
+            rendered.Save(targetPath, ImageFormat.Png)
+            Return
+        End If
+        Using output As New Bitmap(rendered.Width, rendered.Height, PixelFormat.Format24bppRgb)
+            output.SetResolution(Resolution, Resolution)
+            Using g = Graphics.FromImage(output)
+                g.Clear(Color.White) ' JPG、BMP 不能透明：透明處變白色
+                g.DrawImage(rendered, 0, 0, rendered.Width, rendered.Height)
+            End Using
+            If ext = ".bmp" Then
+                output.Save(targetPath, ImageFormat.Bmp)
                 Return
             End If
-            Using output As New Bitmap(rendered.Width, rendered.Height, PixelFormat.Format24bppRgb)
-                Using g = Graphics.FromImage(output)
-                    g.Clear(Color.White) ' JPG 不能透明：透明處變白色
-                    g.DrawImage(rendered, 0, 0, rendered.Width, rendered.Height)
-                End Using
-                For Each p In _properties
-                    If SkipTags.Contains(p.Id) Then Continue For
-                    Try
-                        output.SetPropertyItem(p)
-                    Catch ex As ArgumentException
-                        ' GDI+ 不接受的標籤略過即可。
-                    End Try
-                Next
-                Dim codec = ImageCodecInfo.GetImageEncoders().First(Function(c) c.FormatID = ImageFormat.Jpeg.Guid)
-                Using ep As New EncoderParameters(1)
-                    ep.Param(0) = New EncoderParameter(Encoder.Quality, quality)
-                    output.Save(targetPath, codec, ep)
-                End Using
+            For Each p In _properties
+                If SkipTags.Contains(p.Id) Then Continue For
+                Try
+                    output.SetPropertyItem(p)
+                Catch ex As ArgumentException
+                    ' GDI+ 不接受的標籤略過即可。
+                End Try
+            Next
+            Dim codec = ImageCodecInfo.GetImageEncoders().First(Function(c) c.FormatID = ImageFormat.Jpeg.Guid)
+            Using ep As New EncoderParameters(1)
+                ep.Param(0) = New EncoderParameter(Encoder.Quality, quality)
+                output.Save(targetPath, codec, ep)
             End Using
         End Using
     End Sub
