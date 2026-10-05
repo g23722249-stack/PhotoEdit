@@ -102,7 +102,9 @@ Public NotInheritable Class CutoutCompositor
     End Sub
 
     ''' <summary>最終遮罩（CV_8UC1，與 bgr 同大小）。aiMask 為 Nothing 時以全白開始（只靠筆觸）。</summary>
-    Public Shared Function BuildMask(aiMask As Bitmap, settings As CutoutSettings, w As Integer, h As Integer) As Mat
+    ''' <param name="sourcePixels">來源的 BGRA 像素（魔術棒用；Nothing 時略過魔術棒）。</param>
+    Public Shared Function BuildMask(aiMask As Bitmap, settings As CutoutSettings, w As Integer, h As Integer,
+                                     Optional sourcePixels As Byte() = Nothing) As Mat
         Dim mask As New Mat(h, w, MatType.CV_8UC1, Scalar.All(255))
         If aiMask IsNot Nothing Then
             SyncLock aiMask
@@ -123,6 +125,28 @@ Public NotInheritable Class CutoutCompositor
             Using k = Cv2.GetStructuringElement(MorphShapes.Ellipse, New OpenCvSharp.Size(r * 2 + 1, r * 2 + 1))
                 If settings.Shift > 0 Then Cv2.Dilate(mask, mask, k) Else Cv2.Erode(mask, mask, k)
             End Using
+        End If
+
+        ' 背景色填充：從四邊往內去掉背景色（白底插圖）。
+        If sourcePixels IsNot Nothing AndAlso settings.EdgeFill Then
+            Dim m(w * h - 1) As Byte
+            Runtime.InteropServices.Marshal.Copy(mask.Data, m, 0, m.Length)
+            Dim sel = MagicWand.EdgeFill(sourcePixels, w, h, settings.EdgeFillTolerance, settings.EdgeFillColorArgb)
+            If settings.WandDespeckle Then MagicWand.Despeckle(sel, w, h)
+            MagicWand.ApplyToMask(m, sel, restore:=False)
+            Runtime.InteropServices.Marshal.Copy(m, 0, mask.Data, m.Length)
+        End If
+
+        ' 魔術棒：依點擊順序去除或補回相近顏色的區域。
+        If sourcePixels IsNot Nothing AndAlso settings.Wand IsNot Nothing AndAlso settings.Wand.Count > 0 Then
+            Dim m(w * h - 1) As Byte
+            Runtime.InteropServices.Marshal.Copy(mask.Data, m, 0, m.Length)
+            For Each click In settings.Wand
+                Dim sel = MagicWand.SelectRegion(sourcePixels, w, h, click)
+                If settings.WandDespeckle Then MagicWand.Despeckle(sel, w, h)
+                MagicWand.ApplyToMask(m, sel, click.Restore)
+            Next
+            Runtime.InteropServices.Marshal.Copy(m, 0, mask.Data, m.Length)
         End If
 
         ' 修正筆觸：保留畫白、擦除畫黑（邊緣稍微柔和）。
@@ -152,10 +176,10 @@ Public NotInheritable Class CutoutCompositor
     ''' <summary>依背景設定合成，回傳新的 32bpp 圖（透明背景時 alpha = 遮罩）。</summary>
     Public Shared Function Compose(source As Bitmap, aiMask As Bitmap, settings As CutoutSettings) As Bitmap
         Dim w = source.Width, h = source.Height
-        Using mask = BuildMask(aiMask, settings, w, h)
+        Dim src = ReadBgra(source)
+        Using mask = BuildMask(aiMask, settings, w, h, src)
             Dim m(w * h - 1) As Byte
             Runtime.InteropServices.Marshal.Copy(mask.Data, m, 0, m.Length)
-            Dim src = ReadBgra(source)
             Dim bg As Byte() = Nothing
             Select Case settings.Background
                 Case CutoutBackground.Color

@@ -10,7 +10,9 @@ Partial Friend Class frmEditor
     Friend Const StickerDataFormat As String = "PhotoEdit.Sticker"
     Private Const TileSize As Integer = 80
 
-    Private ReadOnly _themeBar As New FlowLayoutPanel()
+    Private ReadOnly _themeBar As New Panel()
+    Private ReadOnly _themeCombo As New ComboBox()
+    Private ReadOnly _themeNames As New List(Of String)()
     Private ReadOnly _stickerGrid As New FlowLayoutPanel()
     Private ReadOnly _stickerCount As New Label()
     Private ReadOnly _stickerEmpty As New Label()
@@ -24,19 +26,39 @@ Partial Friend Class frmEditor
     Private Sub BuildStickerPage(page As Aqua.TabPage)
         _stickerPage = page
         Dim L = NewLayout(page, autoScroll:=False)
-        AddHeading(L, "貼圖", reserveRight:=ValueWidth + 40)
-        Dim refresh = MakeButton("重新整理", "stick 資料夾裡的貼圖有增減時，按這裡重新讀取")
+        AddHeading(L, "貼圖", reserveRight:=ValueWidth + 40 + 122)
+        Dim refresh = MakeButton("重新整理", "btn.stickrefresh")
         refresh.SetBounds(L.Width - ValueWidth - 30, 6, ValueWidth + 30, 26)
         AddHandler refresh.Click, Sub() ReloadStickers()
         L.Add(refresh)
         refresh.BringToFront() ' 標題標籤橫跨整列，不移到上層會蓋住按鈕文字
+        Dim helper = MakeButton("貼圖小幫手…", "btn.stickhelper")
+        helper.SetBounds(L.Width - ValueWidth - 30 - 6 - 116, 6, 116, 26)
+        AddHandler helper.Click, Sub() OpenStickerHelper()
+        L.Add(helper)
+        helper.BringToFront()
 
-        _themeBar.SetBounds(8, L.Y, L.Width - 8, 30)
-        _themeBar.WrapContents = True
-        _themeBar.AutoSize = True
-        _themeBar.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        ' 主題：上一個｜下拉選單（含張數）｜下一個。主題再多也只佔一列。
+        _themeBar.SetBounds(8, L.Y, L.Width - 8, 28)
         _themeBar.BackColor = Color.Transparent
-        AddHandler _themeBar.SizeChanged, Sub() LayoutStickerPage()
+        Dim prevTheme = MakeButton("◀", "sticker.themeprev"), nextTheme = MakeButton("▶", "sticker.themenext")
+        prevTheme.Dock = DockStyle.Left : prevTheme.Width = 34
+        nextTheme.Dock = DockStyle.Right : nextTheme.Width = 34
+        AddHandler prevTheme.Click, Sub() StepTheme(-1)
+        AddHandler nextTheme.Click, Sub() StepTheme(1)
+        _themeCombo.Dock = DockStyle.Fill
+        _themeCombo.DropDownStyle = ComboBoxStyle.DropDownList
+        _themeCombo.MaxDropDownItems = 20
+        AddHandler _themeCombo.SelectedIndexChanged, Sub()
+                                                          If _syncing OrElse _themeCombo.SelectedIndex < 0 Then Return
+                                                          ShowTheme(_themeNames(_themeCombo.SelectedIndex))
+                                                      End Sub
+        _help.SetHelp("sticker.theme", _themeCombo)
+        Dim comboHost As New Panel With {.Dock = DockStyle.Fill, .Padding = New Padding(4, 2, 4, 0)}
+        comboHost.Controls.Add(_themeCombo)
+        _themeBar.Controls.Add(comboHost)
+        _themeBar.Controls.Add(nextTheme)
+        _themeBar.Controls.Add(prevTheme)
         L.Add(_themeBar)
 
         _stickerGrid.SetBounds(8, L.Y + 40, L.Width - 8, 300)
@@ -80,26 +102,24 @@ Partial Friend Class frmEditor
         _overlayDelete.Text = "刪除"
         _overlayDelete.UseVisualStyleBackColor = True
         _overlayDelete.SetBounds(S.Width - ValueWidth - 30, 2, ValueWidth + 30, 26)
-        _tip.SetToolTip(_overlayDelete, "刪除選取的貼圖（Del）")
+        _help.SetHelp("sticker.delete", _overlayDelete)
         AddHandler _overlayDelete.Click, Sub() DeleteOverlay()
         AddHeading(S, "選取的貼圖", reserveRight:=ValueWidth + 40)
         S.Add(_overlayDelete)
         _overlayDelete.BringToFront()
-        AddRow(S, OverlayRow("ov_size", "大小", 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0),
-               "也可以拖曳角落控制點，或 Ctrl+滾輪")
-        AddRow(S, OverlayRow("ov_rot", "旋轉", -180, 180, Function(v) v & "°", Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v),
-               "也可以拖曳上方的圓形把手（Shift 每 15° 吸附），或 Shift+滾輪")
+        AddRow(S, OverlayRow("ov_size", "大小", 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0))
+        AddRow(S, OverlayRow("ov_rot", "旋轉", -180, 180, Function(v) v & "°", Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v))
         AddRow(S, OverlayRow("ov_opacity", "透明度", 0, 100, Function(v) v & "%", Function(o) o.Opacity, Sub(o, v) o.Opacity = v))
         Dim half = (S.Width - 16) \ 2
         _overlayColor.Text = "顏色…"
         _overlayColor.UseVisualStyleBackColor = True
         _overlayColor.SetBounds(8, S.Y + 2, half, 28)
-        _tip.SetToolTip(_overlayColor, "內建貼圖的顏色（圖片貼圖不能改色）")
+        _help.SetHelp("overlay.color", _overlayColor)
         AddHandler _overlayColor.Click, Sub() PickOverlayColor()
         _overlayShadow.Text = "陰影"
         _overlayShadow.BackColor = Color.Transparent
         _overlayShadow.SetBounds(8 + half + 16, S.Y + 6, half - 8, 22)
-        _tip.SetToolTip(_overlayShadow, "陰影的距離、方向、模糊與發光在「文字」分頁的特效組調整")
+        _help.SetHelp("overlay.shadow", _overlayShadow)
         AddHandler _overlayShadow.CheckedChanged, Sub()
                                                       If _syncing Then Return
                                                       Dim v = _overlayShadow.Checked
@@ -111,7 +131,9 @@ Partial Friend Class frmEditor
         S.Add(_overlayShadow)
 
         AddHandler page.Resize, Sub() LayoutStickerPage()
-        _tip.SetToolTip(_stickerGrid, "把貼圖拖到照片上；雙擊則貼在照片中央")
+        _help.SetHelp("sticker.grid", _stickerGrid)
+        _help.SetHelp("sticker.create", _createStick)
+        _help.SetHelp("sticker.open", _openStick)
         ReloadStickers()
     End Sub
 
@@ -138,28 +160,25 @@ Partial Friend Class frmEditor
         themes.AddRange(StickerLibrary.Themes())
         If Not themes.Contains(_currentTheme) Then _currentTheme = StickerLibrary.BuiltInTheme
 
-        _themeBar.SuspendLayout()
-        For Each c As Control In _themeBar.Controls.Cast(Of Control)().ToList()
-            c.Dispose()
-        Next
-        For Each themeName In themes
-            Dim chip As New RadioButton With {
-                .Text = themeName, .Appearance = Appearance.Button, .AutoSize = True, .FlatStyle = FlatStyle.Flat,
-                .Checked = themeName = _currentTheme, .Margin = New Padding(0, 0, 6, 6), .Padding = New Padding(6, 0, 6, 0),
-                .Cursor = Cursors.Hand, .Tag = themeName}
-            chip.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
-            chip.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
-            chip.BackColor = Color.White
-            AddHandler chip.CheckedChanged, Sub(s, e)
-                                                Dim rb = DirectCast(s, RadioButton)
-                                                If rb.Checked Then ShowTheme(CStr(rb.Tag))
-                                            End Sub
-            _themeBar.Controls.Add(chip)
-        Next
-        _themeBar.ResumeLayout()
+        _themeNames.Clear()
+        _themeNames.AddRange(themes)
+        Dim items = themes.Select(Function(t) CObj(If(t = StickerLibrary.BuiltInTheme, $"{t}（{Creative.StickerNames.Count}）", $"{t}（{StickerLibrary.Stickers(t).Count}）"))).ToArray()
+        Dim wasSyncing = _syncing
+        _syncing = True
+        _themeCombo.Items.Clear()
+        _themeCombo.Items.AddRange(items)
+        _themeCombo.SelectedIndex = themes.IndexOf(_currentTheme)
+        _syncing = wasSyncing
         ShowTheme(_currentTheme)
         LayoutStickerPage()
         RequestRender() ' 貼圖檔可能換過
+    End Sub
+
+    ''' <summary>上一個／下一個主題（循環）。</summary>
+    Private Sub StepTheme(delta As Integer)
+        If _themeNames.Count = 0 Then Return
+        Dim i = (_themeNames.IndexOf(_currentTheme) + delta + _themeNames.Count) Mod _themeNames.Count
+        _themeCombo.SelectedIndex = i
     End Sub
 
     Private Sub ShowTheme(theme As String)
@@ -179,8 +198,7 @@ Partial Friend Class frmEditor
             For Each key In keys
                 Dim o = StickerOverlay(key)
                 Dim tile As New StickerTile(key, Creative.StickerPreview(o, TileSize - 14))
-                _tip.SetToolTip(tile, If(o.Kind = OverlayKind.Image, Path.GetFileNameWithoutExtension(o.ImagePath),
-                                       Creative.StickerNames.First(Function(s) s.Key = o.Sticker).Name) & "（拖到照片上，或雙擊）")
+                _help.SetHelp(tile, StickerHelp(o, tile.Preview))
                 AddHandler tile.DoubleClick, Sub(s, e) AddStickerAt(DirectCast(s, StickerTile).Key, New PointF(0.5F, 0.5F))
                 _stickerGrid.Controls.Add(tile)
             Next
@@ -246,12 +264,29 @@ Partial Friend Class frmEditor
         SetStatusMessage("已建立 " & StickerLibrary.Root & "：在裡面建立主題資料夾，再放入 PNG 貼圖。")
     End Sub
 
+    ''' <summary>貼圖格的說明：名稱、種類，圖示用貼圖本身。</summary>
+    Private Shared Function StickerHelp(o As Overlay, preview As Bitmap) As HelpTip.Entry
+        Dim baseHelp = HelpTexts.Get("sticker.grid")
+        Dim isImage = o.Kind = OverlayKind.Image
+        Return New HelpTip.Entry With {
+            .Title = If(isImage, Path.GetFileNameWithoutExtension(o.ImagePath), Creative.StickerNames.First(Function(s) s.Key = o.Sticker).Name),
+            .Text = If(isImage, "圖片貼圖（stick\" & o.ImagePath & "），保留原本的顏色。", "內建向量貼圖，放大也很清楚，可以改顏色。"),
+            .Hint = "拖到照片上貼在那個位置；按兩下貼在照片中央。",
+            .Icon = preview, .Glyph = If(baseHelp?.Glyph, "")}
+    End Function
+
     ''' <summary>貼圖格：顯示預覽，可拖曳（資料為貼圖鍵）或雙擊。</summary>
     Private Class StickerTile
         Inherits Control
 
         Public ReadOnly Key As String
         Private ReadOnly _preview As Bitmap
+
+        Public ReadOnly Property Preview As Bitmap
+            Get
+                Return _preview
+            End Get
+        End Property
         Private _hover As Boolean
         Private _downAt As Point?
 
@@ -329,4 +364,23 @@ Partial Friend Class frmEditor
             MyBase.Dispose(disposing)
         End Sub
     End Class
+End Class
+
+''' <summary>貼圖小幫手（獨立視窗，同時只開一個）：存好後重新讀取貼圖並切到該主題。</summary>
+Partial Friend Class frmEditor
+    Private _stickerHelper As frmStickerHelper
+
+    Private Sub OpenStickerHelper()
+        If _stickerHelper Is Nothing OrElse _stickerHelper.IsDisposed Then
+            _stickerHelper = New frmStickerHelper(Sub(theme)
+                                                      _currentTheme = theme
+                                                      ReloadStickers()
+                                                      _tabs.SelectedIndex = TabSticker
+                                                  End Sub)
+            _stickerHelper.Show(Me)
+        Else
+            If _stickerHelper.WindowState = FormWindowState.Minimized Then _stickerHelper.WindowState = FormWindowState.Normal
+            _stickerHelper.Activate()
+        End If
+    End Sub
 End Class

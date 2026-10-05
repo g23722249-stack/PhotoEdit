@@ -4,6 +4,10 @@ Imports System.Text.Json
 ''' <summary>使用者介面設定（例如右側面板寬度），存在 %AppData%\PhotoEdit\settings.json。</summary>
 Friend Class AppSettings
     Public Property SidePanelWidth As Integer = 400
+    ''' <summary>裁切輔助線（0 三分線、1 黃金比例、2 格線、3 對角線、4 無）。</summary>
+    Public Property CropGuide As Integer
+    ''' <summary>滑鼠停在控制項上時顯示使用說明視窗。</summary>
+    Public Property ShowHelp As Boolean = True
 
     Private Shared ReadOnly FilePath As String =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PhotoEdit", "settings.json")

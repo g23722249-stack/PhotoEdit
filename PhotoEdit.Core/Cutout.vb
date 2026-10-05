@@ -31,12 +31,38 @@ Public Class CutoutStroke
     End Function
 End Class
 
+''' <summary>魔術棒的一次點擊：位置為已轉正原圖的 0..1 座標。</summary>
+Public Class WandClick
+    Public Property X As Double
+    Public Property Y As Double
+    ''' <summary>相似程度 0..100（0 只選完全相同的顏色）。</summary>
+    Public Property Tolerance As Integer = 25
+    ''' <summary>True：只選和點擊處相連的區域；False：整張照片相近的顏色。</summary>
+    Public Property Contiguous As Boolean = True
+    ''' <summary>True：補回（加回主體）；False：去除。</summary>
+    Public Property Restore As Boolean
+
+    Public Function Clone() As WandClick
+        Return DirectCast(MemberwiseClone(), WandClick)
+    End Function
+End Class
+
 ''' <summary>
 ''' 去背設定。AI 算出的遮罩存在照片旁的附屬檔（MaskStore），配方只記模型、修正筆觸、邊緣與背景。
 ''' </summary>
 Public Class CutoutSettings
     Public Property Model As CutoutModel
     Public Property Strokes As List(Of CutoutStroke) = New List(Of CutoutStroke)()
+    ''' <summary>魔術棒點擊（依序套用，在 AI 遮罩之後、修正筆觸之前）。</summary>
+    Public Property Wand As List(Of WandClick) = New List(Of WandClick)()
+    ''' <summary>魔術棒選取後清除雜點（小斑點、小破洞）。</summary>
+    Public Property WandDespeckle As Boolean = True
+    ''' <summary>背景色填充：從圖片四邊往內，把和背景色相近、而且與邊緣相連的區域去掉（白底插圖去背用）。</summary>
+    Public Property EdgeFill As Boolean
+    ''' <summary>背景色填充的相似程度 0..100。</summary>
+    Public Property EdgeFillTolerance As Integer = 15
+    ''' <summary>背景色；0 表示自動（取四邊最常見的顏色）。</summary>
+    Public Property EdgeFillColorArgb As Integer
     ''' <summary>邊緣羽化，0..100。</summary>
     Public Property Feather As Integer = 15
     ''' <summary>內縮（負）／外擴（正），-50..50。</summary>
@@ -51,6 +77,7 @@ Public Class CutoutSettings
     Public Function Clone() As CutoutSettings
         Dim c = DirectCast(MemberwiseClone(), CutoutSettings)
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
+        c.Wand = Wand?.Select(Function(w) w.Clone()).ToList()
         Return c
     End Function
 

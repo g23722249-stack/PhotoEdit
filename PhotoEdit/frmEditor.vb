@@ -25,6 +25,7 @@ Partial Friend Class frmEditor
     Private ReadOnly _histogramView As New HistogramView()
     Private ReadOnly _sidePanel As New Panel()
     Private ReadOnly _presetStrip As New PresetStrip()
+    Private _showHelpItem As Aqua.MenuItem
     Private ReadOnly _cropPanel As New Panel()
     Private ReadOnly _cropRatio As New ComboBox()
     Private ReadOnly _statusLabel As New StatusLine()
@@ -73,7 +74,6 @@ Partial Friend Class frmEditor
         Public Slider As Aqua.Slider
     End Class
 
-    Private Shared ReadOnly CropRatioNames As String() = {"自由", "原始比例", "1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16"}
     Private Shared ReadOnly PortraitKeys As String() = {"skin", "facebright", "eyebright"}
 
     Public Sub New(Optional startupPath As String = Nothing)
@@ -93,15 +93,21 @@ Partial Friend Class frmEditor
         BuildSidePanel()
         SetupSplitter()
         BuildCropPanel()
+        BuildDrawChrome()
 
         _statusLabel.Dock = DockStyle.Bottom
 
         _presetStrip.Dock = DockStyle.Bottom
+        _presetStrip.AttachHelp(_help)
+        _help.Active = _appSettings.ShowHelp
+        AddHandler FormClosed, Sub() _help.Dispose()
         _canvas.Dock = DockStyle.Fill
         _canvas.AllowDrop = True
 
         ' 加入順序決定停靠順序（最後加入的最先停靠）：狀態列最底、右側面板全高，濾鏡列與裁切列只在畫布下方。
         Controls.Add(_canvas)
+        Controls.Add(_drawBar)
+        Controls.Add(_drawStrip)
         Controls.Add(_presetStrip)
         Controls.Add(_cropPanel)
         Controls.Add(_splitter)
@@ -186,6 +192,9 @@ Partial Friend Class frmEditor
         viewMenu.AddItem(Item("zoomout", "縮小 (Ctrl+-)"))
 
         Dim helpMenu = root.AddItem(New Aqua.MenuItem("說明"))
+        _showHelpItem = helpMenu.AddItem(Item("togglehelp", "顯示使用說明（滑鼠停在按鈕上）"))
+        _showHelpItem.Checked = _appSettings.ShowHelp
+        helpMenu.AddItem(New Aqua.MenuItem("-"))
         helpMenu.AddItem(Item("about", "關於 PhotoEdit"))
 
         AddMenu(root)
@@ -194,36 +203,6 @@ Partial Friend Class frmEditor
     Private Shared Function Item(name As String, text As String) As Aqua.MenuItem
         Return New Aqua.MenuItem(text) With {.Name = name}
     End Function
-
-    Private Sub BuildCropPanel()
-        _cropPanel.Dock = DockStyle.Bottom
-        _cropPanel.Height = 40
-        _cropPanel.Visible = False
-        _cropPanel.BackColor = Color.FromArgb(230, 236, 244)
-
-        Dim lbl As New Label With {.Text = "裁切比例", .AutoSize = True}
-        lbl.Location = New Point(10, 12)
-        _cropRatio.DropDownStyle = ComboBoxStyle.DropDownList
-        _cropRatio.Items.AddRange(CropRatioNames)
-        _cropRatio.SetBounds(80, 8, 110, 24)
-        AddHandler _cropRatio.SelectedIndexChanged, AddressOf OnCropRatioChanged
-
-        Dim smart As New Button With {.Text = "智慧構圖"}
-        smart.SetBounds(200, 6, 90, 28)
-        AddHandler smart.Click, Sub() ApplySmartCrop()
-
-        Dim hint As New Label With {.Text = "拖曳畫出範圍，框內拖曳可移動；虛線是偵測到的臉。", .AutoSize = True}
-        hint.Location = New Point(300, 12)
-
-        Dim apply As New Button With {.Text = "套用 (Enter)", .Anchor = AnchorStyles.Top Or AnchorStyles.Right}
-        apply.SetBounds(_cropPanel.Width - 220, 6, 100, 28)
-        AddHandler apply.Click, Sub() ExitCropMode(apply:=True)
-        Dim cancel As New Button With {.Text = "取消 (Esc)", .Anchor = AnchorStyles.Top Or AnchorStyles.Right}
-        cancel.SetBounds(_cropPanel.Width - 112, 6, 100, 28)
-        AddHandler cancel.Click, Sub() ExitCropMode(apply:=False)
-
-        _cropPanel.Controls.AddRange(New Control() {lbl, _cropRatio, smart, hint, apply, cancel})
-    End Sub
 
     '=====================================================================
     ' 指令
@@ -235,6 +214,12 @@ Partial Friend Class frmEditor
             Case "collage" : OpenCollage()
             Case "pasteimage" : PasteAsNewImage()
             Case "exit" : Close()
+            Case "togglehelp"
+                _appSettings.ShowHelp = Not _appSettings.ShowHelp
+                _appSettings.Save()
+                _help.Active = _appSettings.ShowHelp
+                _showHelpItem.Checked = _appSettings.ShowHelp
+                SetStatusMessage(If(_appSettings.ShowHelp, "已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。", "已關閉使用說明。"))
             Case "about"
                 MessageBox.Show(Me, "PhotoEdit 0.2 — 非破壞性照片編輯器" & vbCrLf & vbCrLf &
                                 "編輯參數存在「照片檔名.pedit.json」，原始照片不會被修改。" & vbCrLf &
@@ -251,6 +236,7 @@ Partial Friend Class frmEditor
                 ExitCropMode(apply:=False)
                 ReplaceRecipe(New EditRecipe())
             Case "undo"
+                If UndoInCropMode() Then Return
                 ExitCropMode(apply:=False)
                 If _history.CanUndo Then _recipe = _history.Undo(_recipe) : OnRecipeChanged()
             Case "redo"
@@ -263,16 +249,16 @@ Partial Friend Class frmEditor
                 If _copiedAdjustments IsNot Nothing Then ApplyChange(Sub(r) r.CopyAdjustmentsFrom(_copiedAdjustments))
             Case "resetadj" : ApplyChange(Sub(r) r.ResetAdjustments())
             Case "rotl"
-                ExitCropMode(apply:=False)
+                If _cropMode Then CropRotate(False) : Return
                 ApplyChange(Sub(r) r.RotateLeft())
             Case "rotr"
-                ExitCropMode(apply:=False)
+                If _cropMode Then CropRotate(True) : Return
                 ApplyChange(Sub(r) r.RotateRight())
             Case "fliph"
-                ExitCropMode(apply:=False)
+                If _cropMode Then CropFlip(True) : Return
                 ApplyChange(Sub(r) r.ToggleFlipHorizontal())
             Case "flipv"
-                ExitCropMode(apply:=False)
+                If _cropMode Then CropFlip(False) : Return
                 ApplyChange(Sub(r) r.ToggleFlipVertical())
             Case "crop"
                 If _cropMode Then ExitCropMode(apply:=True) Else EnterCropMode()
@@ -327,6 +313,7 @@ Partial Friend Class frmEditor
            {Keys.Control Or Keys.V, Keys.Control Or Keys.C, Keys.Control Or Keys.X, Keys.Control Or Keys.A}.Contains(keyData) Then
             Return MyBase.ProcessCmdKey(msg, keyData)
         End If
+        If HandleDrawKey(keyData) Then Return True
         Dim cmd As String = Nothing
         Select Case keyData
             Case Keys.Control Or Keys.O : cmd = "open"
@@ -344,14 +331,24 @@ Partial Friend Class frmEditor
             Case Keys.Control Or Keys.D1, Keys.Control Or Keys.NumPad1 : cmd = "actual"
             Case Keys.Control Or Keys.Oemplus, Keys.Control Or Keys.Add : cmd = "zoomin"
             Case Keys.Control Or Keys.OemMinus, Keys.Control Or Keys.Subtract : cmd = "zoomout"
+            Case Keys.W
+                If _tabs.SelectedIndex = TabCutout AndAlso _photo IsNot Nothing Then _wandToggle.Checked = Not _wandToggle.Checked : Return True
             Case Keys.H : cmd = "heal"
             Case Keys.Delete
                 If _canvas.Tool = PreviewCanvas.CanvasTool.Overlay AndAlso Not _overlayText.Focused AndAlso SelOverlay(_recipe) IsNot Nothing Then DeleteOverlay() : Return True
-            Case Keys.OemOpenBrackets
-                If _healToggle.Checked Then _brushSize.Value = Math.Max(_brushSize.Minimum, _brushSize.Value - 4) : Return True
-            Case Keys.OemCloseBrackets
-                If _healToggle.Checked Then _brushSize.Value = Math.Min(_brushSize.Maximum, _brushSize.Value + 4) : Return True
+            Case Keys.OemOpenBrackets, Keys.OemCloseBrackets
+                ' 目前使用中的筆刷（修補、局部、去背修正）調整大小。
+                Dim brush = If(_healToggle.Checked, _brushSize,
+                               If(_canvas.Tool = PreviewCanvas.CanvasTool.LocalBrush, _localBrushSize,
+                                  If(_canvas.Tool = PreviewCanvas.CanvasTool.MaskBrush, _maskBrushSize, Nothing)))
+                If brush IsNot Nothing AndAlso brush.Enabled Then
+                    Dim stepSize = If(keyData = Keys.OemOpenBrackets, -4, 4)
+                    brush.Value = Math.Max(brush.Minimum, Math.Min(brush.Maximum, brush.Value + stepSize))
+                    Return True
+                End If
             Case Keys.Enter
+                ' 在尺寸欄位按 Enter：只確認數值，不套用裁切。
+                If _cropMode AndAlso TypeOf ActiveControl Is NumericUpDown Then _canvas.Focus() : Return True
                 If _cropMode Then ExitCropMode(apply:=True) : Return True
             Case Keys.Escape
                 If _cropMode Then ExitCropMode(apply:=False) : Return True
@@ -697,77 +694,6 @@ Partial Friend Class frmEditor
     End Function
 
     '=====================================================================
-    ' 裁切模式
-    '=====================================================================
-
-    Private Sub EnterCropMode()
-        If _photo Is Nothing OrElse _cropMode Then Return
-        _healToggle.Checked = False
-        _cropMode = True
-        _syncing = True
-        _cropRatio.SelectedIndex = 0
-        _syncing = False
-        _canvas.AspectRatio = 0
-        _canvas.Crop = If(_recipe.Crop, New CropRect())
-        _canvas.CropMode = True
-        _cropPanel.Visible = True
-        UpdateToolFromTab()
-        RenderNow()
-    End Sub
-
-    Private Sub ExitCropMode(apply As Boolean)
-        If Not _cropMode Then Return
-        Dim chosen = _canvas.Crop
-        _cropMode = False
-        _canvas.CropMode = False
-        _canvas.FaceMarks = Nothing
-        _cropPanel.Visible = False
-        If apply Then
-            Dim newCrop = If(chosen.IsFull, Nothing, chosen)
-            ApplyChange(Sub(r) r.Crop = newCrop)
-        End If
-        UpdateToolFromTab()
-        RenderNow()
-    End Sub
-
-    Private Function SelectedCropRatio() As Double
-        Select Case _cropRatio.SelectedIndex
-            Case 1 : Return _rendered.Width / CDbl(_rendered.Height)
-            Case 2 : Return 1
-            Case 3 : Return 4 / 3
-            Case 4 : Return 3 / 4
-            Case 5 : Return 3 / 2
-            Case 6 : Return 2 / 3
-            Case 7 : Return 16 / 9
-            Case 8 : Return 9 / 16
-            Case Else : Return 0
-        End Select
-    End Function
-
-    Private Sub OnCropRatioChanged(sender As Object, e As EventArgs)
-        If _syncing OrElse _rendered Is Nothing Then Return
-        Dim ratio = SelectedCropRatio()
-        _canvas.AspectRatio = ratio
-        If ratio > 0 Then
-            ' 有臉時以臉為準構圖，否則置中。
-            _canvas.Crop = If(_canvas.FaceMarks.Count > 0,
-                              SmartCrop.Suggest(_canvas.FaceMarks, ratio, _rendered.Width, _rendered.Height),
-                              CropRect.CenteredForAspect(ratio, _rendered.Width, _rendered.Height))
-        End If
-        _canvas.Focus() ' 讓 Enter/Esc 不被下拉選單吃掉
-    End Sub
-
-    ''' <summary>依臉的位置建議裁切框；自由/原始比例時稍微收緊（80%），否則用最大尺寸。</summary>
-    Private Sub ApplySmartCrop()
-        If Not _cropMode OrElse _rendered Is Nothing Then Return
-        Dim ratio = SelectedCropRatio()
-        Dim factor = If(_cropRatio.SelectedIndex <= 1, 0.8, 1.0)
-        _canvas.Crop = SmartCrop.Suggest(_canvas.FaceMarks, ratio, _rendered.Width, _rendered.Height, factor)
-        SetStatusMessage(If(_canvas.FaceMarks.Count > 0, "已依人臉位置構圖：眼睛在上方三分線。", "沒有偵測到臉，改用置中構圖。"))
-        _canvas.Focus()
-    End Sub
-
-    '=====================================================================
     ' 檔案
     '=====================================================================
 
@@ -814,6 +740,9 @@ Partial Friend Class frmEditor
         _history.Clear()
         _localIndex = -1
         _overlayIndex = -1
+        _drawIndex = -1
+        _polyPoints = Nothing
+        CommitCalloutEditor()
         SyncSliders()
         UpdateCreativeControls() ' 文字、貼圖、去背分頁的選取與可用狀態
         UpdateToolFromTab()
@@ -859,8 +788,9 @@ Partial Friend Class frmEditor
 
     Private Sub ExportWithDialog()
         ExitCropMode(apply:=True)
-        ' 去背成透明背景時預設存 PNG（JPG 不能透明）。
-        Dim transparent = _recipe.Cutout IsNot Nothing AndAlso _recipe.Cutout.Background = CutoutBackground.Transparent
+        ' 去背成透明背景、或裁成圓形等形狀時預設存 PNG（JPG 不能透明）。
+        Dim transparent = (_recipe.Cutout IsNot Nothing AndAlso _recipe.Cutout.Background = CutoutBackground.Transparent) OrElse
+                          _recipe.CropShape <> CropShape.Rectangle
         Dim suggested = PhotoFile.SuggestExportPath(_photo.Path, If(transparent, ".png", ".jpg"))
         Using dlg As New SaveFileDialog()
             dlg.Title = "匯出"

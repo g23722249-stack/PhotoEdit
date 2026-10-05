@@ -52,6 +52,21 @@ Public Class EditHistory
         Return _redo.Pop()
     End Function
 
+    ''' <summary>可復原的步數。</summary>
+    Public ReadOnly Property UndoCount As Integer
+        Get
+            Return _undo.Count
+        End Get
+    End Property
+
+    ''' <summary>丟掉第 count 步之後的紀錄（取消裁切時，把裁切過程中的旋轉、拉直一起撤掉）。</summary>
+    Public Sub TruncateTo(count As Integer)
+        If count < 0 OrElse count >= _undo.Count Then Return
+        _undo.RemoveRange(count, _undo.Count - count)
+        _redo.Clear()
+        _lastKey = Nothing
+    End Sub
+
     Public Sub Clear()
         _undo.Clear()
         _redo.Clear()

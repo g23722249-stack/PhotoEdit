@@ -16,7 +16,7 @@ Public NotInheritable Class ImagePipeline
     ''' 完整算圖。maxDimension &gt; 0 時先把來源縮到長邊不超過此值（預覽用）。
     ''' prepare 會拿到縮放後、尚未轉向的來源複本（修補、降噪、人像），回傳新圖或 Nothing（不變）。
     ''' faces 供背景模糊判斷主體（已轉正原圖的 0..1 座標）。
-    ''' 後段順序：色調 → 局部調整 → 背景模糊/移軸 → 暗角/顆粒 → 銳利化 → 文字貼圖 → 邊框。
+    ''' 後段順序：色調 → 局部調整 → 背景模糊/移軸 → 暗角/顆粒 → 銳利化 → 文字貼圖 → 繪圖圖層 → 裁切形狀 → 邊框。
     ''' </summary>
     Public Shared Function Render(source As Bitmap, recipe As EditRecipe, Optional maxDimension As Integer = 0,
                                   Optional prepare As Func(Of Bitmap, Bitmap) = Nothing,
@@ -37,12 +37,60 @@ Public NotInheritable Class ImagePipeline
         ApplyEffects(bmp, recipe)
         If recipe.Sharpness > 0 Then Sharpen(bmp, recipe.Sharpness / 100.0)
         Creative.DrawOverlays(bmp, recipe)
+        DrawingRenderer.DrawLayers(bmp, recipe)
+        ApplyCropShape(bmp, recipe.CropShape)
         Dim framed = Creative.ApplyFrame(bmp, recipe)
         If framed IsNot Nothing Then
             bmp.Dispose()
             bmp = framed
         End If
         Return bmp
+    End Function
+
+    ''' <summary>矩形以外的裁切形狀：形狀外變透明（反鋸齒）。</summary>
+    Public Shared Sub ApplyCropShape(bmp As Bitmap, shape As CropShape)
+        If shape = CropShape.Rectangle Then Return
+        Dim w = bmp.Width, h = bmp.Height
+        Dim mask(w * h - 1) As Byte
+        Using m As New Bitmap(w, h, PixelFormat.Format32bppArgb)
+            Using g = Graphics.FromImage(m), path = CropShapePath(shape, New RectangleF(0, 0, w, h))
+                g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+                g.PixelOffsetMode = Drawing2D.PixelOffsetMode.HighQuality
+                g.FillPath(Brushes.White, path)
+            End Using
+            Dim mp = Perspective.ReadPixels(m)
+            For i = 0 To mask.Length - 1
+                mask(i) = mp(i * 4 + 3)
+            Next
+        End Using
+        Dim px = Perspective.ReadPixels(bmp)
+        For i = 0 To mask.Length - 1
+            px(i * 4 + 3) = CByte(CInt(px(i * 4 + 3)) * mask(i) \ 255)
+        Next
+        Perspective.WritePixels(bmp, px)
+    End Sub
+
+    ''' <summary>裁切形狀填滿 rect 的路徑（畫布預覽與算圖共用）：圓形為內切橢圓、圓角半徑為短邊 12%、愛心與五角星撐滿。</summary>
+    Public Shared Function CropShapePath(shape As CropShape, rect As RectangleF) As Drawing2D.GraphicsPath
+        Dim path As New Drawing2D.GraphicsPath()
+        Dim kind As DrawShape
+        Select Case shape
+            Case CropShape.Ellipse : kind = DrawShape.Ellipse
+            Case CropShape.RoundRect : kind = DrawShape.RoundRect
+            Case CropShape.Heart : kind = DrawShape.Heart
+            Case CropShape.Star : kind = DrawShape.Star5
+            Case Else
+                path.AddRectangle(rect)
+                Return path
+        End Select
+        Dim layer As New DrawLayer With {.Shape = kind, .X = rect.X + rect.Width / 2, .Y = rect.Y + rect.Height / 2, .W = rect.Width, .H = rect.Height}
+        DrawGeometry.ApplyDefaults(layer)
+        If kind = DrawShape.RoundRect Then layer.Param1 = 0.12
+        If kind = DrawShape.Star5 Then layer.Param1 = 0.5
+        For Each f In DrawGeometry.Figures(layer)
+            path.AddPolygon(f.Points)
+        Next
+        Return path
     End Function
 
     ''' <summary>只做幾何（裁切模式要看未裁切的畫面時 applyCrop:=False）。</summary>

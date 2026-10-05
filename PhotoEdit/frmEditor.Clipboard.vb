@@ -32,13 +32,13 @@ Partial Friend Class frmEditor
     End Function
 
     ''' <summary>檔案總管複製的第一個支援的圖片檔；沒有時回傳 Nothing。</summary>
-    Private Shared Function ImageFile(data As IDataObject) As String
+    Friend Shared Function ImageFile(data As IDataObject) As String
         Dim files = TryCast(data.GetData(DataFormats.FileDrop), String())
         Return files?.FirstOrDefault(Function(f) PhotoFile.IsSupported(f) AndAlso File.Exists(f))
     End Function
 
     ''' <summary>優先讀 PNG（保留透明），其次一般點陣圖；讀不到時回傳 Nothing。</summary>
-    Private Shared Function ImageBitmap(data As IDataObject) As Bitmap
+    Friend Shared Function ImageBitmap(data As IDataObject) As Bitmap
         If data.GetDataPresent("PNG") Then
             Dim stream = TryCast(data.GetData("PNG"), Stream)
             If stream IsNot Nothing Then

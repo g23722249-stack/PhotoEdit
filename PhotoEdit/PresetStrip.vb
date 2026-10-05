@@ -9,6 +9,7 @@ Friend Class PresetStrip
     Private Const TileHeight As Integer = 90
 
     Private ReadOnly _tiles As New List(Of Tile)()
+    Private ReadOnly _help As New Dictionary(Of Tile, HelpTip.Entry)()
 
     Public Event PresetClicked(preset As Preset)
 
@@ -31,6 +32,19 @@ Friend Class PresetStrip
     Public Sub SetThumbnails(thumbs As IList(Of Bitmap))
         For i = 0 To _tiles.Count - 1
             _tiles(i).Thumbnail = If(thumbs IsNot Nothing AndAlso i < thumbs.Count, thumbs(i), Nothing)
+            Dim e As HelpTip.Entry = Nothing
+            If _help.TryGetValue(_tiles(i), e) Then e.Icon = _tiles(i).Thumbnail ' 說明視窗的圖示用這個濾鏡套在照片上的縮圖
+        Next
+    End Sub
+
+    ''' <summary>每格掛上 HelpTexts 的「preset.名稱」說明。</summary>
+    Public Sub AttachHelp(help As HelpTip)
+        For Each t In _tiles
+            Dim e = HelpTexts.Get("preset." & t.Preset.Name)?.Clone()
+            If e Is Nothing Then Continue For
+            e.Icon = t.Thumbnail
+            _help(t) = e
+            help.SetHelp(t, e)
         Next
     End Sub
 

@@ -7,7 +7,7 @@ Imports PhotoEdit
 ''' 裁切模式下固定為符合視窗，可拖曳畫出裁切框、或在框內拖曳移動，並以虛線標出偵測到的臉。
 ''' Image 由表單管理生命週期，畫布不負責釋放。
 ''' </summary>
-Friend Class PreviewCanvas
+Partial Friend Class PreviewCanvas
     Inherits Control
 
     Public Const MaxZoom As Double = 4.0
@@ -35,6 +35,10 @@ Friend Class PreviewCanvas
         Overlay
         ''' <summary>去背修正筆刷：保留（綠）或擦除（紅），見 MaskKeep。</summary>
         MaskBrush
+        ''' <summary>繪圖：滑鼠左鍵交給 DrawHost 處理（形狀、筆刷、控制點），右鍵仍可平移。</summary>
+        Draw
+        ''' <summary>魔術棒：左鍵點一下送出 WandClicked（Alt 為補回）。</summary>
+        Wand
     End Enum
 
     Private _maskKeep As Boolean = True
@@ -206,6 +210,7 @@ Friend Class PreviewCanvas
     Private Enum DragMode
         None
         NewRect
+        ResizeCrop
         Move
         Pan
         Paint
@@ -213,12 +218,53 @@ Friend Class PreviewCanvas
         MoveOverlay
         ScaleOverlay
         RotateOverlay
+        Draw
     End Enum
 
     Private _drag As DragMode = DragMode.None
     Private _dragAnchor As PointF      ' 裁切：影像像素座標；平移：螢幕座標
     Private _dragStartCrop As CropRect
     Private _dragStartCenter As PointF
+
+    ''' <summary>繪圖工具的滑鼠與繪製交給這個物件（frmEditor）。</summary>
+    Friend Interface IDrawHost
+        Sub DrawMouseDown(e As MouseEventArgs)
+        Sub DrawMouseMove(e As MouseEventArgs)
+        Sub DrawMouseUp(e As MouseEventArgs)
+        Sub DrawDoubleClick(e As MouseEventArgs)
+        Sub DrawPaint(g As Graphics)
+    End Interface
+
+    Private _drawHost As IDrawHost
+
+    Friend Property DrawHost As IDrawHost
+        Get
+            Return _drawHost
+        End Get
+        Set(value As IDrawHost)
+            _drawHost = value
+        End Set
+    End Property
+
+    ''' <summary>魔術棒點一下：位置為目前顯示影像的 0..1 座標，alt 表示按住 Alt（補回）。</summary>
+    Public Event WandClicked(point As PointF, alt As Boolean)
+
+    Private _wandRestore As Boolean
+
+    ''' <summary>魔術棒目前是「補回」模式（游標顯示 ＋）；按住 Alt 會暫時反過來。</summary>
+    Public Property WandRestore As Boolean
+        Get
+            Return _wandRestore
+        End Get
+        Set(value As Boolean)
+            _wandRestore = value
+            If _tool = CanvasTool.Wand Then Cursor = WandCursorFor(ModifierKeys.HasFlag(Keys.Alt))
+        End Set
+    End Property
+
+    Private Function WandCursorFor(alt As Boolean) As Cursor
+        Return If(_wandRestore Xor alt, WandCursor.Restore, WandCursor.Remove)
+    End Function
 
     Public Event CropChanged As EventHandler
     Public Event ZoomChanged As EventHandler
@@ -260,7 +306,8 @@ Friend Class PreviewCanvas
             _stroke = Nothing
             _drag = DragMode.None
             Cursor = If(value = CanvasTool.None, If(IsFit, Cursors.Default, Cursors.Hand),
-                        If(value = CanvasTool.Overlay, Cursors.Default, Cursors.Cross))
+                        If(value = CanvasTool.Wand, WandCursorFor(ModifierKeys.HasFlag(Keys.Alt)),
+                           If(value = CanvasTool.Overlay OrElse value = CanvasTool.Draw, Cursors.Default, Cursors.Cross)))
             Invalidate()
         End Set
     End Property
@@ -362,6 +409,12 @@ Friend Class PreviewCanvas
         Return n
     End Function
 
+    ''' <summary>畫布上的點換成影像 0..1 座標（不限制在影像內）。</summary>
+    Public Function ClientToNormalized(p As Point) As PointF
+        If _image Is Nothing Then Return PointF.Empty
+        Return ScreenToNormalized(p)
+    End Function
+
     Private Function ScreenToNormalized(p As Point) As PointF
         Dim b = ImageBounds()
         Return New PointF((p.X - b.X) / b.Width, (p.Y - b.Y) / b.Height)
@@ -458,6 +511,7 @@ Friend Class PreviewCanvas
         If IsPaintTool Then DrawBrush(g, b)
         If _tool = CanvasTool.Gradient Then DrawGradient(g, b)
         If _tool = CanvasTool.Overlay Then DrawOverlaySelection(g, b)
+        If _tool = CanvasTool.Draw Then _drawHost?.DrawPaint(g)
     End Sub
 
     Private Sub DrawGradient(g As Graphics, b As RectangleF)
@@ -550,14 +604,8 @@ Friend Class PreviewCanvas
             End Using
         End Using
         g.SmoothingMode = SmoothingMode.None
-        Using thirds As New Pen(Color.FromArgb(110, 255, 255, 255))
-            For i = 1 To 2
-                Dim x = r.Left + r.Width * i / 3
-                Dim y = r.Top + r.Height * i / 3
-                g.DrawLine(thirds, x, r.Top, x, r.Bottom)
-                g.DrawLine(thirds, r.Left, y, r.Right, y)
-            Next
-        End Using
+        DrawCropShape(g, r)
+        DrawCropGuides(g, r)
         Using facePen As New Pen(Color.FromArgb(200, 255, 210, 80), 1.5F) With {.DashStyle = DashStyle.Dash}
             For Each f In _faceMarks
                 g.DrawRectangle(facePen, b.X + f.X * b.Width, b.Y + f.Y * b.Height, f.Width * b.Width, f.Height * b.Height)
@@ -566,6 +614,8 @@ Friend Class PreviewCanvas
         Using border As New Pen(Color.White, 2)
             g.DrawRectangle(border, r.X, r.Y, r.Width, r.Height)
         End Using
+        DrawCropHandles(g, r)
+        DrawCropSize(g, r)
     End Sub
 
     Private Function CropToScreen(b As RectangleF) As RectangleF
@@ -605,6 +655,10 @@ Friend Class PreviewCanvas
 
     Protected Overrides Sub OnMouseDoubleClick(e As MouseEventArgs)
         MyBase.OnMouseDoubleClick(e)
+        If _tool = CanvasTool.Draw AndAlso e.Button = MouseButtons.Left AndAlso _image IsNot Nothing Then
+            _drawHost?.DrawDoubleClick(e)
+            Return
+        End If
         If _image Is Nothing OrElse _cropMode OrElse _tool <> CanvasTool.None OrElse e.Button <> MouseButtons.Left Then Return
         If IsFit Then SetZoom(1.0, e.Location) Else ZoomToFit()
     End Sub
@@ -618,7 +672,15 @@ Friend Class PreviewCanvas
             If e.Button <> MouseButtons.Left Then Return
             _dragAnchor = ScreenToImage(e.Location)
             _dragStartCrop = _crop.Clone()
-            _drag = If(CropToScreen(ImageBounds()).Contains(e.Location), DragMode.Move, DragMode.NewRect)
+            _cropHandle = CropHandleAt(e.Location)
+            _drag = If(_cropHandle >= 0, DragMode.ResizeCrop, If(CropToScreen(ImageBounds()).Contains(e.Location), DragMode.Move, DragMode.NewRect))
+        ElseIf _tool = CanvasTool.Wand AndAlso e.Button = MouseButtons.Left Then
+            Dim n = ScreenToNormalized(e.Location)
+            If n.X >= 0 AndAlso n.Y >= 0 AndAlso n.X <= 1 AndAlso n.Y <= 1 Then RaiseEvent WandClicked(n, ModifierKeys.HasFlag(Keys.Alt))
+            Return
+        ElseIf _tool = CanvasTool.Draw AndAlso e.Button = MouseButtons.Left Then
+            _drag = DragMode.Draw
+            _drawHost?.DrawMouseDown(e)
         ElseIf IsPaintTool AndAlso e.Button = MouseButtons.Left Then
             _drag = DragMode.Paint
             _stroke = New List(Of PointF) From {ClampedNormalized(e.Location)}
@@ -654,10 +716,19 @@ Friend Class PreviewCanvas
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
         MyBase.OnMouseMove(e)
         If _image Is Nothing Then Return
+        If _tool = CanvasTool.Wand Then
+            Dim c = WandCursorFor(ModifierKeys.HasFlag(Keys.Alt))
+            If Cursor IsNot c Then Cursor = c
+        End If
 
         If IsPaintTool Then
             _mousePos = e.Location
             Invalidate()
+        End If
+
+        If _tool = CanvasTool.Draw AndAlso (_drag = DragMode.Draw OrElse _drag = DragMode.None) Then
+            _drawHost?.DrawMouseMove(e)
+            Return
         End If
 
         If _drag = DragMode.Gradient Then
@@ -722,12 +793,19 @@ Friend Class PreviewCanvas
             Return
         End If
         If _drag = DragMode.None Then
-            Cursor = If(CropToScreen(ImageBounds()).Contains(e.Location), Cursors.SizeAll, Cursors.Cross)
+            Dim handle = CropHandleAt(e.Location)
+            Cursor = If(handle >= 0, CropHandleCursor(handle), If(CropToScreen(ImageBounds()).Contains(e.Location), Cursors.SizeAll, Cursors.Cross))
             Return
         End If
 
         Dim p = ScreenToImage(e.Location)
         Dim iw = CDbl(_image.Width), ih = CDbl(_image.Height)
+        If _drag = DragMode.ResizeCrop Then
+            _crop = ResizedCrop(p, iw, ih)
+            Invalidate()
+            RaiseEvent CropChanged(Me, EventArgs.Empty)
+            Return
+        End If
         If _drag = DragMode.Move Then
             Dim nx = _dragStartCrop.X + (p.X - _dragAnchor.X) / iw
             Dim ny = _dragStartCrop.Y + (p.Y - _dragAnchor.Y) / ih
@@ -750,6 +828,12 @@ Friend Class PreviewCanvas
 
     Protected Overrides Sub OnMouseUp(e As MouseEventArgs)
         MyBase.OnMouseUp(e)
+        If _drag = DragMode.Draw Then
+            _drag = DragMode.None
+            Capture = False
+            _drawHost?.DrawMouseUp(e)
+            Return
+        End If
         If _drag = DragMode.Paint AndAlso _stroke IsNot Nothing Then
             Dim pts = _stroke
             _stroke = Nothing
@@ -784,5 +868,98 @@ Friend Class PreviewCanvas
     Protected Overrides Sub OnResize(e As EventArgs)
         MyBase.OnResize(e)
         ClampCenter()
+    End Sub
+End Class
+
+''' <summary>
+''' 繪圖板的筆壓：Windows 8 之後筆的輸入會先送 WM_POINTER 訊息，沒處理時系統再轉成滑鼠訊息。
+''' 畫布在訊息往下傳之前讀出筆壓，滑鼠事件裡就能用 PenPressure 取得（不是筆時為 Nothing）。
+''' </summary>
+Partial Friend Class PreviewCanvas
+    Private Const WM_POINTERUPDATE As Integer = &H245
+    Private Const WM_POINTERDOWN As Integer = &H246
+    Private Const WM_POINTERUP As Integer = &H247
+    Private Const PT_PEN As Integer = 3
+    Private Const PEN_MASK_PRESSURE As UInteger = 1
+
+    Private _penPressure As Single?
+    Private _penTime As Integer
+
+    <Runtime.InteropServices.StructLayout(Runtime.InteropServices.LayoutKind.Sequential)>
+    Private Structure NativePoint
+        Public X As Integer
+        Public Y As Integer
+    End Structure
+
+    <Runtime.InteropServices.StructLayout(Runtime.InteropServices.LayoutKind.Sequential)>
+    Private Structure POINTER_INFO
+        Public pointerType As Integer
+        Public pointerId As UInteger
+        Public frameId As UInteger
+        Public pointerFlags As Integer
+        Public sourceDevice As IntPtr
+        Public hwndTarget As IntPtr
+        Public ptPixelLocation As NativePoint
+        Public ptHimetricLocation As NativePoint
+        Public ptPixelLocationRaw As NativePoint
+        Public ptHimetricLocationRaw As NativePoint
+        Public dwTime As UInteger
+        Public historyCount As UInteger
+        Public InputData As Integer
+        Public dwKeyStates As UInteger
+        Public PerformanceCount As ULong
+        Public ButtonChangeType As Integer
+    End Structure
+
+    <Runtime.InteropServices.StructLayout(Runtime.InteropServices.LayoutKind.Sequential)>
+    Private Structure POINTER_PEN_INFO
+        Public pointerInfo As POINTER_INFO
+        Public penFlags As UInteger
+        Public penMask As UInteger
+        Public pressure As UInteger
+        Public rotation As UInteger
+        Public tiltX As Integer
+        Public tiltY As Integer
+    End Structure
+
+    <Runtime.InteropServices.DllImport("user32.dll")>
+    Private Shared Function GetPointerType(pointerId As UInteger, ByRef pointerType As Integer) As Boolean
+    End Function
+
+    <Runtime.InteropServices.DllImport("user32.dll")>
+    Private Shared Function GetPointerPenInfo(pointerId As UInteger, ByRef penInfo As POINTER_PEN_INFO) As Boolean
+    End Function
+
+    ''' <summary>目前的筆壓（0..1）；不是用繪圖筆、或筆已離開時為 Nothing。</summary>
+    Public ReadOnly Property PenPressure As Single?
+        Get
+            If Not _penPressure.HasValue OrElse Environment.TickCount - _penTime > 400 Then Return Nothing
+            Return _penPressure
+        End Get
+    End Property
+
+    Protected Overrides Sub WndProc(ByRef m As Message)
+        If m.Msg = WM_POINTERDOWN OrElse m.Msg = WM_POINTERUPDATE OrElse m.Msg = WM_POINTERUP Then ReadPen(m)
+        MyBase.WndProc(m) ' 交給系統轉成滑鼠訊息
+    End Sub
+
+    Private Sub ReadPen(m As Message)
+        Try
+            Dim id = CUInt(m.WParam.ToInt64() And &HFFFFL)
+            Dim type As Integer
+            If Not GetPointerType(id, type) OrElse type <> PT_PEN Then Return
+            Dim info As POINTER_PEN_INFO
+            If Not GetPointerPenInfo(id, info) Then Return
+            If m.Msg = WM_POINTERUP Then
+                _penPressure = Nothing
+            ElseIf (info.penMask And PEN_MASK_PRESSURE) = 0 Then
+                _penPressure = 1 ' 這支筆不回報筆壓
+            Else
+                _penPressure = CSng(Math.Max(0.02, Math.Min(1, info.pressure / 1024.0)))
+            End If
+            _penTime = Environment.TickCount
+        Catch ex As EntryPointNotFoundException
+            ' Windows 7 沒有這些函式：當作滑鼠。
+        End Try
     End Sub
 End Class

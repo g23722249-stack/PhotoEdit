@@ -182,8 +182,10 @@ Public NotInheritable Class Creative
     Private Sub New()
     End Sub
 
-    Public Shared ReadOnly StickerNames As IReadOnlyList(Of (Key As String, Name As String)) = {
-        ("heart", "愛心"), ("star", "星星"), ("sparkle", "閃亮"), ("bubble", "對話框"), ("arrow", "箭頭"), ("ring", "圓圈")}
+    ''' <summary>內建向量貼圖：最早的 6 種加上 BuiltInStickers 的款式。</summary>
+    Public Shared ReadOnly StickerNames As IReadOnlyList(Of (Key As String, Name As String)) =
+        {("heart", "愛心"), ("star", "星星"), ("sparkle", "閃亮"), ("bubble", "對話框"), ("arrow", "箭頭"), ("ring", "圓圈")}.
+        Concat(BuiltInStickers.Items.Select(Function(i) (i.Key, i.Name))).ToList()
 
     Public Shared ReadOnly FrameNames As IReadOnlyList(Of String) = {"無", "白邊", "黑邊", "拍立得", "圓角", "底片"}
 
@@ -672,6 +674,11 @@ Public NotInheritable Class Creative
         End If
 
         Dim s = size ' 貼圖寬高約為 size
+        Dim designed = BuiltInStickers.Build(o.Sticker, cx, cy, s)
+        If designed IsNot Nothing Then
+            path.Dispose()
+            Return designed
+        End If
         Select Case o.Sticker
             Case "heart"
                 path.AddBezier(cx, cy + s * 0.45F, cx - s * 0.75F, cy - s * 0.05F, cx - s * 0.45F, cy - s * 0.65F, cx, cy - s * 0.25F)

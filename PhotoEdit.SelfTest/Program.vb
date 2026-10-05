@@ -26,6 +26,11 @@ Module Program
             StickerTests(tempDir)
             TextEffectTests(tempDir)
             CutoutTests(tempDir)
+            DrawingTestsRun()
+            CropTestsRun()
+            WandTestsRun()
+            SplitterTestsRun()
+            RasterTestsRun()
             FileTests(tempDir)
         Finally
             Directory.Delete(tempDir, recursive:=True)

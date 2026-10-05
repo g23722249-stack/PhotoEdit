@@ -36,8 +36,8 @@ Partial Friend Class frmEditor
     Private Sub BuildLocalPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         AddHeading(L, "局部調整")
-        AddButtonPair(L, "＋ 漸層濾鏡", "例如壓暗天空：在照片上從效果最強處拖曳到效果消失處", Sub() AddLocal(LocalKind.Gradient),
-                         "＋ 局部筆刷", "在照片上塗抹要調整的區域", Sub() AddLocal(LocalKind.Brush))
+        AddButtonPair(L, "＋ 漸層濾鏡", "btn.addgradient", Sub() AddLocal(LocalKind.Gradient),
+                         "＋ 局部筆刷", "btn.addbrush", Sub() AddLocal(LocalKind.Brush))
         _localList.DropDownStyle = ComboBoxStyle.DropDownList
         _localList.SetBounds(8, L.Y + 2, L.Width - 8 - 70, 24)
         AddHandler _localList.SelectedIndexChanged, Sub()
@@ -51,6 +51,8 @@ Partial Friend Class frmEditor
         _localDelete.UseVisualStyleBackColor = True
         _localDelete.SetBounds(L.Width - 62, L.Y, 62, 28)
         AddHandler _localDelete.Click, Sub() DeleteLocal()
+        _help.SetHelp("local.list", _localList)
+        _help.SetHelp("local.delete", _localDelete)
         L.Add(_localList)
         L.Add(_localDelete)
         L.Y += 36
@@ -75,7 +77,7 @@ Partial Friend Class frmEditor
                               If SelLocal(r) IsNot Nothing Then SelLocal(r).Temperature = v
                           End Sub))
 
-        AddCaption(L, "筆刷大小", L.Y)
+        _help.SetHelpLinked("local.brushsize", _localBrushSize, AddCaption(L, "筆刷大小", L.Y), _localBrushSize)
         _localBrushSize.Minimum = 6
         _localBrushSize.Maximum = 200
         _localBrushSize.Value = 40
@@ -94,19 +96,16 @@ Partial Friend Class frmEditor
         L.Y += 40
 
         AddHeading(L, "模糊特效")
-        AddRow(L, MakeRow("bgblur", "背景模糊", 0, 100, AddressOf Plain, Function(r) r.BackgroundBlur, Sub(r, v) r.BackgroundBlur = v),
-               "依偵測到的人臉保留人物清楚、模糊背景；沒有臉時保留畫面中央")
-        AddRow(L, MakeRow("tiltshift", "移軸", 0, 100, AddressOf Plain, Function(r) r.TiltShift, Sub(r, v) r.TiltShift = v),
-               "上下模糊、中間一條清楚帶，像微縮模型")
-        AddRow(L, MakeRow("tiltpos", "清楚帶位置", 0, 100, Function(v) v & "%", Function(r) r.TiltShiftPosition, Sub(r, v) r.TiltShiftPosition = v),
-               "0 = 上緣，100 = 下緣")
+        AddRow(L, MakeRow("bgblur", "背景模糊", 0, 100, AddressOf Plain, Function(r) r.BackgroundBlur, Sub(r, v) r.BackgroundBlur = v))
+        AddRow(L, MakeRow("tiltshift", "移軸", 0, 100, AddressOf Plain, Function(r) r.TiltShift, Sub(r, v) r.TiltShift = v))
+        AddRow(L, MakeRow("tiltpos", "清楚帶位置", 0, 100, Function(v) v & "%", Function(r) r.TiltShiftPosition, Sub(r, v) r.TiltShiftPosition = v))
     End Sub
 
     ''' <summary>「裝飾」分頁：邊框。</summary>
     Private Sub BuildDecorPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         AddHeading(L, "邊框")
-        AddCaption(L, "樣式", L.Y)
+        _help.SetHelpLinked("frame.style", _frameCombo, AddCaption(L, "樣式", L.Y), _frameCombo)
         _frameCombo.DropDownStyle = ComboBoxStyle.DropDownList
         _frameCombo.Items.AddRange(Creative.FrameNames.Cast(Of Object)().ToArray())
         _frameCombo.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 24)
@@ -158,10 +157,25 @@ Partial Friend Class frmEditor
                 Case TabSticker, TabText
                     tool = PreviewCanvas.CanvasTool.Overlay
                 Case TabCutout
-                    If MaskBrushActive AndAlso _recipe.Cutout IsNot Nothing Then tool = PreviewCanvas.CanvasTool.MaskBrush
+                    If _wandToggle.Checked Then
+                        tool = PreviewCanvas.CanvasTool.Wand
+                    ElseIf MaskBrushActive AndAlso _recipe.Cutout IsNot Nothing Then
+                        tool = PreviewCanvas.CanvasTool.MaskBrush
+                    End If
+                Case TabDraw
+                    tool = PreviewCanvas.CanvasTool.Draw
             End Select
         End If
         If _tabs.SelectedIndex <> TabRepair AndAlso _healToggle.Checked Then _healToggle.Checked = False
+        Dim drawing = _tabs.SelectedIndex = TabDraw
+        If _drawStrip.Visible <> drawing Then
+            _drawStrip.Visible = drawing
+            _drawBar.Visible = drawing
+        End If
+        If Not drawing Then
+            CommitCalloutEditor()
+            _polyPoints = Nothing
+        End If
 
         Select Case tool
             Case PreviewCanvas.CanvasTool.Heal : _canvas.BrushRadius = _brushSize.Value
@@ -285,6 +299,7 @@ Partial Friend Class frmEditor
             Next
             UpdateTextControls()
             UpdateCutoutControls()
+            UpdateDrawControls()
         Finally
             _syncing = wasSyncing
         End Try
@@ -392,7 +407,7 @@ Partial Friend Class frmEditor
             Case "star", "sparkle" : Return Color.FromArgb(255, 200, 40)
             Case "bubble" : Return Color.FromArgb(60, 60, 70)
             Case "arrow" : Return Color.FromArgb(255, 110, 30)
-            Case Else : Return Color.FromArgb(240, 60, 60)
+            Case Else : Return If(BuiltInStickers.DefaultColor(sticker), Color.FromArgb(240, 60, 60))
         End Select
     End Function
 

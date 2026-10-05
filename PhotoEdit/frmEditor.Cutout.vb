@@ -48,8 +48,8 @@ Partial Friend Class frmEditor
         _modelGeneral.Text = "一般（人像／動物／物品）"
         _modelGeneral.Checked = True
         _modelHuman.Text = "人像"
-        _tip.SetToolTip(_modelGeneral, "IS-Net 通用模型：寵物、物品；照片有人臉時預設改用人像模型")
-        _tip.SetToolTip(_modelHuman, "U²-Net 人像模型：人物的身體輪廓與頭髮較準")
+        _help.SetHelp("cutout.general", _modelGeneral)
+        _help.SetHelp("cutout.human", _modelHuman)
         ' 兩組選項各放一個容器，才不會和下面「合成結果／檢查遮罩」互斥。
         L.Add(PairPanel(_modelGeneral, _modelHuman, 8, L.Y + 2, L.Width - 8, 60))
         L.Y += 36
@@ -58,6 +58,7 @@ Partial Friend Class frmEditor
         _autoCutout.Font = New Font(_panelFont, FontStyle.Bold)
         _autoCutout.SetBounds(8, L.Y + 2, L.Width - 8, 34)
         AddHandler _autoCutout.Click, Sub() RunAutoCutout()
+        _help.SetHelp("cutout.auto", _autoCutout)
         L.Add(_autoCutout)
         L.Y += 40
         _cutoutStatus.AutoSize = False
@@ -81,13 +82,13 @@ Partial Friend Class frmEditor
         _eraseBrush.Text = "擦除筆刷（紅）"
         _eraseBrush.FlatAppearance.CheckedBackColor = Color.FromArgb(250, 210, 210)
         _eraseBrush.SetBounds(8 + half + 8, L.Y + 2, half, 30)
-        _tip.SetToolTip(_keepBrush, "塗抹被誤去掉的主體，把它補回來")
-        _tip.SetToolTip(_eraseBrush, "塗抹沒去乾淨的背景，把它擦掉")
+        _help.SetHelp("cutout.keep", _keepBrush)
+        _help.SetHelp("cutout.erase", _eraseBrush)
         AddHandler _keepBrush.CheckedChanged, Sub() OnMaskBrushToggled(_keepBrush)
         AddHandler _eraseBrush.CheckedChanged, Sub() OnMaskBrushToggled(_eraseBrush)
         L.Add(_keepBrush) : L.Add(_eraseBrush)
         L.Y += 38
-        AddCaption(L, "筆刷大小", L.Y)
+        _help.SetHelpLinked("cutout.brushsize", _maskBrushSize, AddCaption(L, "筆刷大小", L.Y), _maskBrushSize)
         _maskBrushSize.Minimum = 4 : _maskBrushSize.Maximum = 150 : _maskBrushSize.Value = 24 : _maskBrushSize.ShowTicks = False
         _maskBrushSize.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 24)
         AddHandler _maskBrushSize.ValueChanged, Sub()
@@ -95,17 +96,18 @@ Partial Friend Class frmEditor
                                                 End Sub
         L.Add(_maskBrushSize)
         L.Y += RowHeight
-        AddButtonPair(L, "清除修正", "移除所有保留／擦除筆觸", Sub() ApplyChange(Sub(r)
-                                                                                 If r.Cutout IsNot Nothing Then r.Cutout.Strokes.Clear()
+        AddButtonPair(L, "清除修正", "btn.clearmask", Sub() ApplyChange(Sub(r)
+                                                                                 If r.Cutout IsNot Nothing Then r.Cutout.Strokes.Clear() : r.Cutout.Wand.Clear()
                                                                              End Sub),
-                         "取消去背", "回到原本的照片（AI 遮罩會保留，可再套用）", Sub() ApplyChange(Sub(r) r.Cutout = Nothing))
+                         "取消去背", "btn.uncutout", Sub() ApplyChange(Sub(r) r.Cutout = Nothing))
+        BuildWandSection(L)
 
         AddHeading(L, "邊緣")
-        AddRow(L, CutoutRow("co_feather", "羽化", 0, 100, Function(c) c.Feather, Sub(c, v) c.Feather = v), "讓邊緣柔和，避免鋸齒")
-        AddRow(L, CutoutRow("co_shift", "內縮外擴", -50, 50, Function(c) c.Shift, Sub(c, v) c.Shift = v), "往左內縮（去掉殘留的背景邊），往右外擴")
+        AddRow(L, CutoutRow("co_feather", "羽化", 0, 100, Function(c) c.Feather, Sub(c, v) c.Feather = v))
+        AddRow(L, CutoutRow("co_shift", "內縮外擴", -50, 50, Function(c) c.Shift, Sub(c, v) c.Shift = v))
 
         AddHeading(L, "背景")
-        AddCaption(L, "換成", L.Y)
+        _help.SetHelpLinked("cutout.bg", _cutoutBgCombo, AddCaption(L, "換成", L.Y), _cutoutBgCombo)
         _cutoutBgCombo.DropDownStyle = ComboBoxStyle.DropDownList
         _cutoutBgCombo.Items.AddRange({"原背景", "透明", "純色", "模糊（景深）", "圖片"})
         _cutoutBgCombo.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
@@ -122,7 +124,7 @@ Partial Friend Class frmEditor
                                                          End Sub
         L.Add(_cutoutBgCombo)
         L.Y += RowHeight
-        AddCaption(L, "顏色", L.Y)
+        _help.SetHelpLinked("cutout.bgcolor", _cutoutBgColor, AddCaption(L, "顏色", L.Y), _cutoutBgColor)
         _cutoutBgColor.FlatStyle = FlatStyle.Flat
         _cutoutBgColor.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 26)
         AddHandler _cutoutBgColor.Click, Sub() PickCutoutBackgroundColor()
@@ -133,6 +135,7 @@ Partial Friend Class frmEditor
         _cutoutBgImage.UseVisualStyleBackColor = True
         _cutoutBgImage.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 28)
         AddHandler _cutoutBgImage.Click, Sub() PickCutoutBackgroundImage()
+        _help.SetHelp("cutout.bgimage", _cutoutBgImage)
         L.Add(_cutoutBgImage)
         L.Y += RowHeight + 2
 
@@ -147,6 +150,8 @@ Partial Friend Class frmEditor
         _viewResult.Text = "合成結果"
         _viewResult.Checked = True
         _viewMask.Text = "檢查遮罩（紅＝去掉）"
+        _help.SetHelp("cutout.viewresult", _viewResult)
+        _help.SetHelp("cutout.viewmask", _viewMask)
         AddHandler _viewMask.CheckedChanged, Sub()
                                                  _cutoutShowMask = _viewMask.Checked
                                                  UpdateCutoutControls()
@@ -154,7 +159,7 @@ Partial Friend Class frmEditor
                                              End Sub
         L.Add(PairPanel(_viewResult, _viewMask, 8, L.Y + 2, L.Width - 8, 50))
         L.Y += 36
-        Dim sticker = MakeButton("存成貼圖…", "把去背後的主體存成 PNG 放進貼圖資料夾，之後可以拖到其他照片上")
+        Dim sticker = MakeButton("存成貼圖…", "btn.cutoutsticker")
         sticker.Font = New Font(_panelFont, FontStyle.Bold)
         sticker.SetBounds(8, L.Y + 2, L.Width - 8, 34)
         AddHandler sticker.Click, Sub() SaveCutoutAsSticker()
@@ -299,6 +304,11 @@ Partial Friend Class frmEditor
     Private Sub OnMaskBrushToggled(source As CheckBox)
         If _syncing Then Return
         If source.Checked Then
+            If _wandToggle.Checked Then
+                _syncing = True
+                _wandToggle.Checked = False
+                _syncing = False
+            End If
             Dim other = If(source Is _keepBrush, _eraseBrush, _keepBrush)
             _syncing = True
             other.Checked = False
@@ -363,11 +373,13 @@ Partial Friend Class frmEditor
         For Each row In _rows.Where(Function(r) CutoutKeys.Contains(r.Key))
             row.Slider.Enabled = has
         Next
+        _wandDespeckle.Checked = has AndAlso c.WandDespeckle
         If Not has AndAlso MaskBrushActive Then
             _keepBrush.Checked = False
             _eraseBrush.Checked = False
         End If
-        _canvas.Checkerboard = has AndAlso c.Background = CutoutBackground.Transparent AndAlso Not _cutoutShowMask
+        _canvas.Checkerboard = (has AndAlso c.Background = CutoutBackground.Transparent AndAlso Not _cutoutShowMask) OrElse
+                               _recipe.CropShape <> CropShape.Rectangle
     End Sub
 
     '---------------------------------------------------------------------

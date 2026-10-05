@@ -62,6 +62,8 @@ Public Class EditRecipe
     Public Property Straighten As Double
     ''' <summary>Nothing 表示不裁切。</summary>
     Public Property Crop As CropRect
+    ''' <summary>裁切形狀：矩形以外的形狀，形狀外變透明（匯出 PNG 保留）。</summary>
+    Public Property CropShape As CropShape
     ''' <summary>垂直透視，-100..100：正值放大上緣（修正建築物上窄下寬），負值放大下緣。</summary>
     Public Property PerspectiveVertical As Integer
     ''' <summary>水平透視，-100..100：正值放大左緣，負值放大右緣。</summary>
@@ -125,6 +127,9 @@ Public Class EditRecipe
     ''' <summary>文字與貼圖；Nothing 或空清單表示沒有。</summary>
     Public Property Overlays As List(Of Overlay)
 
+    ''' <summary>繪圖圖層（由下而上）；Nothing 或空清單表示沒有。</summary>
+    Public Property Drawings As List(Of DrawLayer)
+
     ''' <summary>去背；Nothing 表示沒有去背。</summary>
     Public Property Cutout As CutoutSettings
 
@@ -134,23 +139,25 @@ Public Class EditRecipe
         r.Spots = Spots?.Select(Function(s) s.Clone()).ToList()
         r.LocalAdjustments = LocalAdjustments?.Select(Function(a) a.Clone()).ToList()
         r.Overlays = Overlays?.Select(Function(o) o.Clone()).ToList()
+        r.Drawings = Drawings?.Select(Function(d) d.Clone()).ToList()
         r.Cutout = Cutout?.Clone()
         Return r
     End Function
 
-    ''' <summary>局部調整、模糊特效、文字貼圖、邊框。</summary>
+    ''' <summary>局部調整、模糊特效、文字貼圖、繪圖、邊框。</summary>
     Public ReadOnly Property HasCreative As Boolean
         Get
             Return (LocalAdjustments IsNot Nothing AndAlso LocalAdjustments.Any(Function(a) a.HasEffect)) OrElse
                    BackgroundBlur > 0 OrElse TiltShift > 0 OrElse Frame <> PhotoFrameStyle.None OrElse
-                   (Overlays IsNot Nothing AndAlso Overlays.Count > 0)
+                   (Overlays IsNot Nothing AndAlso Overlays.Count > 0) OrElse
+                   (Drawings IsNot Nothing AndAlso Drawings.Any(Function(d) d.Visible))
         End Get
     End Property
 
     Public ReadOnly Property HasGeometry As Boolean
         Get
             Return Rotation <> 0 OrElse FlipHorizontal OrElse FlipVertical OrElse
-                   Math.Abs(Straighten) > 0.001 OrElse (Crop IsNot Nothing AndAlso Not Crop.IsFull) OrElse
+                   Math.Abs(Straighten) > 0.001 OrElse (Crop IsNot Nothing AndAlso Not Crop.IsFull) OrElse CropShape <> CropShape.Rectangle OrElse
                    PerspectiveVertical <> 0 OrElse PerspectiveHorizontal <> 0
         End Get
     End Property
@@ -305,6 +312,7 @@ Public Class EditRecipe
         If r.Spots IsNot Nothing AndAlso r.Spots.Count = 0 Then r.Spots = Nothing
         If r.LocalAdjustments IsNot Nothing AndAlso r.LocalAdjustments.Count = 0 Then r.LocalAdjustments = Nothing
         If r.Overlays IsNot Nothing AndAlso r.Overlays.Count = 0 Then r.Overlays = Nothing
+        If r.Drawings IsNot Nothing AndAlso r.Drawings.Count = 0 Then r.Drawings = Nothing
         Return System.Text.Json.JsonSerializer.Serialize(r)
     End Function
 
@@ -314,3 +322,12 @@ Public Class EditRecipe
         Return (r \ 90) * 90
     End Function
 End Class
+
+''' <summary>裁切形狀（數值存進編輯檔，不可更動）。</summary>
+Public Enum CropShape
+    Rectangle = 0
+    Ellipse = 1
+    RoundRect = 2
+    Heart = 3
+    Star = 4
+End Enum

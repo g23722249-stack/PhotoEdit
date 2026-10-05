@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     Private ReadOnly _healToggle As New CheckBox()
     Private ReadOnly _brushSize As New Aqua.Slider()
     Private ReadOnly _brushSizeLabel As New Label()
-    Private ReadOnly _tip As New ToolTip()
+    Private ReadOnly _help As New HelpTip()
     Private ReadOnly _panelFont As New Font("Microsoft JhengHei UI", 10.5F)
 
     ''' <summary>
@@ -77,10 +77,10 @@ Partial Friend Class frmEditor
                                                  .Padding = New Padding(0, 6, 0, 0)}
         bottom.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
         bottom.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
-        Dim reset = MakeButton("重設調整", "清除色調、效果、細節、降噪、人像與局部調整（保留裁切、透視、污點修補與文字貼圖）")
+        Dim reset = MakeButton("重設調整", "btn.resetadj")
         reset.Dock = DockStyle.Fill
         AddHandler reset.Click, Sub() RunCommand("resetadj")
-        Dim compare = MakeButton("按住看原圖", "按住滑鼠時顯示未編輯的原圖")
+        Dim compare = MakeButton("按住看原圖", "btn.compare")
         compare.Dock = DockStyle.Fill
         AddHandler compare.MouseDown, Sub() ShowOriginal(True)
         AddHandler compare.MouseUp, Sub() ShowOriginal(False)
@@ -99,8 +99,11 @@ Partial Friend Class frmEditor
         BuildStickerPage(_tabs.AddTab("貼圖"))
         BuildTextPage(_tabs.AddTab("文字"))
         BuildCutoutPage(_tabs.AddTab("去背"))
+        BuildDrawPage(_tabs.AddTab("繪圖"))
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
+        _help.SetDynamicHelp(_tabs, Function(p) HelpTexts.Get("tab." & _tabs.TabIndexAt(p)))
+        _help.SetHelp("histogram", _histogramView)
 
         ' 停靠順序：最後加入的最先停靠。
         _sidePanel.Controls.Add(_tabs)
@@ -118,7 +121,7 @@ Partial Friend Class frmEditor
         _splitter.MinSize = SideWidth
         _splitter.MinExtra = 480
         _splitter.BackColor = Color.FromArgb(200, 205, 214)
-        _tip.SetToolTip(_splitter, "拖曳調整照片與工作面板的比例")
+        _help.SetHelp("splitter", _splitter)
         AddHandler _splitter.SplitterMoved, Sub()
                                                 _appSettings.SidePanelWidth = _sidePanel.Width
                                                 _appSettings.Save()
@@ -135,8 +138,8 @@ Partial Friend Class frmEditor
 
     Private Sub BuildAdjustPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddButtonPair(L, "自動增強", "依亮度分布調整曝光、對比、暗部與白平衡", Sub() RunCommand("auto"),
-                         "自動白平衡", "讓整體顏色接近中性灰", Sub() RunCommand("autowb"))
+        AddButtonPair(L, "自動增強", "btn.auto", Sub() RunCommand("auto"),
+                         "自動白平衡", "btn.autowb", Sub() RunCommand("autowb"))
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
         AddHeading(L, "光線與色彩")
         AddRow(L, New SliderRow With {.Key = "exposure", .Caption = "曝光", .Minimum = -30, .Maximum = 30,
@@ -156,8 +159,7 @@ Partial Friend Class frmEditor
         Dim L = NewLayout(page)
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
         AddHeading(L, "效果")
-        AddRow(L, MakeRow("vignette", "暗角", -100, 100, signed, Function(r) r.Vignette, Sub(r, v) r.Vignette = v),
-               "往左四周變暗，往右四周變亮")
+        AddRow(L, MakeRow("vignette", "暗角", -100, 100, signed, Function(r) r.Vignette, Sub(r, v) r.Vignette = v))
         AddRow(L, MakeRow("fade", "褪色", 0, 100, AddressOf Plain, Function(r) r.Fade, Sub(r, v) r.Fade = v))
         AddRow(L, MakeRow("grain", "顆粒", 0, 100, AddressOf Plain, Function(r) r.Grain, Sub(r, v) r.Grain = v))
         AddHeading(L, "色彩濾鏡")
@@ -175,7 +177,7 @@ Partial Friend Class frmEditor
         AddHint(L, "開啟照片後會自動偵測人臉，只修飾臉部膚色，眼睛與嘴唇保持清晰。" & vbCrLf &
                    "裁切時選比例或按「智慧構圖」會依臉的位置構圖。")
         L.Y += 4
-        Dim smart = MakeButton("智慧構圖", "臉群水平置中、眼睛在上方三分線")
+        Dim smart = MakeButton("智慧構圖", "btn.smartcrop")
         smart.SetBounds(8, L.Y, L.Width - 8, 30)
         AddHandler smart.Click, Sub() RunCommand("smartcrop")
         L.Add(smart)
@@ -188,17 +190,17 @@ Partial Friend Class frmEditor
         _healToggle.Text = "修補筆刷 (H)"
         _healToggle.TextAlign = ContentAlignment.MiddleCenter
         _healToggle.SetBounds(8, L.Y, (L.Width - 16) \ 2, 30)
-        _tip.SetToolTip(_healToggle, "在照片上塗抹要移除的污點、電線或雜物，放開滑鼠就會補上")
+        _help.SetHelp("heal", _healToggle)
         AddHandler _healToggle.CheckedChanged, Sub() SetHealMode(_healToggle.Checked)
         L.Add(_healToggle)
-        Dim clear = MakeButton("清除全部修補", "移除這張照片所有的修補筆觸")
+        Dim clear = MakeButton("清除全部修補", "btn.clearspots")
         clear.SetBounds(8 + (L.Width - 16) \ 2 + 8, L.Y, (L.Width - 16) \ 2, 30)
         AddHandler clear.Click, Sub() RunCommand("clearspots")
         L.Add(clear)
         L.Y += 38
 
         ' 筆刷大小是工具設定，不存進配方。
-        AddCaption(L, "筆刷大小", L.Y)
+        _help.SetHelp("brushsize", AddCaption(L, "筆刷大小", L.Y), _brushSize, _brushSizeLabel)
         _brushSize.Minimum = 4
         _brushSize.Maximum = 120
         _brushSize.Value = 18
@@ -219,24 +221,20 @@ Partial Friend Class frmEditor
         AddHint(L, "[ ] 鍵調整筆刷大小，右鍵拖曳可平移。")
 
         AddHeading(L, "降噪")
-        AddRow(L, MakeRow("denoise", "明度", 0, 100, AddressOf Plain, Function(r) r.Denoise, Sub(r, v) r.Denoise = v),
-               "減少顆粒狀雜訊（夜景、高 ISO）")
-        AddRow(L, MakeRow("colornoise", "色彩", 0, 100, AddressOf Plain, Function(r) r.ColorNoise, Sub(r, v) r.ColorNoise = v),
-               "去除紅綠色的彩色雜點")
+        AddRow(L, MakeRow("denoise", "明度", 0, 100, AddressOf Plain, Function(r) r.Denoise, Sub(r, v) r.Denoise = v))
+        AddRow(L, MakeRow("colornoise", "色彩", 0, 100, AddressOf Plain, Function(r) r.ColorNoise, Sub(r, v) r.ColorNoise = v))
 
         AddHeading(L, "透視校正")
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddRow(L, MakeRow("perspv", "垂直", -100, 100, signed, Function(r) r.PerspectiveVertical, Sub(r, v) r.PerspectiveVertical = v),
-               "往右放大上緣：修正建築物上窄下寬")
-        AddRow(L, MakeRow("persph", "水平", -100, 100, signed, Function(r) r.PerspectiveHorizontal, Sub(r, v) r.PerspectiveHorizontal = v),
-               "往右放大左緣，往左放大右緣")
+        AddRow(L, MakeRow("perspv", "垂直", -100, 100, signed, Function(r) r.PerspectiveVertical, Sub(r, v) r.PerspectiveVertical = v))
+        AddRow(L, MakeRow("persph", "水平", -100, 100, signed, Function(r) r.PerspectiveHorizontal, Sub(r, v) r.PerspectiveHorizontal = v))
 
         AddHeading(L, "拉直與裁切")
         AddRow(L, New SliderRow With {.Key = "straighten", .Caption = "拉直", .Minimum = -90, .Maximum = 90,
             .Format = Function(v) (v / 2.0).ToString("+0.0;-0.0;0.0") & "°",
             .GetValue = Function(r) CInt(Math.Round(r.Straighten * 2)), .SetValue = Sub(r, v) r.Straighten = v / 2.0})
-        AddButtonPair(L, "自動拉直", "偵測畫面中的水平線與垂直線來決定角度", Sub() RunCommand("autostraighten"),
-                         "裁切… (Ctrl+K)", "拖曳畫出裁切範圍", Sub() RunCommand("crop"))
+        AddButtonPair(L, "自動拉直", "btn.autostraighten", Sub() RunCommand("autostraighten"),
+                         "裁切… (Ctrl+K)", "btn.crop", Sub() RunCommand("crop"))
     End Sub
 
     '---------------------------------------------------------------------
@@ -262,23 +260,24 @@ Partial Friend Class frmEditor
         L.Y += 32
     End Sub
 
-    Private Sub AddCaption(L As PageLayout, text As String, y As Integer)
+    Private Function AddCaption(L As PageLayout, text As String, y As Integer) As Label
         Dim caption As New Label With {.Text = text, .AutoSize = False, .BackColor = Color.Transparent,
                                        .TextAlign = ContentAlignment.MiddleLeft}
         caption.SetBounds(8, y + 2, CaptionWidth, 24)
         L.Add(caption)
-    End Sub
+        Return caption
+    End Function
 
     ''' <summary>一行：名稱｜滑桿｜數值（數值按兩下歸零）。</summary>
-    Private Sub AddRow(L As PageLayout, row As SliderRow, Optional tooltip As String = Nothing)
-        AddCaption(L, row.Caption, L.Y)
+    Private Sub AddRow(L As PageLayout, row As SliderRow)
+        Dim caption = AddCaption(L, row.Caption, L.Y)
         row.Slider = New Aqua.Slider With {.Maximum = row.Maximum, .Minimum = row.Minimum, .Value = 0, .ShowTicks = False}
         row.Slider.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - ValueWidth - 8, 24)
         row.ValueLabel = New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight,
                                          .Cursor = Cursors.Hand, .BackColor = Color.Transparent}
         row.ValueLabel.SetBounds(L.Width - ValueWidth, L.Y + 2, ValueWidth, 24)
-        _tip.SetToolTip(row.ValueLabel, "按兩下歸零")
-        If tooltip IsNot Nothing Then _tip.SetToolTip(row.Slider, tooltip)
+        ' 說明在 HelpTexts 的「row.鍵」；名稱、滑桿、數值共用，停用與否看滑桿。
+        _help.SetHelpLinked("row." & row.Key, row.Slider, caption, row.Slider, row.ValueLabel)
 
         Dim r = row
         AddHandler r.Slider.ValueChanged, Sub() OnSliderChanged(r)
@@ -302,13 +301,13 @@ Partial Friend Class frmEditor
         L.Y += h + 6
     End Sub
 
-    Private Sub AddButtonPair(L As PageLayout, text1 As String, tip1 As String, click1 As Action,
-                              text2 As String, tip2 As String, click2 As Action)
+    Private Sub AddButtonPair(L As PageLayout, text1 As String, help1 As String, click1 As Action,
+                              text2 As String, help2 As String, click2 As Action)
         Dim w = (L.Width - 16) \ 2
-        Dim b1 = MakeButton(text1, tip1)
+        Dim b1 = MakeButton(text1, help1)
         b1.SetBounds(8, L.Y + 2, w, 30)
         AddHandler b1.Click, Sub() click1()
-        Dim b2 = MakeButton(text2, tip2)
+        Dim b2 = MakeButton(text2, help2)
         b2.SetBounds(8 + w + 8, L.Y + 2, w, 30)
         AddHandler b2.Click, Sub() click2()
         L.Add(b1)
@@ -316,9 +315,10 @@ Partial Friend Class frmEditor
         L.Y += 40
     End Sub
 
-    Private Function MakeButton(text As String, tooltip As String) As Button
+    ''' <param name="helpKey">HelpTexts 的鍵。</param>
+    Private Function MakeButton(text As String, helpKey As String) As Button
         Dim b As New Button With {.Text = text, .UseVisualStyleBackColor = True}
-        If tooltip IsNot Nothing Then _tip.SetToolTip(b, tooltip)
+        If helpKey IsNot Nothing Then _help.SetHelp(helpKey, b)
         Return b
     End Function
 
