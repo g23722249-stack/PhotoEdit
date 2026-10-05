@@ -36,8 +36,7 @@ Public NotInheritable Class ImagePipeline
         Creative.ApplyBlurs(bmp, recipe, faces, sw, sh)
         ApplyEffects(bmp, recipe)
         If recipe.Sharpness > 0 Then Sharpen(bmp, recipe.Sharpness / 100.0)
-        Creative.DrawOverlays(bmp, recipe)
-        DrawingRenderer.DrawLayers(bmp, recipe)
+        LayerStack.Draw(bmp, recipe) ' 文字、貼圖、繪圖圖層依圖層順序疊上
         ApplyCropShape(bmp, recipe.CropShape)
         Dim framed = Creative.ApplyFrame(bmp, recipe)
         If framed IsNot Nothing Then

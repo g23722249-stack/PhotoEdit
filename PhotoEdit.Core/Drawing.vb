@@ -87,6 +87,10 @@ Public Class DrawLayer
     Public Property Name As String = ""
     Public Property Visible As Boolean = True
     Public Property Locked As Boolean
+    ''' <summary>圖層識別碼（排列順序用，見 EditRecipe.LayerOrder）；舊檔為 Nothing。</summary>
+    Public Property Id As String
+    ''' <summary>和下面圖層的混合模式。</summary>
+    Public Property Blend As BlendMode
 
     ' ---- 方框類 ----
     Public Property X As Double
@@ -144,12 +148,17 @@ Public Class DrawLayer
     Public Property Ops As List(Of DrawLayer)
     ''' <summary>點陣圖層裡的一筆橡皮擦：用筆刷的形狀擦掉下面已經畫上去的像素。</summary>
     Public Property Eraser As Boolean
+    ''' <summary>
+    ''' 合併圖層時併進點陣圖層的文字或貼圖（只出現在 Ops 裡）；Param1 記合併時的照片寬高比，用來算範圍。
+    ''' </summary>
+    Public Property Item As Overlay
 
     Public Function Clone() As DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
         c.Points = Points?.Select(Function(p) p.Clone()).ToList()
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
         c.Ops = Ops?.Select(Function(o) o.Clone()).ToList()
+        c.Item = Item?.Clone()
         Return c
     End Function
 
@@ -693,26 +702,52 @@ Public NotInheritable Class DrawGeometry
         If layer.Ops Is Nothing Then Return RectangleF.Empty
         Dim any = False
         Dim l = Single.MaxValue, t = Single.MaxValue, r = Single.MinValue, b = Single.MinValue
+        Dim add = Sub(rb As RectangleF)
+                      If rb.IsEmpty Then Return
+                      l = Math.Min(l, rb.Left) : t = Math.Min(t, rb.Top) : r = Math.Max(r, rb.Right) : b = Math.Max(b, rb.Bottom)
+                      any = True
+                  End Sub
         For Each op In layer.Ops
-            If op.Eraser OrElse op.Shape = DrawShape.Raster Then Continue For
+            If op.Eraser Then Continue For
+            If op.Item IsNot Nothing Then add(OverlayBounds(op.Item, op.Param1)) : Continue For
+            If op.Shape = DrawShape.Raster Then add(RasterBounds(op)) : Continue For ' 合併進來的點陣圖層（已含它的位移）
             Dim pts = Figures(op).SelectMany(Function(f) f.Points).ToList()
             If pts.Count = 0 Then Continue For
             Dim pad = CSng(op.StrokeWidth / 2)
-            l = Math.Min(l, pts.Min(Function(p) p.X) - pad) : t = Math.Min(t, pts.Min(Function(p) p.Y) - pad)
-            r = Math.Max(r, pts.Max(Function(p) p.X) + pad) : b = Math.Max(b, pts.Max(Function(p) p.Y) + pad)
-            any = True
+            add(RectangleF.FromLTRB(pts.Min(Function(p) p.X) - pad, pts.Min(Function(p) p.Y) - pad,
+                                    pts.Max(Function(p) p.X) + pad, pts.Max(Function(p) p.Y) + pad))
         Next
         If Not any Then Return RectangleF.Empty
         Return RectangleF.FromLTRB(CSng(l + layer.X), CSng(t + layer.Y), CSng(r + layer.X), CSng(b + layer.Y))
+    End Function
+
+    ''' <summary>合併進點陣圖層的文字貼圖範圍（照片高度單位，含旋轉）；aspect 為合併時的照片寬高比。</summary>
+    Public Shared Function OverlayBounds(o As Overlay, aspect As Double) As RectangleF
+        If aspect <= 0 Then aspect = 1
+        Const H = 1000
+        Dim w = CInt(Math.Max(1, Math.Round(aspect * H)))
+        Dim f = Creative.OverlayFrame(o, w, H)
+        Dim px = f.PivotX * w, py = f.PivotY * H
+        Dim a = f.Rotation * Math.PI / 180
+        Dim cos = Math.Cos(a), sin = Math.Sin(a)
+        Dim xs As New List(Of Double)(), ys As New List(Of Double)()
+        For Each c In {(f.Left, f.Top), (f.Right, f.Top), (f.Right, f.Bottom), (f.Left, f.Bottom)}
+            Dim dx = c.Item1 * w, dy = c.Item2 * H
+            xs.Add(px + dx * cos - dy * sin)
+            ys.Add(py + dx * sin + dy * cos)
+        Next
+        Return RectangleF.FromLTRB(CSng(xs.Min() / H), CSng(ys.Min() / H), CSng(xs.Max() / H), CSng(ys.Max() / H))
     End Function
 
     ''' <summary>把向量圖層點陣化：原本的圖形成為點陣圖層的第一筆，之後只能直接繪製或擦除。</summary>
     Public Shared Function Rasterize(layer As DrawLayer) As DrawLayer
         If layer.Shape = DrawShape.Raster Then Return layer.Clone()
         Dim op = layer.Clone()
-        op.Opacity = 100 : op.Visible = True : op.Locked = False : op.Name = ""
+        op.Opacity = 100 : op.Visible = True : op.Locked = False : op.Name = "" : op.Id = Nothing : op.Blend = BlendMode.Normal
+        ' 圖層的識別碼與混合模式留在點陣圖層上，上下位置與混合效果不變。
         Return New DrawLayer With {.Shape = DrawShape.Raster, .Name = layer.Name, .Visible = layer.Visible, .Locked = layer.Locked,
-                                   .Opacity = layer.Opacity, .X = 0, .Y = 0, .Ops = New List(Of DrawLayer) From {op}}
+                                   .Opacity = layer.Opacity, .Id = layer.Id, .Blend = layer.Blend,
+                                   .X = 0, .Y = 0, .Ops = New List(Of DrawLayer) From {op}}
     End Function
 
     '=====================================================================

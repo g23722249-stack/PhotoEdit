@@ -55,6 +55,12 @@ End Enum
 ''' <summary>文字或貼圖。位置為輸出照片（裁切後、加邊框前）的 0..1 座標，Size 為照片高度的比例。</summary>
 Public Class Overlay
     Public Property Kind As OverlayKind
+    ''' <summary>圖層識別碼（排列順序用，見 EditRecipe.LayerOrder）；舊檔為 Nothing。</summary>
+    Public Property Id As String
+    ''' <summary>圖層是否顯示。</summary>
+    Public Property Visible As Boolean = True
+    ''' <summary>和下面圖層的混合模式。</summary>
+    Public Property Blend As BlendMode
     Public Property Text As String = ""
     ''' <summary>heart / star / sparkle / bubble / arrow / ring</summary>
     Public Property Sticker As String = "heart"
@@ -128,11 +134,13 @@ Public Class Overlay
     Public Sub CopyStyleFrom(s As Overlay)
         Dim keepText = Text, keepX = X, keepY = Y, keepSize = Size, keepRot = Rotation, keepKind = Kind
         Dim keepSticker = Sticker, keepImage = ImagePath
+        Dim keepId = Id, keepVisible = Visible, keepBlend = Blend ' 圖層屬性不算樣式
         For Each p In GetType(Overlay).GetProperties()
             If p.CanWrite Then p.SetValue(Me, p.GetValue(s))
         Next
         Text = keepText : X = keepX : Y = keepY : Size = keepSize : Rotation = keepRot : Kind = keepKind
         Sticker = keepSticker : ImagePath = keepImage
+        Id = keepId : Visible = keepVisible : Blend = keepBlend
     End Sub
 End Class
 
@@ -356,24 +364,27 @@ Public NotInheritable Class Creative
             photo = DirectCast(bmp.Clone(), Bitmap) ' 還沒蓋上任何文字的照片
         End If
         Try
-            Using g = Graphics.FromImage(bmp)
-                For Each o In recipe.Overlays
-                    DrawOverlayLayered(g, o, bmp.Width, bmp.Height, photo)
-                Next
-            End Using
+            For Each o In recipe.Overlays
+                If o.Visible Then DrawOverlayOnto(bmp, o, photo)
+            Next
         Finally
             photo?.Dispose()
         End Try
     End Sub
 
-    Private Shared Sub DrawOverlayLayered(g As Graphics, o As Overlay, w As Integer, h As Integer, photo As Bitmap)
+    ''' <summary>畫上一個文字或貼圖（依它的不透明度與混合模式）。photo 為「照片本身」填字用的照片，可為 Nothing。</summary>
+    Public Shared Sub DrawOverlayOnto(bmp As Bitmap, o As Overlay, photo As Bitmap)
+        DrawOverlayLayered(bmp, o, bmp.Width, bmp.Height, photo)
+    End Sub
+
+    Private Shared Sub DrawOverlayLayered(dst As Bitmap, o As Overlay, w As Integer, h As Integer, photo As Bitmap)
         Dim opacity = Math.Max(0, Math.Min(100, o.Opacity)) / 100.0F
         If opacity <= 0 Then Return
         Dim em = CSng(Math.Max(0.005, o.Size) * h)
         Dim cx = CSng(o.X * w), cy = CSng(o.Y * h)
         Using layout = If(o.Kind = OverlayKind.Text, TextRender.BuildLayout(o, em), Nothing)
             If layout IsNot Nothing AndAlso o.BackgroundStyle = TextBackground.DimPhoto Then
-                Using br As New SolidBrush(Color.FromArgb(CInt(o.BackgroundOpacity * 2.55 * opacity), Color.FromArgb(o.BackgroundColorArgb)))
+                Using g = Graphics.FromImage(dst), br As New SolidBrush(Color.FromArgb(CInt(o.BackgroundOpacity * 2.55 * opacity), Color.FromArgb(o.BackgroundColorArgb)))
                     g.FillRectangle(br, 0, 0, w, h)
                 End Using
             End If
@@ -438,14 +449,7 @@ Public NotInheritable Class Creative
                         End If
                         gf.DrawImage(layer, full)
                     End Using
-                    If opacity >= 0.999 Then
-                        g.DrawImage(final, region)
-                    Else
-                        Using ia As New ImageAttributes()
-                            ia.SetColorMatrix(New ColorMatrix With {.Matrix33 = opacity})
-                            g.DrawImage(final, region, 0, 0, region.Width, region.Height, GraphicsUnit.Pixel, ia)
-                        End Using
-                    End If
+                    LayerBlend.Composite(dst, final, region, opacity, o.Blend)
                 End Using
             End Using
         End Using
