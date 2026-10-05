@@ -760,6 +760,7 @@ Partial Friend Class frmEditor
         _localIndex = -1
         _overlayIndex = -1
         _drawIndex = -1
+        _stackIndex = -1
         _polyPoints = Nothing
         CommitCalloutEditor()
         SyncSliders()

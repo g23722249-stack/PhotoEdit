@@ -1,7 +1,7 @@
 Imports PhotoEdit
 
 ''' <summary>
-''' 右側工作面板：上方固定直方圖，中間是「調整／效果／人像／修補／局部／裝飾」分頁（Aqua.TabControl），
+''' 右側工作面板：上方固定直方圖，中間是「調整／效果／人像／修補／局部／裝飾／貼圖／文字／去背／繪圖／圖層」分頁（Aqua.TabControl），
 ''' 下方固定「重設調整／按住看原圖」。每個滑桿一行（名稱、滑桿、數值），各分頁不必捲動。
 ''' </summary>
 Partial Friend Class frmEditor
@@ -100,6 +100,7 @@ Partial Friend Class frmEditor
         BuildTextPage(_tabs.AddTab("文字"))
         BuildCutoutPage(_tabs.AddTab("去背"))
         BuildDrawPage(_tabs.AddTab("繪圖"))
+        BuildLayersPage(_tabs.AddTab("圖層"))
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
         _help.SetDynamicHelp(_tabs, Function(p) HelpTexts.Get("tab." & _tabs.TabIndexAt(p)))
@@ -332,6 +333,8 @@ Partial Friend Class frmEditor
 
     ''' <summary>切換分頁時換畫布工具；離開「修補」分頁會關掉修補筆刷，避免在別的分頁誤塗。</summary>
     Private Sub OnSideTabChanged()
+        If _tabs.SelectedIndex = TabLayers AndAlso _lastTab <> TabLayers Then SyncStackSelectionFromTab(_lastTab)
+        _lastTab = _tabs.SelectedIndex
         UpdateToolFromTab()
     End Sub
 End Class

@@ -133,6 +133,12 @@ Public Class EditRecipe
     ''' <summary>去背；Nothing 表示沒有去背。</summary>
     Public Property Cutout As CutoutSettings
 
+    ''' <summary>
+    ''' 文字、貼圖與繪圖圖層混在一起的上下順序（由下而上，存各圖層的 Id）。
+    ''' Nothing 時照舊：文字貼圖在下、繪圖在上；沒有列在這裡的圖層（剛新增的）放在最上面。見 LayerStack。
+    ''' </summary>
+    Public Property LayerOrder As List(Of String)
+
     Public Function Clone() As EditRecipe
         Dim r = DirectCast(MemberwiseClone(), EditRecipe)
         r.Crop = Crop?.Clone()
@@ -141,6 +147,7 @@ Public Class EditRecipe
         r.Overlays = Overlays?.Select(Function(o) o.Clone()).ToList()
         r.Drawings = Drawings?.Select(Function(d) d.Clone()).ToList()
         r.Cutout = Cutout?.Clone()
+        r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))
         Return r
     End Function
 
@@ -149,7 +156,7 @@ Public Class EditRecipe
         Get
             Return (LocalAdjustments IsNot Nothing AndAlso LocalAdjustments.Any(Function(a) a.HasEffect)) OrElse
                    BackgroundBlur > 0 OrElse TiltShift > 0 OrElse Frame <> PhotoFrameStyle.None OrElse
-                   (Overlays IsNot Nothing AndAlso Overlays.Count > 0) OrElse
+                   (Overlays IsNot Nothing AndAlso Overlays.Any(Function(o) o.Visible)) OrElse
                    (Drawings IsNot Nothing AndAlso Drawings.Any(Function(d) d.Visible))
         End Get
     End Property
@@ -313,6 +320,7 @@ Public Class EditRecipe
         If r.LocalAdjustments IsNot Nothing AndAlso r.LocalAdjustments.Count = 0 Then r.LocalAdjustments = Nothing
         If r.Overlays IsNot Nothing AndAlso r.Overlays.Count = 0 Then r.Overlays = Nothing
         If r.Drawings IsNot Nothing AndAlso r.Drawings.Count = 0 Then r.Drawings = Nothing
+        If r.LayerOrder IsNot Nothing AndAlso r.LayerOrder.Count = 0 Then r.LayerOrder = Nothing
         Return System.Text.Json.JsonSerializer.Serialize(r)
     End Function
 

@@ -79,7 +79,10 @@ Partial Friend Class frmEditor
             SetStatusMessage($"「{name}」已點陣化，可以直接畫上去了。")
         ElseIf result Is addLayer Then
             Dim layer = NewRasterLayer()
-            ApplyChange(Sub(r) r.Drawings.Insert(index + 1, layer))
+            ApplyChange(Sub(r)
+                            r.Drawings.Insert(index + 1, layer)
+                            LayerStack.PlaceAbove(r, layer, r.Drawings(index))
+                        End Sub)
             SelectDrawLayer(index + 1)
             SetStatusMessage($"已在「{name}」上面新增「{layer.Name}」。")
         End If

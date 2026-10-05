@@ -83,24 +83,27 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' <summary>把配方裡的繪圖圖層（由下而上）畫到 bmp 上。</summary>
     Public Shared Sub DrawLayers(bmp As Bitmap, recipe As EditRecipe)
         If recipe.Drawings Is Nothing OrElse recipe.Drawings.Count = 0 Then Return
-        Using g = Graphics.FromImage(bmp)
-            For Each layer In recipe.Drawings
-                If Not layer.Visible Then Continue For
-                If layer.Shape = DrawShape.Raster Then
-                    DrawRasterLayer(g, layer, bmp.Width, bmp.Height)
-                Else
-                    DrawLayer(g, layer, bmp.Width, bmp.Height)
-                End If
-            Next
-        End Using
+        For Each layer In recipe.Drawings
+            If layer.Visible Then DrawOne(bmp, layer)
+        Next
     End Sub
 
-    Private Shared Sub DrawLayer(g As Graphics, layer As DrawLayer, w As Integer, h As Integer)
+    ''' <summary>畫上一個繪圖圖層（依它的不透明度與混合模式；不看 Visible）。</summary>
+    Public Shared Sub DrawOne(bmp As Bitmap, layer As DrawLayer)
+        If layer.Shape = DrawShape.Raster Then
+            DrawRasterLayer(bmp, layer, bmp.Width, bmp.Height)
+        Else
+            DrawLayer(bmp, layer, bmp.Width, bmp.Height)
+        End If
+    End Sub
+
+    Private Shared Sub DrawLayer(dst As Bitmap, layer As DrawLayer, w As Integer, h As Integer)
         Dim opacity = Math.Max(0, Math.Min(100, layer.Opacity)) / 100.0F
         If opacity <= 0 Then Return
-        ' 不透明度在合成時才套用，調整時不必重算圖層。
+        ' 不透明度與混合模式在合成時才套用，調整時不必重算圖層。
         Dim keyLayer = layer.Clone()
         keyLayer.Opacity = 100 : keyLayer.Name = "" : keyLayer.Visible = True : keyLayer.Locked = False
+        keyLayer.Id = Nothing : keyLayer.Blend = BlendMode.Normal
         Dim key = System.Text.Json.JsonSerializer.Serialize(keyLayer, _jsonOptions) & "|" & w & "x" & h
         Dim item As Rendered = Nothing
         SyncLock _cache
@@ -129,14 +132,7 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
         If item.Bitmap Is Nothing Then Return
         SyncLock item
-            If opacity >= 0.999F Then
-                g.DrawImage(item.Bitmap, item.Region)
-            Else
-                Using ia As New ImageAttributes()
-                    ia.SetColorMatrix(New ColorMatrix With {.Matrix33 = opacity})
-                    g.DrawImage(item.Bitmap, item.Region, 0, 0, item.Region.Width, item.Region.Height, GraphicsUnit.Pixel, ia)
-                End Using
-            End If
+            LayerBlend.Composite(dst, item.Bitmap, item.Region, opacity, layer.Blend)
         End SyncLock
     End Sub
 

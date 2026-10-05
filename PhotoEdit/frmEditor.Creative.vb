@@ -300,6 +300,7 @@ Partial Friend Class frmEditor
             UpdateTextControls()
             UpdateCutoutControls()
             UpdateDrawControls()
+            UpdateLayersPanel()
         Finally
             _syncing = wasSyncing
         End Try

@@ -33,6 +33,7 @@ Module Program
             RasterTestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
+            LayerTestsRun()
             FileTests(tempDir)
         Finally
             Directory.Delete(tempDir, recursive:=True)

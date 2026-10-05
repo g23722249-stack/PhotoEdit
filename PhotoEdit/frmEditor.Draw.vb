@@ -535,19 +535,22 @@ Partial Friend Class frmEditor
                 _drawStrip.SelectedTool = CInt(DrawShape.Raster)
                 AddDrawLayer(NewRasterLayer())
             Case 1
-                Dim d = SelDraw(_recipe)?.Clone()
-                If d Is Nothing Then Return
+                Dim original = SelDraw(_recipe)
+                If original Is Nothing Then Return
+                Dim d = original.Clone()
                 DrawGeometry.Offset(d, 0.02, 0.02)
                 d.Name &= " 複本"
-                AddDrawLayer(d)
+                d.Id = Nothing
+                ApplyChange(Sub(r)
+                                r.Drawings.Add(d)
+                                LayerStack.PlaceAbove(r, d, original) ' 複本放在原圖層正上方
+                            End Sub)
+                SelectDrawLayer(_recipe.Drawings.IndexOf(d))
             Case 2, 3
+                ' 只在繪圖圖層之間上下移動；和文字貼圖交錯的順序在「圖層」分頁調整。
                 Dim target = index + If(command = 2, 1, -1)
                 If index < 0 OrElse target < 0 OrElse target >= LayerCount() Then Return
-                ApplyChange(Sub(r)
-                                Dim t = r.Drawings(index)
-                                r.Drawings(index) = r.Drawings(target)
-                                r.Drawings(target) = t
-                            End Sub)
+                ApplyChange(Sub(r) LayerStack.Swap(r, r.Drawings(index), r.Drawings(target)))
                 SelectDrawLayer(target)
             Case 4
                 DeleteDrawLayer()

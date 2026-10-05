@@ -12,21 +12,14 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Shared ReadOnly _rasterCache As New Dictionary(Of ULong, Bitmap)()
     Private Shared ReadOnly _rasterOrder As New LinkedList(Of ULong)()
 
-    Private Shared Sub DrawRasterLayer(g As Graphics, layer As DrawLayer, w As Integer, h As Integer)
+    Private Shared Sub DrawRasterLayer(dst As Bitmap, layer As DrawLayer, w As Integer, h As Integer)
         Dim opacity = Math.Max(0, Math.Min(100, layer.Opacity)) / 100.0F
         If opacity <= 0 OrElse layer.Ops Is Nothing OrElse layer.Ops.Count = 0 Then Return
         Dim bmp = RasterBitmap(layer, w, h)
         If bmp Is Nothing Then Return
         Dim dest As New Rectangle(CInt(Math.Round(layer.X * h)), CInt(Math.Round(layer.Y * h)), w, h)
         SyncLock bmp
-            If opacity >= 0.999F Then
-                g.DrawImage(bmp, dest)
-            Else
-                Using ia As New ImageAttributes()
-                    ia.SetColorMatrix(New ColorMatrix With {.Matrix33 = opacity})
-                    g.DrawImage(bmp, dest, 0, 0, w, h, GraphicsUnit.Pixel, ia)
-                End Using
-            End If
+            LayerBlend.Composite(dst, bmp, dest, opacity, layer.Blend)
         End SyncLock
     End Sub
 
@@ -87,25 +80,31 @@ Partial Public NotInheritable Class DrawingRenderer
         Return bmp
     End Function
 
-    ''' <summary>把一筆畫上去：一般筆畫與圖形疊在上面，橡皮擦依筆刷的覆蓋率減去下面的不透明度。</summary>
+    ''' <summary>
+    ''' 把一筆畫上去：一般筆畫與圖形疊在上面，橡皮擦依筆刷的覆蓋率減去下面的不透明度。
+    ''' 合併圖層時併進來的文字貼圖（Item）與整個點陣圖層（巢狀的 Ops）也是一筆，各自保留不透明度與混合模式。
+    ''' </summary>
     Private Shared Sub ApplyRasterOp(bmp As Bitmap, op As DrawLayer, w As Integer, h As Integer)
-        If op.Shape = DrawShape.Raster Then Return
+        If op.Item IsNot Nothing Then
+            Creative.DrawOverlayOnto(bmp, op.Item, Nothing)
+            Return
+        End If
         Dim opacity = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F
         If opacity <= 0 Then Return
+        If op.Shape = DrawShape.Raster Then
+            If op.Ops Is Nothing OrElse op.Ops.Count = 0 Then Return
+            Dim nested = RasterBitmap(op, w, h)
+            If nested Is Nothing Then Return
+            SyncLock nested
+                LayerBlend.Composite(bmp, nested, New Rectangle(CInt(Math.Round(op.X * h)), CInt(Math.Round(op.Y * h)), w, h), opacity, op.Blend)
+            End SyncLock
+            Return
+        End If
         Dim item = Render(op, w, h)
         If item.Bitmap Is Nothing Then Return
         Try
             If Not op.Eraser Then
-                Using g = Graphics.FromImage(bmp)
-                    If opacity >= 0.999F Then
-                        g.DrawImage(item.Bitmap, item.Region)
-                    Else
-                        Using ia As New ImageAttributes()
-                            ia.SetColorMatrix(New ColorMatrix With {.Matrix33 = opacity})
-                            g.DrawImage(item.Bitmap, item.Region, 0, 0, item.Region.Width, item.Region.Height, GraphicsUnit.Pixel, ia)
-                        End Using
-                    End If
-                End Using
+                LayerBlend.Composite(bmp, item.Bitmap, item.Region, opacity, op.Blend)
                 Return
             End If
 
