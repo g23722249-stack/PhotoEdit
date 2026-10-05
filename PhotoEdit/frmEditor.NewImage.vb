@@ -70,6 +70,7 @@ Partial Friend Class frmEditor
 
         ' 已在上面確認過是否儲存，這裡直接換成新影像。
         _savedRecipe = _recipe.Clone()
+        _aiMaskDirty = False
         OpenPhoto(file)
         If _photo IsNot Nothing AndAlso _photo.Path = file Then
             SetStatusMessage($"已新增 {_photo.Image.Width} × {_photo.Image.Height} 的影像，存成 {file}")

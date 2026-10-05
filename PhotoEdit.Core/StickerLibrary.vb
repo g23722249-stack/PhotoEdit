@@ -18,6 +18,8 @@ Public NotInheritable Class StickerLibrary
     Private Shared _root As String = Path.Combine(AppContext.BaseDirectory, "stick")
     Private Shared ReadOnly Cache As New Dictionary(Of String, Bitmap)(StringComparer.OrdinalIgnoreCase)
     Private Shared ReadOnly CacheLock As New Object()
+    ''' <summary>專案檔帶進來的貼圖副本：「主題\檔名」→ 完整路徑。本機 stick 資料夾沒有這張貼圖時才用。</summary>
+    Private Shared ReadOnly Fallbacks As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
 
     ''' <summary>stick 資料夾的完整路徑（測試時可改）。</summary>
     Public Shared Property Root As String
@@ -72,14 +74,36 @@ Public NotInheritable Class StickerLibrary
     ''' 同一張圖可能被預覽與背景算圖同時使用，繪製時請 SyncLock 該圖。
     ''' </summary>
     Public Shared Function GetImage(relative As String) As Bitmap
-        Return LoadCached(FullPath(relative))
+        If String.IsNullOrWhiteSpace(relative) OrElse Path.IsPathRooted(relative) Then Return Nothing
+        Return LoadCached(ResolveFile(relative))
     End Function
 
     ''' <summary>圖片填字用：完整路徑，或 stick 資料夾裡的相對路徑。</summary>
     Public Shared Function GetImageFile(pathOrRelative As String) As Bitmap
-        If String.IsNullOrWhiteSpace(pathOrRelative) Then Return Nothing
-        Return LoadCached(If(Path.IsPathRooted(pathOrRelative), pathOrRelative, FullPath(pathOrRelative)))
+        Return LoadCached(ResolveFile(pathOrRelative))
     End Function
+
+    ''' <summary>
+    ''' 實際存在的圖檔路徑：完整路徑直接用；相對路徑先找 stick 資料夾，沒有再找專案檔帶進來的副本。找不到時回傳 Nothing。
+    ''' </summary>
+    Public Shared Function ResolveFile(pathOrRelative As String) As String
+        If String.IsNullOrWhiteSpace(pathOrRelative) Then Return Nothing
+        If Path.IsPathRooted(pathOrRelative) Then Return If(File.Exists(pathOrRelative), pathOrRelative, Nothing)
+        Dim full = FullPath(pathOrRelative)
+        If full IsNot Nothing AndAlso File.Exists(full) Then Return full
+        Dim copy As String = Nothing
+        SyncLock CacheLock
+            If Not Fallbacks.TryGetValue(pathOrRelative, copy) Then Return Nothing
+        End SyncLock
+        Return If(File.Exists(copy), copy, Nothing)
+    End Function
+
+    ''' <summary>專案檔載入時登記貼圖副本（本機 stick 資料夾沒有同名貼圖時使用）。</summary>
+    Public Shared Sub RegisterFallback(relative As String, fullPath As String)
+        SyncLock CacheLock
+            Fallbacks(relative) = fullPath
+        End SyncLock
+    End Sub
 
     Private Shared Function LoadCached(full As String) As Bitmap
         If full Is Nothing Then Return Nothing

@@ -4,7 +4,7 @@ Imports PhotoEdit
 
 ''' <summary>
 ''' 「去背」分頁：AI 自動去背（一般／人像）、保留與擦除筆刷、邊緣、換背景、檢視遮罩、存成貼圖。
-''' AI 遮罩先放在記憶體（_aiMask），「儲存編輯」時才寫成照片旁的附屬檔（MaskStore），和 .pedit.json 一致。
+''' AI 遮罩先放在記憶體（_aiMask），「存檔」時寫進專案檔（.pedx）；載入專案時解開成 MaskStore 的檔名再讀回。
 ''' </summary>
 Partial Friend Class frmEditor
 
@@ -274,20 +274,6 @@ Partial Friend Class frmEditor
             _cutoutStatus.Text = "已載入先前的去背結果。"
         Else
             _cutoutStatus.Text = "找不到先前的去背遮罩，請再按一次「自動去背」。"
-        End If
-    End Sub
-
-    ''' <summary>儲存編輯時一併寫入遮罩附屬檔（去背已取消時刪除）。</summary>
-    Private Sub SaveCutoutMask()
-        If _photo Is Nothing Then Return
-        If _recipe.Cutout Is Nothing Then
-            Return
-        End If
-        If _aiMask IsNot Nothing AndAlso _aiMaskDirty Then
-            SyncLock _aiMask
-                MaskStore.Save(_photo.Path, _aiMaskModel, _aiMask)
-            End SyncLock
-            _aiMaskDirty = False
         End If
     End Sub
 

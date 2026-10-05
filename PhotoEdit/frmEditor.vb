@@ -5,7 +5,7 @@ Imports PhotoEdit
 
 ''' <summary>
 ''' 照片編輯器主視窗。預覽用長邊 1600 的縮圖即時算圖；放大檢視超過縮圖解析度時，在背景算全尺寸預覽；
-''' 匯出時以原圖全尺寸計算。編輯參數存在照片旁的 .pedit.json，原始照片永不覆寫。
+''' 匯出時以原圖全尺寸計算。存檔存成專案檔 .pedx（原圖＋所有編輯與圖層），原始照片永不覆寫；舊版照片旁的 .pedit.json 仍會讀取。
 ''' 人臉在開檔後於背景偵測（需要 Models\face_detection_yunet_2023mar.onnx），供人像修飾與智慧構圖使用。
 ''' </summary>
 Partial Friend Class frmEditor
@@ -153,9 +153,12 @@ Partial Friend Class frmEditor
 
         Dim fileMenu = root.AddItem(New Aqua.MenuItem("檔案"))
         fileMenu.AddItem(Item("new", "新增… (Ctrl+N)"))
-        fileMenu.AddItem(Item("open", "開啟照片… (Ctrl+O)"))
-        fileMenu.AddItem(Item("save", "儲存編輯 (Ctrl+S)"))
-        fileMenu.AddItem(Item("export", "匯出 JPG… (Ctrl+E)"))
+        fileMenu.AddItem(Item("open", "載入… (Ctrl+O)"))
+        fileMenu.AddItem(New Aqua.MenuItem("-"))
+        fileMenu.AddItem(Item("save", "存檔 (Ctrl+S)"))
+        fileMenu.AddItem(Item("saveas", "另存新檔… (Ctrl+Shift+S)"))
+        fileMenu.AddItem(Item("export", "匯出… (Ctrl+E)"))
+        fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("collage", "拼貼…"))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("revert", "回復原圖"))
@@ -166,6 +169,7 @@ Partial Friend Class frmEditor
         editMenu.AddItem(Item("undo", "復原 (Ctrl+Z)"))
         editMenu.AddItem(Item("redo", "重做 (Ctrl+Y)"))
         editMenu.AddItem(New Aqua.MenuItem("-"))
+        editMenu.AddItem(Item("copy", "複製 (Ctrl+C)"))
         _pasteImageItem = editMenu.AddItem(Item("pasteimage", "貼成新影像 (Ctrl+V)"))
         editMenu.AddItem(New Aqua.MenuItem("-"))
         editMenu.AddItem(Item("copyadj", "複製調整 (Ctrl+Shift+C)"))
@@ -224,16 +228,18 @@ Partial Friend Class frmEditor
                 SetStatusMessage(If(_appSettings.ShowHelp, "已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。", "已關閉使用說明。"))
             Case "about"
                 MessageBox.Show(Me, "PhotoEdit 0.2 — 非破壞性照片編輯器" & vbCrLf & vbCrLf &
-                                "編輯參數存在「照片檔名.pedit.json」，原始照片不會被修改。" & vbCrLf &
-                                "要得到編輯後的圖檔，請用「檔案 → 匯出 JPG」。" & vbCrLf & vbCrLf &
+                                "「存檔」存成 PhotoEdit 專案（.pedx），保留所有圖層，下次載入可繼續修改；原始照片不會被修改。" & vbCrLf &
+                                "要得到合併後的圖檔，請用「另存新檔」或「匯出」存成 PNG／JPG／BMP。" & vbCrLf & vbCrLf &
                                 "人臉偵測：YuNet（OpenCV Zoo，Apache-2.0）",
                                 AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
         End Select
         If _photo Is Nothing Then Return
 
         Select Case name
-            Case "save" : SaveRecipe()
+            Case "save" : SaveDocument()
+            Case "saveas" : SaveAsWithDialog()
             Case "export" : ExportWithDialog()
+            Case "copy" : CopyMergedImage()
             Case "revert"
                 ExitCropMode(apply:=False)
                 ReplaceRecipe(New EditRecipe())
@@ -321,6 +327,8 @@ Partial Friend Class frmEditor
             Case Keys.Control Or Keys.N : cmd = "new"
             Case Keys.Control Or Keys.O : cmd = "open"
             Case Keys.Control Or Keys.S : cmd = "save"
+            Case Keys.Control Or Keys.Shift Or Keys.S : cmd = "saveas"
+            Case Keys.Control Or Keys.C : cmd = "copy"
             Case Keys.Control Or Keys.E : cmd = "export"
             Case Keys.Control Or Keys.Z : cmd = "undo"
             Case Keys.Control Or Keys.Y, Keys.Control Or Keys.Shift Or Keys.Z : cmd = "redo"
@@ -493,19 +501,19 @@ Partial Friend Class frmEditor
         If _photo Is Nothing Then
             Text = AppName
         Else
-            Text = $"{AppName} — {Path.GetFileName(_photo.Path)}{If(IsDirty, " *", "")}"
+            Text = $"{AppName} — {DocumentName}{If(IsDirty, " *", "")}"
         End If
     End Sub
 
     Private ReadOnly Property IsDirty As Boolean
         Get
-            Return _photo IsNot Nothing AndAlso Not _recipe.Equals(_savedRecipe)
+            Return _photo IsNot Nothing AndAlso (Not _recipe.Equals(_savedRecipe) OrElse _aiMaskDirty)
         End Get
     End Property
 
     Private Sub UpdateStatus()
         If _photo Is Nothing OrElse _rendered Is Nothing Then
-            _statusLabel.Text = "開啟照片：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N"
+            _statusLabel.Text = "載入照片或專案：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N"
             Return
         End If
         Dim scale = _photo.Image.Width / CDbl(_previewBase.Width)
@@ -702,14 +710,17 @@ Partial Friend Class frmEditor
 
     Private Sub OpenWithDialog()
         Using dlg As New OpenFileDialog()
-            dlg.Title = "開啟照片"
-            dlg.Filter = "圖片檔|" & String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x)) & "|所有檔案|*.*"
-            If _photo IsNot Nothing Then dlg.InitialDirectory = Path.GetDirectoryName(_photo.Path)
+            Dim images = String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x))
+            dlg.Title = "載入"
+            dlg.Filter = $"專案與圖片|*{ProjectFile.Extension};{images}|PhotoEdit 專案|*{ProjectFile.Extension}|圖片檔|{images}|所有檔案|*.*"
+            If _photo IsNot Nothing Then dlg.InitialDirectory = Path.GetDirectoryName(DocumentBasePath)
             If dlg.ShowDialog(Me) = DialogResult.OK Then OpenPhoto(dlg.FileName)
         End Using
     End Sub
 
+    ''' <summary>開啟照片或專案檔（.pedx）。</summary>
     Private Sub OpenPhoto(photoPath As String)
+        If ProjectFile.IsProject(photoPath) Then OpenProject(photoPath) : Return
         If Not ConfirmDiscard() Then Return
 
         Dim photo As PhotoFile
@@ -726,7 +737,11 @@ Partial Friend Class frmEditor
         Finally
             Cursor = Cursors.Default
         End Try
+        ShowDocument(photo, If(RecipeStore.Load(photoPath), New EditRecipe()), docPath:=Nothing)
+    End Sub
 
+    ''' <summary>換成新的照片與配方（docPath 為專案檔路徑；一般照片為 Nothing）。</summary>
+    Private Sub ShowDocument(photo As PhotoFile, recipe As EditRecipe, docPath As String, Optional workDir As String = Nothing)
         ExitCropMode(apply:=False)
         _canvas.Image = Nothing
         _canvas.ZoomToFit()
@@ -737,7 +752,8 @@ Partial Friend Class frmEditor
         End SyncLock
 
         _previewBase = ImagePipeline.CopyScaled(photo.Image, PreviewMaxSize)
-        _recipe = If(RecipeStore.Load(photoPath), New EditRecipe())
+        SetDocumentPath(docPath, workDir)
+        _recipe = recipe
         _savedRecipe = _recipe.Clone()
         LoadCutoutMask()
         _history.Clear()
@@ -767,56 +783,13 @@ Partial Friend Class frmEditor
     ''' <summary>有未儲存的編輯時詢問。回傳 False 表示使用者取消。</summary>
     Private Function ConfirmDiscard() As Boolean
         If Not IsDirty Then Return True
-        Select Case MessageBox.Show(Me, $"要儲存對「{Path.GetFileName(_photo.Path)}」的編輯嗎？", AppName,
+        Select Case MessageBox.Show(Me, $"要儲存對「{DocumentName}」的編輯嗎？", AppName,
                                     MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
-            Case DialogResult.Yes : Return SaveRecipe()
+            Case DialogResult.Yes : Return SaveDocument()
             Case DialogResult.No : Return True
             Case Else : Return False
         End Select
     End Function
-
-    Private Function SaveRecipe() As Boolean
-        Try
-            RecipeStore.Save(_photo.Path, _recipe)
-            SaveCutoutMask()
-        Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
-            MessageBox.Show(Me, "無法儲存編輯：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Return False
-        End Try
-        _savedRecipe = _recipe.Clone()
-        UpdateTitle()
-        SetStatusMessage(If(_recipe.IsIdentity, "已回復原圖，移除編輯檔。", "已儲存編輯：" & Path.GetFileName(RecipeStore.SidecarPath(_photo.Path))))
-        Return True
-    End Function
-
-    Private Sub ExportWithDialog()
-        ExitCropMode(apply:=True)
-        ' 去背成透明背景、或裁成圓形等形狀時預設存 PNG（JPG 不能透明）。
-        Dim transparent = (_recipe.Cutout IsNot Nothing AndAlso _recipe.Cutout.Background = CutoutBackground.Transparent) OrElse
-                          _recipe.CropShape <> CropShape.Rectangle
-        Dim suggested = PhotoFile.SuggestExportPath(_photo.Path, If(transparent, ".png", ".jpg"))
-        Using dlg As New SaveFileDialog()
-            dlg.Title = "匯出"
-            dlg.Filter = "JPEG 圖片|*.jpg|PNG 圖片（保留透明）|*.png"
-            dlg.FilterIndex = If(transparent, 2, 1)
-            dlg.InitialDirectory = Path.GetDirectoryName(suggested)
-            dlg.FileName = Path.GetFileName(suggested)
-            If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
-
-            Cursor = Cursors.WaitCursor
-            Try
-                SyncLock _sourceLock
-                    _photo.Export(_recipe, dlg.FileName, prepare:=SourcePrepare(_recipe), faces:=_faces)
-                End SyncLock
-                SetStatusMessage("已匯出：" & dlg.FileName)
-            Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
-                                       TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ExternalException
-                MessageBox.Show(Me, "匯出失敗：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Finally
-                Cursor = Cursors.Default
-            End Try
-        End Using
-    End Sub
 
     Private Sub OnFileDragEnter(sender As Object, e As DragEventArgs)
         If e.Data?.GetDataPresent(StickerDataFormat) Then
@@ -842,7 +815,7 @@ Partial Friend Class frmEditor
     Private Shared Function DroppedPhoto(e As DragEventArgs) As String
         Dim files = TryCast(e.Data?.GetData(DataFormats.FileDrop), String())
         If files Is Nothing OrElse files.Length = 0 Then Return Nothing
-        Return If(PhotoFile.IsSupported(files(0)), files(0), Nothing)
+        Return If(PhotoFile.IsSupported(files(0)) OrElse ProjectFile.IsProject(files(0)), files(0), Nothing)
     End Function
 
     '=====================================================================
@@ -869,6 +842,7 @@ Partial Friend Class frmEditor
             _photo?.Dispose()
             _photo = Nothing
         End SyncLock
+        DeleteProjectWorkDir()
         MyBase.OnFormClosed(e)
     End Sub
 End Class

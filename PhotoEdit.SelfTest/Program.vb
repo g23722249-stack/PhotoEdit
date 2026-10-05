@@ -32,6 +32,7 @@ Module Program
             SplitterTestsRun()
             RasterTestsRun()
             NewImageTestsRun(tempDir)
+            ProjectTestsRun(tempDir)
             FileTests(tempDir)
         Finally
             Directory.Delete(tempDir, recursive:=True)
