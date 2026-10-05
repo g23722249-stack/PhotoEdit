@@ -17,6 +17,8 @@ Public Class PhotoFile
     Public ReadOnly Property Path As String
     ''' <summary>已轉正的 32bppArgb 原圖。</summary>
     Public ReadOnly Property Image As Bitmap
+    ''' <summary>原檔記錄的解析度（像素／英吋）；匯出時沿用，列印尺寸才會一致。</summary>
+    Public ReadOnly Property Resolution As Single
     Private ReadOnly _properties As PropertyItem()
 
     ''' <summary>拍攝日期、相機、GPS（從 EXIF 讀；沒有的欄位為 Nothing）。</summary>
@@ -38,10 +40,11 @@ Public Class PhotoFile
         Return result
     End Function
 
-    Private Sub New(path As String, image As Bitmap, properties As PropertyItem())
+    Private Sub New(path As String, image As Bitmap, properties As PropertyItem(), resolution As Single)
         Me.Path = path
         Me.Image = image
         _properties = properties
+        Me.Resolution = If(resolution > 0, resolution, 96.0F)
     End Sub
 
     Public Shared ReadOnly SupportedExtensions As String() = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".gif"}
@@ -60,7 +63,7 @@ Public Class PhotoFile
                 End Using
                 Dim rft = OrientationToRotateFlip(ReadOrientation(props))
                 If rft <> RotateFlipType.RotateNoneFlipNone Then upright.RotateFlip(rft)
-                Return New PhotoFile(path, upright, props)
+                Return New PhotoFile(path, upright, props, original.HorizontalResolution)
             End Using
         End Using
     End Function
@@ -96,12 +99,14 @@ Public Class PhotoFile
             Throw New InvalidOperationException("不能覆寫原始照片，請換一個檔名。")
         End If
         Using rendered = ImagePipeline.Render(Image, recipe, prepare:=prepare, faces:=faces)
+            rendered.SetResolution(Resolution, Resolution)
             If String.Equals(IO.Path.GetExtension(targetPath), ".png", StringComparison.OrdinalIgnoreCase) Then
                 ' PNG：保留透明（去背）。
                 rendered.Save(targetPath, ImageFormat.Png)
                 Return
             End If
             Using output As New Bitmap(rendered.Width, rendered.Height, PixelFormat.Format24bppRgb)
+                output.SetResolution(Resolution, Resolution)
                 Using g = Graphics.FromImage(output)
                     g.Clear(Color.White) ' JPG 不能透明：透明處變白色
                     g.DrawImage(rendered, 0, 0, rendered.Width, rendered.Height)

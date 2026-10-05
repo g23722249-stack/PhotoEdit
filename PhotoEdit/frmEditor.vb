@@ -152,6 +152,7 @@ Partial Friend Class frmEditor
         Dim root As New Aqua.MenuItem()
 
         Dim fileMenu = root.AddItem(New Aqua.MenuItem("檔案"))
+        fileMenu.AddItem(Item("new", "新增… (Ctrl+N)"))
         fileMenu.AddItem(Item("open", "開啟照片… (Ctrl+O)"))
         fileMenu.AddItem(Item("save", "儲存編輯 (Ctrl+S)"))
         fileMenu.AddItem(Item("export", "匯出 JPG… (Ctrl+E)"))
@@ -210,6 +211,7 @@ Partial Friend Class frmEditor
 
     Private Sub RunCommand(name As String)
         Select Case name
+            Case "new" : NewImageWithDialog()
             Case "open" : OpenWithDialog()
             Case "collage" : OpenCollage()
             Case "pasteimage" : PasteAsNewImage()
@@ -316,6 +318,7 @@ Partial Friend Class frmEditor
         If HandleDrawKey(keyData) Then Return True
         Dim cmd As String = Nothing
         Select Case keyData
+            Case Keys.Control Or Keys.N : cmd = "new"
             Case Keys.Control Or Keys.O : cmd = "open"
             Case Keys.Control Or Keys.S : cmd = "save"
             Case Keys.Control Or Keys.E : cmd = "export"
@@ -502,7 +505,7 @@ Partial Friend Class frmEditor
 
     Private Sub UpdateStatus()
         If _photo Is Nothing OrElse _rendered Is Nothing Then
-            _statusLabel.Text = "開啟照片：Ctrl+O 或拖曳檔案到視窗"
+            _statusLabel.Text = "開啟照片：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N"
             Return
         End If
         Dim scale = _photo.Image.Width / CDbl(_previewBase.Width)
