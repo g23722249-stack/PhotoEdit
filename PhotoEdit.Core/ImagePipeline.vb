@@ -34,6 +34,7 @@ Public NotInheritable Class ImagePipeline
         ApplyTone(bmp, recipe)
         Creative.ApplyLocal(bmp, recipe, sw, sh)
         Creative.ApplyBlurs(bmp, recipe, faces, sw, sh)
+        ArtStyles.Apply(bmp, recipe) ' 藝術風格：在色調之後、暗角與文字貼圖之前
         ApplyEffects(bmp, recipe)
         If recipe.Sharpness > 0 Then Sharpen(bmp, recipe.Sharpness / 100.0)
         LayerStack.Draw(bmp, recipe) ' 文字、貼圖、繪圖圖層依圖層順序疊上

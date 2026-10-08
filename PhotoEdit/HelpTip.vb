@@ -295,13 +295,42 @@ Friend Class HelpTip
         Private Const IconSize As Integer = 32
         Private Const HeaderGap As Integer = 10
 
-        Private Shared ReadOnly Border As Color = Color.FromArgb(158, 165, 175)
-        Private Shared ReadOnly HeaderTop As Color = Color.FromArgb(246, 247, 249)
-        Private Shared ReadOnly HeaderBottom As Color = Color.FromArgb(221, 227, 234)
-        Private Shared ReadOnly TitleColor As Color = Color.FromArgb(27, 35, 48)
-        Private Shared ReadOnly TextColor As Color = Color.FromArgb(60, 70, 86)
-        Private Shared ReadOnly HintColor As Color = Color.FromArgb(42, 116, 208)
-        Private Shared ReadOnly DisabledColor As Color = Color.FromArgb(178, 75, 18)
+        ' 配色：深色時標題列變深、文字變亮（每次繪製時依目前配色計算）。
+        Private Shared ReadOnly Property Border As Color
+            Get
+                Return If(ThemeManager.Dark, Color.FromArgb(78, 86, 100), Color.FromArgb(158, 165, 175))
+            End Get
+        End Property
+        Private Shared ReadOnly Property HeaderTop As Color
+            Get
+                Return If(ThemeManager.Dark, Color.FromArgb(52, 57, 66), Color.FromArgb(246, 247, 249))
+            End Get
+        End Property
+        Private Shared ReadOnly Property HeaderBottom As Color
+            Get
+                Return If(ThemeManager.Dark, Color.FromArgb(40, 44, 52), Color.FromArgb(221, 227, 234))
+            End Get
+        End Property
+        Private Shared ReadOnly Property TitleColor As Color
+            Get
+                Return ThemeManager.Fore(Color.FromArgb(27, 35, 48))
+            End Get
+        End Property
+        Private Shared ReadOnly Property TextColor As Color
+            Get
+                Return ThemeManager.Fore(Color.FromArgb(60, 70, 86))
+            End Get
+        End Property
+        Private Shared ReadOnly Property HintColor As Color
+            Get
+                Return If(ThemeManager.Dark, Color.FromArgb(110, 170, 245), Color.FromArgb(42, 116, 208))
+            End Get
+        End Property
+        Private Shared ReadOnly Property DisabledColor As Color
+            Get
+                Return If(ThemeManager.Dark, Color.FromArgb(240, 150, 90), Color.FromArgb(178, 75, 18))
+            End Get
+        End Property
         Private Shared ReadOnly BadgeTop As Color = Color.FromArgb(96, 156, 232)
         Private Shared ReadOnly BadgeBottom As Color = Color.FromArgb(42, 104, 196)
 
@@ -322,6 +351,11 @@ Friend Class HelpTip
             TopMost = True
             BackColor = Color.White
             DoubleBuffered = True
+        End Sub
+
+        Protected Overrides Sub OnVisibleChanged(e As EventArgs)
+            If Visible Then BackColor = ThemeManager.Back(Color.White) ' 跟著目前的配色
+            MyBase.OnVisibleChanged(e)
         End Sub
 
         Protected Overrides ReadOnly Property ShowWithoutActivation As Boolean
@@ -419,7 +453,7 @@ Friend Class HelpTip
             Using b As New LinearGradientBrush(header, HeaderTop, HeaderBottom, LinearGradientMode.Vertical)
                 g.FillRectangle(b, header)
             End Using
-            Using p As New Pen(Color.FromArgb(206, 212, 220))
+            Using p As New Pen(ThemeManager.Line(Color.FromArgb(206, 212, 220)))
                 g.DrawLine(p, 0, _headerHeight, Width, _headerHeight)
             End Using
             Dim iconRect As New Rectangle(Pad, (_headerHeight - IconSize) \ 2, IconSize, IconSize)

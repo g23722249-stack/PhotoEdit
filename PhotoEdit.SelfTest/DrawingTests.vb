@@ -47,7 +47,7 @@ Module DrawingTests
         ' ---- 幾何 ----
         Dim allShapes = [Enum].GetValues(GetType(DrawShape)).Cast(Of DrawShape)().Where(Function(s) DrawGeometry.IsBox(s)).ToList()
         Check("每種方框形狀都有外形", allShapes.All(Function(s) DrawGeometry.Figures(Box(s, 0.5, 0.5, 0.3, 0.2)).Count > 0))
-        Check("工具名稱 19 個、筆刷名稱 16 個", DrawGeometry.ShapeNames.Length = 19 AndAlso DrawGeometry.BrushNames.Length = 16)
+        Check("工具名稱 19 個、筆刷名稱 21 個", DrawGeometry.ShapeNames.Length = 19 AndAlso DrawGeometry.BrushNames.Length = 21)
         Dim star = Box(DrawShape.Star5, 0.5, 0.5, 0.2, 0.2)
         Check("五角星 10 個頂點", DrawGeometry.Figures(star)(0).Points.Length = 10)
         Dim rect = Box(DrawShape.Rectangle, 0.5, 0.5, 0.4, 0.2)
@@ -127,7 +127,7 @@ Module DrawingTests
         ' ---- 算圖 ----
         Dim bg = Color.FromArgb(40, 80, 120)
         Dim results As New List(Of String)()
-        For Each brush In [Enum].GetValues(GetType(BrushKind)).Cast(Of BrushKind)()
+        For Each brush In [Enum].GetValues(GetType(BrushKind)).Cast(Of BrushKind)().Where(Function(k) Not DrawLayer.SamplesCanvas(k))
             Using bmp = Solid(300, 200, bg)
                 Dim layer As New DrawLayer With {.Shape = DrawShape.Freehand, .Brush = brush, .StrokeWidth = 0.08, .Seed = 3,
                                                  .StrokeColorArgb = Color.FromArgb(250, 230, 90).ToArgb(),
@@ -137,7 +137,7 @@ Module DrawingTests
                 If Painted(bmp, bg) < 50 Then results.Add(DrawGeometry.BrushNames(CInt(brush)))
             End Using
         Next
-        Check("16 種筆刷都畫得出東西", results.Count = 0, String.Join("、", results))
+        Check("18 種向量筆刷都畫得出東西（混色、塗抹、仿製只在點陣圖層，另外測）", results.Count = 0, String.Join("、", results))
         For Each fx In [Enum].GetValues(GetType(FxKind)).Cast(Of FxKind)()
             Using bmp = Solid(300, 200, bg)
                 Dim layer As New DrawLayer With {.Shape = DrawShape.Line, .Brush = BrushKind.FX, .Fx = fx, .StrokeWidth = 0.08, .Seed = 3,

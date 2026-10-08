@@ -112,6 +112,7 @@ Friend Class frmNewImage
                                    _preview?.Dispose()
                                    _boldFont.Dispose()
                                End Sub
+        ThemeManager.Attach(Me)
     End Sub
 
     '---------------------------------------------------------------------

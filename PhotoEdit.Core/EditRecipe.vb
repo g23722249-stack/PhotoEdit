@@ -102,6 +102,22 @@ Public Class EditRecipe
     ''' <summary>色彩濾鏡強度，0..100。例如褐色老照片 = 飽和度 -100 + 色相 35。</summary>
     Public Property ToningStrength As Integer
 
+    ' ---- 藝術風格（也屬於「風格」，見 ArtStyles）----
+    ''' <summary>把照片畫成漫畫、水彩、油畫、水墨…；None 為不使用。</summary>
+    Public Property ArtStyle As ArtStyle
+    ''' <summary>與原圖混合的比例，0..100。</summary>
+    Public Property ArtStrength As Integer = 100
+    ''' <summary>輪廓線粗細，0..100（50 為標準）。</summary>
+    Public Property ArtLine As Integer = 50
+    ''' <summary>筆觸、網點、色塊大小，0..100（50 為標準，越大越粗獷）。</summary>
+    Public Property ArtDetail As Integer = 50
+
+    Public ReadOnly Property HasArt As Boolean
+        Get
+            Return ArtStyle <> ArtStyle.None AndAlso ArtStrength > 0
+        End Get
+    End Property
+
     ' ---- 細節與人像（不屬於濾鏡預設集）----
     ''' <summary>0..100。</summary>
     Public Property Sharpness As Integer
@@ -211,7 +227,7 @@ Public Class EditRecipe
 
     Public ReadOnly Property IsIdentity As Boolean
         Get
-            Return Not HasGeometry AndAlso Not HasTone AndAlso Not HasEffects AndAlso Not HasSourceFix AndAlso
+            Return Not HasGeometry AndAlso Not HasTone AndAlso Not HasEffects AndAlso Not HasSourceFix AndAlso Not HasArt AndAlso
                    Not HasCreative AndAlso Sharpness = 0
         End Get
     End Property
@@ -265,6 +281,10 @@ Public Class EditRecipe
         Grain = other.Grain
         ToningHue = other.ToningHue
         ToningStrength = other.ToningStrength
+        ArtStyle = other.ArtStyle
+        ArtStrength = other.ArtStrength
+        ArtLine = other.ArtLine
+        ArtDetail = other.ArtDetail
     End Sub
 
     Public Function LookEquals(other As EditRecipe) As Boolean

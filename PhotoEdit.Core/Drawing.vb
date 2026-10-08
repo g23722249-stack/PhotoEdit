@@ -43,13 +43,56 @@ Public Enum BrushKind
     DryBrush = 13
     Texture = 14
     FX = 15
+    ' 會讀取畫布顏色的筆（只能用在點陣圖層，見 SpecialBrushes.vb）
+    ''' <summary>混色筆：帶著線條色畫，同時沾起畫布上的顏色混在一起（濕畫）。</summary>
+    Mixer = 16
+    ''' <summary>塗抹筆：不加顏色，把畫布上的顏色沿筆畫推開、抹勻。</summary>
+    Smudge = 17
+    ' 特殊筆
+    ''' <summary>粒子筆：沿筆畫噴出受重力、流場或彈簧牽引的細絲。</summary>
+    Particle = 18
+    ''' <summary>仿製筆：把照片另一處（Alt 點選的來源）畫過來。只能用在點陣圖層。</summary>
+    Clone = 19
+    ''' <summary>貼圖噴槍：沿筆畫噴灑某個主題的貼圖。</summary>
+    StickerHose = 20
 End Enum
 
-''' <summary>筆畫上的一點：座標以「照片高度 = 1」為單位，P 為筆壓 0..1。</summary>
+''' <summary>粒子筆的種類（數值存進編輯檔，不可更動）。</summary>
+Public Enum ParticleKind
+    Gravity = 0
+    Flow = 1
+    Spring = 2
+End Enum
+
+''' <summary>對稱繪圖（數值存進編輯檔，不可更動）。</summary>
+Public Enum SymmetryKind
+    None = 0
+    ''' <summary>左右對稱（以垂直線鏡射）。</summary>
+    MirrorX = 1
+    ''' <summary>上下對稱。</summary>
+    MirrorY = 2
+    ''' <summary>上下左右四向。</summary>
+    MirrorXY = 3
+    ''' <summary>繞中心旋轉 N 等分。</summary>
+    Rotate = 4
+    ''' <summary>萬花筒：旋轉 N 等分，每一份再鏡射。</summary>
+    Kaleido = 5
+End Enum
+
+''' <summary>
+''' 筆畫上的一點：座標以「照片高度 = 1」為單位，P 為筆壓 0..1；
+''' Tx、Ty 為繪圖筆的傾斜（度，−90..90），R 為筆身旋轉（度，0..359）。沒有的時候是 0，不寫進編輯檔。
+''' </summary>
 Public Class DrawPoint
     Public Property X As Single
     Public Property Y As Single
     Public Property P As Single = 1
+    <System.Text.Json.Serialization.JsonIgnore(Condition:=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)>
+    Public Property Tx As Single
+    <System.Text.Json.Serialization.JsonIgnore(Condition:=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)>
+    Public Property Ty As Single
+    <System.Text.Json.Serialization.JsonIgnore(Condition:=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)>
+    Public Property R As Single
 
     Public Sub New()
     End Sub
@@ -59,8 +102,16 @@ Public Class DrawPoint
     End Sub
 
     Public Function Clone() As DrawPoint
-        Return New DrawPoint(X, Y, P)
+        Return New DrawPoint(X, Y, P) With {.Tx = Tx, .Ty = Ty, .R = R}
     End Function
+
+    ''' <summary>有沒有繪圖筆的傾斜或旋轉資料。</summary>
+    <System.Text.Json.Serialization.JsonIgnore>
+    Public ReadOnly Property HasPenAngle As Boolean
+        Get
+            Return Tx <> 0 OrElse Ty <> 0 OrElse R <> 0
+        End Get
+    End Property
 
     Public Function ToPointF() As PointF
         Return New PointF(X, Y)
@@ -139,6 +190,38 @@ Public Class DrawLayer
     ''' <summary>紋理與特效的亂數種子：同一個圖層每次畫出來都一樣。</summary>
     Public Property Seed As Integer = 1
 
+    ' ---- 進階筆刷參數（0 = 不使用；見 BrushEngine 的 Stamp、Bristles） ----
+    ''' <summary>筆印間距（筆寬的 %）；0 = 筆刷預設。</summary>
+    Public Property SpacingPct As Integer
+    ''' <summary>散佈 0..100：筆印往兩側隨機偏移。</summary>
+    Public Property Scatter As Integer
+    ''' <summary>大小變化 0..100：每個筆印隨機變大變小。</summary>
+    Public Property SizeJitter As Integer
+    ''' <summary>色相變化 0..100。</summary>
+    Public Property HueJitter As Integer
+    ''' <summary>明暗變化 0..100。</summary>
+    Public Property LumJitter As Integer
+    ''' <summary>筆壓影響濃淡 0..100（越輕越淡）。</summary>
+    Public Property PressureOpacity As Integer
+    ''' <summary>繪圖筆的傾斜改變筆尖方向與扁平程度（筆越斜，筆觸越寬越扁）。</summary>
+    Public Property PenTilt As Boolean
+    ''' <summary>繪圖筆的筆身旋轉改變筆尖角度（麥克筆、筆毛筆刷）。</summary>
+    Public Property PenRotation As Boolean
+    ''' <summary>混色筆、塗抹筆的濕度 0..100：越濕沾起越多畫布顏色、抹得越長。</summary>
+    Public Property Wet As Integer = 50
+    ''' <summary>對稱繪圖；中心 SymX、SymY（照片高度單位），等分數 SymCount。</summary>
+    Public Property Symmetry As SymmetryKind
+    Public Property SymCount As Integer = 6
+    Public Property SymX As Double
+    Public Property SymY As Double
+    ''' <summary>粒子筆的種類。</summary>
+    Public Property Particle As ParticleKind
+    ''' <summary>貼圖噴槍用的貼圖主題（StickerLibrary 的主題名稱）。</summary>
+    Public Property HoseTheme As String = ""
+    ''' <summary>仿製筆：來源相對於筆畫的位移（照片高度單位）。</summary>
+    Public Property CloneDX As Double
+    Public Property CloneDY As Double
+
     ' ---- 點陣圖層 ----
     ''' <summary>
     ''' 點陣圖層的內容：由下而上依序畫上去的筆畫（每筆是一個單筆的自由繪製圖層，帶自己的筆刷與顏色）、
@@ -175,13 +258,27 @@ Public Class DrawLayer
         StrokeWidth = s.StrokeWidth : Softness = s.Softness : Opacity = s.Opacity : Flow = s.Flow
         Filled = s.Filled : Stroked = s.Stroked : Shadow = s.Shadow
         FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
+        SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
+        PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet
+        Symmetry = s.Symmetry : SymCount = s.SymCount : SymX = s.SymX : SymY = s.SymY
+        Particle = s.Particle : HoseTheme = s.HoseTheme
     End Sub
 
     ''' <summary>和另一個圖層的筆觸設定相同（自由繪製時決定要不要接著畫在同一圖層）。</summary>
     Public Function SameStroke(s As DrawLayer) As Boolean
         Return Brush = s.Brush AndAlso Fx = s.Fx AndAlso Material = s.Material AndAlso StrokeColorArgb = s.StrokeColorArgb AndAlso
                Math.Abs(StrokeWidth - s.StrokeWidth) < 0.00001 AndAlso Softness = s.Softness AndAlso Opacity = s.Opacity AndAlso
-               Flow = s.Flow AndAlso Shadow = s.Shadow
+               Flow = s.Flow AndAlso Shadow = s.Shadow AndAlso
+               SpacingPct = s.SpacingPct AndAlso Scatter = s.Scatter AndAlso SizeJitter = s.SizeJitter AndAlso HueJitter = s.HueJitter AndAlso
+               LumJitter = s.LumJitter AndAlso PressureOpacity = s.PressureOpacity AndAlso PenTilt = s.PenTilt AndAlso PenRotation = s.PenRotation AndAlso
+               Wet = s.Wet AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso
+               Math.Abs(SymX - s.SymX) < 0.00001 AndAlso Math.Abs(SymY - s.SymY) < 0.00001 AndAlso
+               Particle = s.Particle AndAlso HoseTheme = s.HoseTheme
+    End Function
+
+    ''' <summary>會讀取畫布顏色的筆（混色、塗抹、仿製）：只能畫在點陣圖層。</summary>
+    Public Shared Function SamplesCanvas(b As BrushKind) As Boolean
+        Return b = BrushKind.Mixer OrElse b = BrushKind.Smudge OrElse b = BrushKind.Clone
     End Function
 
     <System.Text.Json.Serialization.JsonIgnore>
@@ -202,7 +299,8 @@ Public NotInheritable Class DrawGeometry
         "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製"}
 
     Public Shared ReadOnly BrushNames As String() = {
-        "硬筆", "軟筆", "鉛筆", "炭筆", "粉筆", "蠟筆", "水彩", "油畫", "壓克力", "墨水", "毛筆", "麥克筆", "噴槍", "乾刷", "紋理筆", "特效筆"}
+        "硬筆", "軟筆", "鉛筆", "炭筆", "粉筆", "蠟筆", "水彩", "油畫", "壓克力", "墨水", "毛筆", "麥克筆", "噴槍", "乾刷", "紋理筆", "特效筆",
+        "混色筆", "塗抹筆", "粒子筆", "仿製筆", "貼圖噴槍"}
 
     ''' <summary>特效與材質名稱（依列舉值）；分類與預設顏色見 EffectCatalog。</summary>
     Public Shared ReadOnly Property FxNames As String()
@@ -280,10 +378,63 @@ Public NotInheritable Class DrawGeometry
         Public Closed As Boolean
         ''' <summary>各點筆壓（自由繪製）；Nothing 表示全部為 1。</summary>
         Public Pressure As Single()
+        ''' <summary>各點筆尖角度（弧度，繪圖筆的傾斜或旋轉）；Nothing 表示依筆刷預設。</summary>
+        Public Angle As Single()
+        ''' <summary>各點筆尖扁平程度（1 = 圓，越小越扁；繪圖筆越斜越扁）；Nothing 表示 1。</summary>
+        Public Flat As Single()
     End Structure
 
-    ''' <summary>圖層的所有外形線（世界座標）。</summary>
+    ''' <summary>圖層的所有外形線（世界座標），含對稱繪圖的複本。</summary>
     Public Shared Function Figures(layer As DrawLayer) As List(Of Figure)
+        Dim list = BaseFigures(layer)
+        If layer.Symmetry = SymmetryKind.None OrElse layer.Shape = DrawShape.Raster OrElse list.Count = 0 Then Return list
+        Return ApplySymmetry(list, layer.Symmetry, layer.SymCount, layer.SymX, layer.SymY)
+    End Function
+
+    ''' <summary>
+    ''' 對稱複本：左右、上下、四向鏡射，或繞中心旋轉 n 等分（萬花筒每一份再鏡射）。
+    ''' 筆尖角度跟著鏡射或旋轉，所以麥克筆、筆毛的方向也是對稱的。
+    ''' </summary>
+    Public Shared Function ApplySymmetry(figs As List(Of Figure), kind As SymmetryKind, count As Integer, cx As Double, cy As Double) As List(Of Figure)
+        ' 每個變換：(a, b, c, d) 為 2×2 矩陣，mirror 表示有鏡射（角度要反過來）。
+        Dim xf As New List(Of (A As Double, B As Double, C As Double, D As Double))()
+        Select Case kind
+            Case SymmetryKind.MirrorX : xf.AddRange({(1.0, 0.0, 0.0, 1.0), (-1.0, 0.0, 0.0, 1.0)})
+            Case SymmetryKind.MirrorY : xf.AddRange({(1.0, 0.0, 0.0, 1.0), (1.0, 0.0, 0.0, -1.0)})
+            Case SymmetryKind.MirrorXY : xf.AddRange({(1.0, 0.0, 0.0, 1.0), (-1.0, 0.0, 0.0, 1.0), (1.0, 0.0, 0.0, -1.0), (-1.0, 0.0, 0.0, -1.0)})
+            Case SymmetryKind.Rotate, SymmetryKind.Kaleido
+                Dim n = Math.Max(2, Math.Min(24, count))
+                For k = 0 To n - 1
+                    Dim a = 2 * Math.PI * k / n, c = Math.Cos(a), s = Math.Sin(a)
+                    xf.Add((c, -s, s, c))
+                    ' 萬花筒：每一份再以該方向的軸鏡射（旋轉 × 左右鏡射）。
+                    If kind = SymmetryKind.Kaleido Then xf.Add((-c, -s, -s, c))
+                Next
+            Case Else
+                Return figs
+        End Select
+        Dim result As New List(Of Figure)()
+        For Each m In xf
+            For Each f In figs
+                Dim pts = f.Points.Select(Function(p)
+                                              Dim dx = p.X - cx, dy = p.Y - cy
+                                              Return New PointF(CSng(cx + m.A * dx + m.B * dy), CSng(cy + m.C * dx + m.D * dy))
+                                          End Function).ToArray()
+                Dim ang As Single() = Nothing
+                If f.Angle IsNot Nothing Then
+                    ang = f.Angle.Select(Function(a)
+                                             If Single.IsNaN(a) Then Return a
+                                             Dim vx = Math.Cos(a), vy = Math.Sin(a)
+                                             Return CSng(Math.Atan2(m.C * vx + m.D * vy, m.A * vx + m.B * vy))
+                                         End Function).ToArray()
+                End If
+                result.Add(New Figure With {.Points = pts, .Closed = f.Closed, .Pressure = f.Pressure, .Angle = ang, .Flat = f.Flat})
+            Next
+        Next
+        Return result
+    End Function
+
+    Private Shared Function BaseFigures(layer As DrawLayer) As List(Of Figure)
         Dim list As New List(Of Figure)()
         Select Case layer.Shape
             Case DrawShape.Freehand
@@ -291,7 +442,21 @@ Public NotInheritable Class DrawGeometry
                     For Each s In layer.Strokes
                         If s.Points.Count = 0 Then Continue For
                         Dim sm = Smooth(s.Points)
-                        list.Add(New Figure With {.Points = sm.Select(Function(p) p.ToPointF()).ToArray(), .Pressure = sm.Select(Function(p) p.P).ToArray()})
+                        Dim fig As New Figure With {.Points = sm.Select(Function(p) p.ToPointF()).ToArray(), .Pressure = sm.Select(Function(p) p.P).ToArray()}
+                        If (layer.PenTilt OrElse layer.PenRotation) AndAlso sm.Any(Function(p) p.HasPenAngle) Then
+                            ' 筆身旋轉優先決定角度；否則用傾斜的方向。傾斜越大筆尖越扁（最多扁到 0.4）。
+                            fig.Angle = sm.Select(Function(p)
+                                                      If layer.PenRotation AndAlso p.R <> 0 Then Return CSng(p.R * Math.PI / 180)
+                                                      If layer.PenTilt AndAlso (p.Tx <> 0 OrElse p.Ty <> 0) Then Return CSng(Math.Atan2(p.Ty, p.Tx))
+                                                      Return Single.NaN
+                                                  End Function).ToArray()
+                            fig.Flat = sm.Select(Function(p)
+                                                     If Not layer.PenTilt Then Return 1.0F
+                                                     Dim t = Math.Min(1, Math.Sqrt(p.Tx * p.Tx + p.Ty * p.Ty) / 60)
+                                                     Return CSng(1 - 0.6 * t)
+                                                 End Function).ToArray()
+                        End If
+                        list.Add(fig)
                     Next
                 End If
             Case DrawShape.Line
@@ -623,7 +788,8 @@ Public NotInheritable Class DrawGeometry
                 Dim t = k / 4.0F, t2 = t * t, t3 = t2 * t
                 Dim f = Function(a As Single, b As Single, c As Single, d As Single) _
                     0.5F * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3)
-                result.Add(New DrawPoint(f(p0.X, p1.X, p2.X, p3.X), f(p0.Y, p1.Y, p2.Y, p3.Y), p1.P + (p2.P - p1.P) * t))
+                result.Add(New DrawPoint(f(p0.X, p1.X, p2.X, p3.X), f(p0.Y, p1.Y, p2.Y, p3.Y), p1.P + (p2.P - p1.P) * t) With {
+                    .Tx = p1.Tx + (p2.Tx - p1.Tx) * t, .Ty = p1.Ty + (p2.Ty - p1.Ty) * t, .R = If(Math.Abs(p2.R - p1.R) > 180, p1.R, p1.R + (p2.R - p1.R) * t)})
             Next
         Next
         result.Add(pts(pts.Count - 1))

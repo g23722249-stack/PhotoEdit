@@ -273,6 +273,7 @@ Partial Friend Class PreviewCanvas
         SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or
                  ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw Or ControlStyles.Selectable, True)
         BackColor = Color.FromArgb(38, 38, 40)
+        InitScrollBars()
         ForeColor = Color.FromArgb(170, 170, 175)
     End Sub
 
@@ -282,6 +283,7 @@ Partial Friend Class PreviewCanvas
         End Get
         Set(value As Image)
             _image = value
+            UpdateScrollBars()
             Invalidate()
         End Set
     End Property
@@ -333,6 +335,21 @@ Partial Friend Class PreviewCanvas
         End Get
     End Property
 
+    ''' <summary>檢視狀態（倍率、中心）：多文件切換時各自記住。倍率 0 表示符合視窗。</summary>
+    Public Property ViewState As (Zoom As Double, Center As PointF)
+        Get
+            Return (_zoom, _center)
+        End Get
+        Set(value As (Zoom As Double, Center As PointF))
+            _zoom = value.Zoom
+            _center = value.Center
+            ClampCenter()
+            UpdateScrollBars()
+            Invalidate()
+            RaiseEvent ZoomChanged(Me, EventArgs.Empty)
+        End Set
+    End Property
+
     ''' <summary>目前實際倍率（螢幕像素 / 原圖像素）。</summary>
     Public Function EffectiveZoom() As Double
         If _image Is Nothing Then Return 0
@@ -342,8 +359,8 @@ Partial Friend Class PreviewCanvas
     Private Function FitZoom() As Double
         If _image Is Nothing Then Return 1
         Dim margin = 12
-        Dim availW = Math.Max(1, ClientSize.Width - margin * 2)
-        Dim availH = Math.Max(1, ClientSize.Height - margin * 2)
+        Dim availW = Math.Max(1, ViewSize.Width - margin * 2)
+        Dim availH = Math.Max(1, ViewSize.Height - margin * 2)
         Return Math.Min(availW / (_image.Width * _imageScale), availH / (_image.Height * _imageScale))
     End Function
 
@@ -351,6 +368,7 @@ Partial Friend Class PreviewCanvas
         If _zoom = 0 Then Return
         _zoom = 0
         _center = New PointF(0.5F, 0.5F)
+        UpdateScrollBars()
         Invalidate()
         RaiseEvent ZoomChanged(Me, EventArgs.Empty)
     End Sub
@@ -364,13 +382,13 @@ Partial Friend Class PreviewCanvas
             Return
         End If
         zoom = Math.Min(MaxZoom, zoom)
-        Dim a = If(anchor, New Point(ClientSize.Width \ 2, ClientSize.Height \ 2))
+        Dim a = If(anchor, New Point(ViewSize.Width \ 2, ViewSize.Height \ 2))
         Dim before = ScreenToNormalized(a)
         _zoom = zoom
         ' 讓 anchor 下的影像位置縮放後仍在 anchor 下。
         Dim dispW = _image.Width * _imageScale * _zoom, dispH = _image.Height * _imageScale * _zoom
-        _center = New PointF(CSng(before.X - (a.X - ClientSize.Width / 2.0) / dispW),
-                             CSng(before.Y - (a.Y - ClientSize.Height / 2.0) / dispH))
+        _center = New PointF(CSng(before.X - (a.X - ViewSize.Width / 2.0) / dispW),
+                             CSng(before.Y - (a.Y - ViewSize.Height / 2.0) / dispH))
         ClampCenter()
         Invalidate()
         RaiseEvent ZoomChanged(Me, EventArgs.Empty)
@@ -387,9 +405,10 @@ Partial Friend Class PreviewCanvas
     Private Sub ClampCenter()
         If _image Is Nothing OrElse _zoom = 0 Then Return
         Dim dispW = _image.Width * _imageScale * _zoom, dispH = _image.Height * _imageScale * _zoom
-        Dim halfW = ClientSize.Width / 2.0 / dispW, halfH = ClientSize.Height / 2.0 / dispH
+        Dim halfW = ViewSize.Width / 2.0 / dispW, halfH = ViewSize.Height / 2.0 / dispH
         _center = New PointF(CSng(If(halfW >= 0.5, 0.5, Math.Max(halfW, Math.Min(1 - halfW, _center.X)))),
                              CSng(If(halfH >= 0.5, 0.5, Math.Max(halfH, Math.Min(1 - halfH, _center.Y)))))
+        UpdateScrollBars()
     End Sub
 
     ''' <summary>影像在畫布上的顯示位置（可能大於畫布）。</summary>
@@ -397,8 +416,8 @@ Partial Friend Class PreviewCanvas
         If _image Is Nothing Then Return RectangleF.Empty
         Dim z = EffectiveZoom()
         Dim w = CSng(_image.Width * _imageScale * z), h = CSng(_image.Height * _imageScale * z)
-        If _zoom = 0 Then Return New RectangleF((ClientSize.Width - w) / 2, (ClientSize.Height - h) / 2, w, h)
-        Return New RectangleF(ClientSize.Width / 2.0F - _center.X * w, ClientSize.Height / 2.0F - _center.Y * h, w, h)
+        If _zoom = 0 Then Return New RectangleF((ViewSize.Width - w) / 2, (ViewSize.Height - h) / 2, w, h)
+        Return New RectangleF(ViewSize.Width / 2.0F - _center.X * w, ViewSize.Height / 2.0F - _center.Y * h, w, h)
     End Function
 
     ''' <summary>畫布上的點換成影像 0..1 座標；不在影像範圍內時回傳 Nothing（拖放貼圖用）。</summary>
@@ -432,6 +451,7 @@ Partial Friend Class PreviewCanvas
             _cropMode = value
             _drag = DragMode.None
             If value Then ZoomToFit()
+            UpdateScrollBars()
             Cursor = If(value, Cursors.Cross, Cursors.Default)
             Invalidate()
         End Set
@@ -886,8 +906,21 @@ Partial Friend Class PreviewCanvas
     Private Const PT_PEN As Integer = 3
     Private Const PEN_MASK_PRESSURE As UInteger = 1
 
+    Private Const PEN_MASK_ROTATION As UInteger = 2
+    Private Const PEN_MASK_TILT_X As UInteger = 4
+    Private Const PEN_MASK_TILT_Y As UInteger = 8
+
     Private _penPressure As Single?
     Private _penTime As Integer
+    Private _penTiltX As Single, _penTiltY As Single, _penRotation As Single
+
+    ''' <summary>繪圖筆的傾斜（度）與筆身旋轉（度）；不是用筆時全部為 0。</summary>
+    Public ReadOnly Property PenAngles As (TiltX As Single, TiltY As Single, Rotation As Single)
+        Get
+            If Not PenPressure.HasValue Then Return (0, 0, 0)
+            Return (_penTiltX, _penTiltY, _penRotation)
+        End Get
+    End Property
 
     <Runtime.InteropServices.StructLayout(Runtime.InteropServices.LayoutKind.Sequential)>
     Private Structure NativePoint
@@ -954,6 +987,10 @@ Partial Friend Class PreviewCanvas
             If Not GetPointerType(id, type) OrElse type <> PT_PEN Then Return
             Dim info As POINTER_PEN_INFO
             If Not GetPointerPenInfo(id, info) Then Return
+            ' 傾斜（度，−90..90）與筆身旋轉（度，0..359）；筆不回報時為 0。
+            _penTiltX = If((info.penMask And PEN_MASK_TILT_X) <> 0, CSng(info.tiltX), 0)
+            _penTiltY = If((info.penMask And PEN_MASK_TILT_Y) <> 0, CSng(info.tiltY), 0)
+            _penRotation = If((info.penMask And PEN_MASK_ROTATION) <> 0, CSng(info.rotation), 0)
             If m.Msg = WM_POINTERUP Then
                 _penPressure = Nothing
             ElseIf (info.penMask And PEN_MASK_PRESSURE) = 0 Then

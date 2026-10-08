@@ -302,8 +302,8 @@ Partial Friend Class frmEditor
 
         Protected Overrides Sub OnPaint(e As PaintEventArgs)
             Dim g = e.Graphics
-            g.Clear(If(_hover, Color.FromArgb(225, 236, 252), Color.White))
-            Using pen As New Pen(If(_hover, Color.FromArgb(90, 140, 220), Color.FromArgb(215, 220, 228)))
+            g.Clear(ThemeManager.Back(If(_hover, Color.FromArgb(225, 236, 252), Color.White)))
+            Using pen As New Pen(If(_hover, Color.FromArgb(90, 140, 220), ThemeManager.Line(Color.FromArgb(215, 220, 228))))
                 g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1)
             End Using
             If _preview IsNot Nothing Then

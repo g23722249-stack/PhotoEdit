@@ -78,6 +78,7 @@ Partial Friend Class frmEditor
 
     Public Sub New(Optional startupPath As String = Nothing)
         _startupPath = startupPath
+        _mdi = If(ForceMdi, _appSettings.Mdi) ' 單一或多文件：啟動時決定，設定改了要重開才生效
         Text = AppName
         Size = New Size(1320, 900)
         MinimumSize = New Size(860, 620)
@@ -105,7 +106,7 @@ Partial Friend Class frmEditor
         _canvas.AllowDrop = True
 
         ' 加入順序決定停靠順序（最後加入的最先停靠）：狀態列最底、右側面板全高，濾鏡列與裁切列只在畫布下方。
-        Controls.Add(_canvas)
+        Controls.Add(If(_mdi, BuildDocHost(), CType(_canvas, Control)))
         Controls.Add(_drawBar)
         Controls.Add(_drawStrip)
         Controls.Add(_presetStrip)
@@ -143,6 +144,10 @@ Partial Friend Class frmEditor
         UpdateStatus()
 
         Me.WindowState = FormWindowState.Maximized
+        ' 配色：介面都建好之後才套用（記住淺色原值，之後可以即時切換）。
+        If _appSettings.DarkTheme Then Aqua.Theme.Dark = True
+        CaptureBlankDocument()
+        ThemeManager.Attach(Me)
     End Sub
 
     '=====================================================================
@@ -178,6 +183,8 @@ Partial Friend Class frmEditor
         editMenu.AddItem(Item("copyadj", "複製調整 (Ctrl+Shift+C)"))
         editMenu.AddItem(Item("pasteadj", "貼上調整 (Ctrl+Shift+V)"))
         editMenu.AddItem(Item("resetadj", "重設調整"))
+        editMenu.AddItem(New Aqua.MenuItem("-"))
+        editMenu.AddItem(Item("settings", "設定… (Ctrl+,)"))
 
         Dim imageMenu = root.AddItem(New Aqua.MenuItem("影像"))
         imageMenu.AddItem(Item("rotl", "向左轉 (Ctrl+L)"))
@@ -212,6 +219,8 @@ Partial Friend Class frmEditor
         viewMenu.AddItem(Item("zoomin", "放大 (Ctrl++)"))
         viewMenu.AddItem(Item("zoomout", "縮小 (Ctrl+-)"))
 
+        BuildWindowMenu(root) ' 多文件才有
+
         Dim helpMenu = root.AddItem(New Aqua.MenuItem("說明"))
         _showHelpItem = helpMenu.AddItem(Item("togglehelp", "顯示使用說明（滑鼠停在按鈕上）"))
         _showHelpItem.Checked = _appSettings.ShowHelp
@@ -230,6 +239,7 @@ Partial Friend Class frmEditor
     '=====================================================================
 
     Private Sub RunCommand(name As String)
+        If HandleMdiCommand(name) Then Return
         Select Case name
             Case "new" : NewImageWithDialog()
             Case "open" : OpenWithDialog()
@@ -273,6 +283,7 @@ Partial Friend Class frmEditor
             Case "pasteadj"
                 If _copiedAdjustments IsNot Nothing Then ApplyChange(Sub(r) r.CopyAdjustmentsFrom(_copiedAdjustments))
             Case "resetadj" : ApplyChange(Sub(r) r.ResetAdjustments())
+            Case "settings" : OpenSettings()
             Case "rotl"
                 If _cropMode Then CropRotate(False) : Return
                 ApplyChange(Sub(r) r.RotateLeft())
@@ -344,6 +355,10 @@ Partial Friend Class frmEditor
         Select Case keyData
             Case Keys.Control Or Keys.N : cmd = "new"
             Case Keys.Control Or Keys.O : cmd = "open"
+            Case Keys.Control Or Keys.Oemcomma : cmd = "settings"
+            Case Keys.Control Or Keys.W : If _mdi Then cmd = "closedoc"
+            Case Keys.Control Or Keys.Tab : If _mdi Then cmd = "nextdoc"
+            Case Keys.Control Or Keys.Shift Or Keys.Tab : If _mdi Then NextDocument(-1) : Return True
             Case Keys.Control Or Keys.S : cmd = "save"
             Case Keys.Control Or Keys.Shift Or Keys.S : cmd = "saveas"
             Case Keys.Control Or Keys.C : cmd = "copy"
@@ -434,6 +449,7 @@ Partial Friend Class frmEditor
                 If row.Slider.Value <> v Then row.Slider.Value = v
                 row.ValueLabel.Text = row.Format(v)
             Next
+            SyncArtControls()
         Finally
             _syncing = False
         End Try
@@ -526,6 +542,7 @@ Partial Friend Class frmEditor
         Else
             Text = $"{AppName} — {DocumentName}{If(IsDirty, " *", "")}"
         End If
+        UpdateDocChrome() ' 多文件：分頁與子視窗的標題
     End Sub
 
     Private ReadOnly Property IsDirty As Boolean
@@ -572,6 +589,7 @@ Partial Friend Class frmEditor
                 Dim look As New EditRecipe()
                 p.ApplyTo(look)
                 ImagePipeline.ApplyTone(t, look)
+                ArtStyles.Apply(t, look)
                 ImagePipeline.ApplyEffects(t, look)
                 thumbs.Add(t)
             Next
@@ -744,7 +762,7 @@ Partial Friend Class frmEditor
     ''' <summary>開啟照片或專案檔（.pedx）。</summary>
     Private Sub OpenPhoto(photoPath As String)
         If ProjectFile.IsProject(photoPath) Then OpenProject(photoPath) : Return
-        If Not ConfirmDiscard() Then Return
+        If Not ConfirmReplaceDocument() Then Return
 
         Dim photo As PhotoFile
         Cursor = Cursors.WaitCursor
@@ -765,6 +783,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>換成新的照片與配方（docPath 為專案檔路徑；一般照片為 Nothing）。</summary>
     Private Sub ShowDocument(photo As PhotoFile, recipe As EditRecipe, docPath As String, Optional workDir As String = Nothing)
+        BeginNewDocument() ' 多文件：開在新的分頁（原本的文件收起來，不會被釋放）
         ExitCropMode(apply:=False)
         _canvas.Image = Nothing
         _canvas.ZoomToFit()
@@ -793,6 +812,7 @@ Partial Friend Class frmEditor
         UpdateTitle()
         StartFaceDetection()
         RenderNow()
+        EndNewDocument()
     End Sub
 
     Private Sub DisposeImages()
@@ -833,6 +853,14 @@ Partial Friend Class frmEditor
             AddStickerAt(key, If(at.HasValue, DisplayToPhoto(at.Value), New PointF(0.5F, 0.5F)))
             Return
         End If
+        If _mdi Then
+            ' 多文件：拖進幾張就開幾份
+            Dim files = TryCast(e.Data?.GetData(DataFormats.FileDrop), String())
+            If files Is Nothing Then Return
+            Dim photos = files.Where(Function(f) PhotoFile.IsSupported(f) OrElse ProjectFile.IsProject(f)).ToList()
+            If photos.Count > 0 Then BeginInvoke(Sub() photos.ForEach(Sub(p) OpenPhoto(p)))
+            Return
+        End If
         Dim photoPath = DroppedPhoto(e)
         If photoPath IsNot Nothing Then BeginInvoke(Sub() OpenPhoto(photoPath)) ' 讓拖曳來源先結束，對話框才不會卡住檔案總管
     End Sub
@@ -854,10 +882,11 @@ Partial Friend Class frmEditor
 
     Protected Overrides Sub OnFormClosing(e As FormClosingEventArgs)
         MyBase.OnFormClosing(e)
-        If Not e.Cancel AndAlso Not ConfirmDiscard() Then e.Cancel = True
+        If Not e.Cancel AndAlso Not ConfirmCloseAll() Then e.Cancel = True
     End Sub
 
     Protected Overrides Sub OnFormClosed(e As FormClosedEventArgs)
+        DisposeInactiveDocuments() ' 多文件：其他分頁的照片與暫存
         _renderTimer.Dispose()
         _hiResTimer.Dispose()
         _canvas.Image = Nothing

@@ -55,7 +55,7 @@ Friend Class DrawToolStrip
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         MyBase.OnPaint(e)
-        Using pen As New Pen(Color.FromArgb(200, 205, 214))
+        Using pen As New Pen(ThemeManager.Line(Color.FromArgb(200, 205, 214)))
             e.Graphics.DrawLine(pen, Width - 1, 0, Width - 1, Height)
         End Using
     End Sub
@@ -91,13 +91,13 @@ Friend Class DrawToolStrip
             g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
             Dim r = New Rectangle(0, 0, Width - 1, Height - 1)
             If _selected OrElse _hover Then
-                Using br As New SolidBrush(If(_selected, Color.FromArgb(210, 228, 250), Color.FromArgb(226, 231, 238))),
-                      pen As New Pen(If(_selected, Color.FromArgb(90, 140, 220), Color.FromArgb(190, 198, 210)))
+                Using br As New SolidBrush(ThemeManager.Back(If(_selected, Color.FromArgb(210, 228, 250), Color.FromArgb(226, 231, 238)))),
+                      pen As New Pen(If(_selected, Color.FromArgb(90, 140, 220), ThemeManager.Line(Color.FromArgb(190, 198, 210))))
                     g.FillRectangle(br, r)
                     g.DrawRectangle(pen, r)
                 End Using
             End If
-            Dim iconColor = If(_selected, Color.FromArgb(24, 95, 165), Color.FromArgb(50, 54, 62))
+            Dim iconColor = ThemeManager.Fore(If(_selected, Color.FromArgb(24, 95, 165), Color.FromArgb(50, 54, 62)))
             DrawIcons.DrawTool(g, Tool, New RectangleF(4, 4, Width - 8, Height - 8), iconColor)
         End Sub
 

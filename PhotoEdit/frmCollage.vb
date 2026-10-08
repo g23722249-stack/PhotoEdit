@@ -76,6 +76,7 @@ Friend Class frmCollage
         Dim fit = CollageLayout.BuiltIn.FirstOrDefault(Function(l) l.Cells.Count >= Math.Max(2, _photos.Count))
         _layoutList.SelectedIndex = If(fit Is Nothing, 0, CollageLayout.BuiltIn.ToList().IndexOf(fit))
         RenderPreview()
+        ThemeManager.Attach(Me)
     End Sub
 
     Private Function BuildSidePanel() As Panel

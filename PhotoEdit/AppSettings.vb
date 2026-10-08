@@ -8,6 +8,12 @@ Friend Class AppSettings
     Public Property CropGuide As Integer
     ''' <summary>滑鼠停在控制項上時顯示使用說明視窗。</summary>
     Public Property ShowHelp As Boolean = True
+    ''' <summary>深色配色（「設定」視窗切換）；預設淺色。</summary>
+    Public Property DarkTheme As Boolean
+    ''' <summary>多文件（MDI）：同時開多張畫布；False 為單一文件（SDI）。改了要重開程式才生效。</summary>
+    Public Property Mdi As Boolean
+    ''' <summary>多文件時用子視窗（可並排、重疊）顯示；False 為分頁。</summary>
+    Public Property MdiWindows As Boolean
 
     Private Shared ReadOnly FilePath As String =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PhotoEdit", "settings.json")

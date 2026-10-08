@@ -21,7 +21,8 @@ Partial Friend Class frmEditor
         _drawEraser.UseVisualStyleBackColor = True
         _help.SetHelp("draw.eraser", _drawEraser)
         AddHandler _drawEraser.CheckedChanged, Sub()
-                                                   _drawEraser.BackColor = If(_drawEraser.Checked, Color.FromArgb(255, 214, 120), SystemColors.Control)
+                                                   _drawEraser.BackColor = If(_drawEraser.Checked, Color.FromArgb(255, 214, 120), If(ThemeManager.Dark, ThemeManager.ButtonBack, SystemColors.Control))
+                                                   _drawEraser.ForeColor = If(_drawEraser.Checked OrElse Not ThemeManager.Dark, SystemColors.ControlText, Aqua.Theme.TextColor)
                                                    UpdateDrawHint()
                                                End Sub
     End Sub
@@ -51,7 +52,7 @@ Partial Friend Class frmEditor
         End If
         _dd = DrawDrag.Freehand
         _freeRaster = True
-        _freePoints = New List(Of DrawPoint) From {New DrawPoint(u.X, u.Y, StrokePressure(e.Location, first:=True))}
+        _freePoints = New List(Of DrawPoint) From {StrokePoint(u, e.Location, True)}
     End Sub
 
     ''' <summary>向量圖層不能直接畫：點陣化它，或在它上面新增一個點陣圖層。</summary>
@@ -94,13 +95,21 @@ Partial Friend Class frmEditor
         Dim op As New DrawLayer With {.Shape = DrawShape.Freehand, .Seed = _drawRandom.Next(1, 100000), .Eraser = _drawEraser.Checked}
         op.CopyStyleFrom(_drawStyle)
         If op.Eraser Then op.Shadow = False
+        If op.Brush = BrushKind.Clone AndAlso Not op.Eraser AndAlso stroke.Points.Count > 0 Then
+            ' 對齊模式（同 Photoshop）：第一筆決定來源與筆畫的距離，之後每一筆都維持這個距離，直到重新 Alt 點選來源。
+            If Not _cloneOffset.HasValue AndAlso _cloneSource.HasValue Then
+                _cloneOffset = New PointF(_cloneSource.Value.X - stroke.Points(0).X, _cloneSource.Value.Y - stroke.Points(0).Y)
+            End If
+            If _cloneOffset.HasValue Then op.CloneDX = Math.Round(_cloneOffset.Value.X, 5) : op.CloneDY = Math.Round(_cloneOffset.Value.Y, 5)
+        End If
         Dim sel = SelDraw(_recipe)
         If sel IsNot Nothing AndAlso sel.Shape = DrawShape.Raster Then
-            ' 圖層移動過時，筆畫要扣掉圖層的位移。
+            ' 圖層移動過時，筆畫（與對稱中心）要扣掉圖層的位移。
             Dim dx = CSng(sel.X), dy = CSng(sel.Y)
             For Each p In stroke.Points
                 p.X -= dx : p.Y -= dy
             Next
+            op.SymX -= dx : op.SymY -= dy
             op.Strokes = New List(Of DrawStroke) From {stroke}
             Dim index = _drawIndex
             ApplyChange(Sub(r)

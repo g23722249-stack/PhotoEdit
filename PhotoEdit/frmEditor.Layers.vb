@@ -159,18 +159,18 @@ Partial Friend Class frmEditor
         Dim s = o(position)
         Dim g = e.Graphics
         Dim r = e.Bounds
-        Using bg As New SolidBrush(If(position = _stackIndex, Color.FromArgb(210, 228, 250), Color.White))
+        Using bg As New SolidBrush(ThemeManager.Back(If(position = _stackIndex, Color.FromArgb(210, 228, 250), Color.White)))
             g.FillRectangle(bg, r)
         End Using
         g.SmoothingMode = SmoothingMode.AntiAlias
-        Dim fg = If(s.Visible, Color.FromArgb(40, 44, 52), Color.FromArgb(160, 165, 172))
+        Dim fg = ThemeManager.Fore(If(s.Visible, Color.FromArgb(40, 44, 52), Color.FromArgb(160, 165, 172)))
         DrawEye(g, New RectangleF(r.X + 4, r.Y + 7, 18, 16), s.Visible)
         If Not s.IsOverlay Then DrawLock(g, New RectangleF(r.X + 26, r.Y + 7, 16, 16), s.Locked)
         Dim icon = New RectangleF(r.X + 48, r.Y + 5, 20, 20)
         If s.IsOverlay Then
             Dim glyph = If(s.Overlay.Kind = OverlayKind.Text, "T", "★")
             Using f As New Font(_stackList.Font, FontStyle.Bold)
-                TextRenderer.DrawText(g, glyph, f, Rectangle.Round(icon), If(s.Overlay.Kind = OverlayKind.Text, Color.FromArgb(40, 90, 170), Color.FromArgb(220, 120, 20)),
+                TextRenderer.DrawText(g, glyph, f, Rectangle.Round(icon), If(s.Overlay.Kind = OverlayKind.Text, ThemeManager.Fore(Color.FromArgb(40, 90, 170)), Color.FromArgb(220, 120, 20)),
                                       TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             End Using
         Else
@@ -180,9 +180,9 @@ Partial Friend Class frmEditor
         Dim rightWidth = TextRenderer.MeasureText(right, _stackList.Font).Width + 6
         TextRenderer.DrawText(g, s.DisplayName, _stackList.Font, New Rectangle(r.X + 74, r.Y, r.Width - 74 - rightWidth, r.Height), fg,
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
-        TextRenderer.DrawText(g, right, _stackList.Font, New Rectangle(r.Right - rightWidth, r.Y, rightWidth - 4, r.Height), Color.FromArgb(130, 136, 146),
+        TextRenderer.DrawText(g, right, _stackList.Font, New Rectangle(r.Right - rightWidth, r.Y, rightWidth - 4, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPrefix)
-        Using line As New Pen(Color.FromArgb(232, 235, 240))
+        Using line As New Pen(ThemeManager.Line(Color.FromArgb(232, 235, 240)))
             g.DrawLine(line, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1)
         End Using
     End Sub

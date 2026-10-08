@@ -168,6 +168,7 @@ Partial Friend Class frmEditor
         AddRow(L, MakeRow("toninghue", "色相", 0, 359, Function(v) v & "°", Function(r) r.ToningHue, Sub(r, v) r.ToningHue = v))
         AddRow(L, MakeRow("toningstrength", "強度", 0, 100, AddressOf Plain, Function(r) r.ToningStrength, Sub(r, v) r.ToningStrength = v))
         AddHint(L, "例如：飽和度 -100 + 色相 35° = 褐色老照片。" & vbCrLf & "下方濾鏡列可一次套用整組風格。")
+        BuildArtSection(L)
     End Sub
 
     Private Sub BuildPortraitPage(page As Aqua.TabPage)

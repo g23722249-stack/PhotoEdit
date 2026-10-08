@@ -22,7 +22,7 @@ Partial Friend Class frmEditor
     End Property
 
     Private Sub NewImageWithDialog()
-        If Not ConfirmDiscard() Then Return
+        If Not ConfirmReplaceDocument() Then Return
 
         ' 使用中影像：大小用輸出大小（含裁切、邊框），當底圖時以全尺寸算圖。
         Dim currentSize As Size? = Nothing

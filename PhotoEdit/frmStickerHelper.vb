@@ -118,6 +118,7 @@ Friend Class frmStickerHelper
         _status.Text = "開啟或貼上一張排了很多貼圖的圖片（Ctrl+V）。"
         ' 開啟時直接最大化（還原時用上面的大小）；範圍限制在工作區，見 UpdateMaximizedBounds。
         WindowState = FormWindowState.Maximized
+        ThemeManager.Attach(Me)
     End Sub
 
     ' 最大化：AquaForm 沒有系統邊框，最大化時預設會蓋住工作列，所以限制在目前螢幕的工作區（同 frmEditor）。
@@ -1134,7 +1135,7 @@ Friend Class frmStickerHelper
 
         Protected Overrides Sub OnPaint(e As PaintEventArgs)
             Dim g = e.Graphics
-            g.Clear(If(Selected, Color.FromArgb(210, 228, 250), Color.White))
+            g.Clear(ThemeManager.Back(If(Selected, Color.FromArgb(210, 228, 250), Color.White)))
             Dim box = New Rectangle(5, 5, Width - 10, Height - 30)
             For y = box.Top To box.Bottom - 1 Step 8
                 For x = box.Left To box.Right - 1 Step 8
@@ -1150,7 +1151,7 @@ Friend Class frmStickerHelper
                 g.DrawImage(Picture, box.X + (box.Width - w) \ 2, box.Y + (box.Height - h) \ 2, w, h)
             End If
             If Not Included Then
-                Using veil As New SolidBrush(Color.FromArgb(150, 255, 255, 255))
+                Using veil As New SolidBrush(If(ThemeManager.Dark, Color.FromArgb(150, 30, 33, 39), Color.FromArgb(150, 255, 255, 255)))
                     g.FillRectangle(veil, box)
                 End Using
             End If
@@ -1163,8 +1164,8 @@ Friend Class frmStickerHelper
                     g.DrawLines(pen, {New Point(chk.X + 3, chk.Y + 8), New Point(chk.X + 7, chk.Y + 12), New Point(chk.X + 13, chk.Y + 4)})
                 End Using
             End If
-            TextRenderer.DrawText(g, Label, Font, New Rectangle(26, Height - 24, Width - 28, 20), Color.FromArgb(60, 66, 78), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
-            Using pen As New Pen(If(Selected, Color.FromArgb(55, 138, 221), Color.FromArgb(205, 210, 218)), If(Selected, 2, 1))
+            TextRenderer.DrawText(g, Label, Font, New Rectangle(26, Height - 24, Width - 28, 20), ThemeManager.Fore(Color.FromArgb(60, 66, 78)), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
+            Using pen As New Pen(If(Selected, Color.FromArgb(55, 138, 221), ThemeManager.Line(Color.FromArgb(205, 210, 218))), If(Selected, 2, 1))
                 g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1)
             End Using
         End Sub

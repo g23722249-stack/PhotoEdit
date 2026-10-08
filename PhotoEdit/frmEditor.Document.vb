@@ -74,7 +74,7 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private Sub OpenProject(projectPath As String)
-        If Not ConfirmDiscard() Then Return
+        If Not ConfirmReplaceDocument() Then Return
         CleanOldWorkDirs()
         Dim workDir = Path.Combine(ProjectTempRoot, Guid.NewGuid().ToString("N"))
         Dim loaded As LoadedProject

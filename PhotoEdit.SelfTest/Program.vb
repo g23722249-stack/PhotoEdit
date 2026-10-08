@@ -31,6 +31,8 @@ Module Program
             WandTestsRun()
             SplitterTestsRun()
             RasterTestsRun()
+            SpecialBrushTestsRun()
+            ArtTestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

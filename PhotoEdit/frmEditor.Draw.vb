@@ -88,7 +88,8 @@ Partial Friend Class frmEditor
     Private Sub BuildDrawPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         AddHeading(L, "筆刷")
-        _brushGrid.SetBounds(8, L.Y, L.Width - 8, 4 * 42)
+        Dim brushRows = (DrawGeometry.BrushNames.Length + 3) \ 4
+        _brushGrid.SetBounds(8, L.Y, L.Width - 8, brushRows * 42)
         _brushGrid.BackColor = Color.Transparent
         For i = 0 To DrawGeometry.BrushNames.Length - 1
             Dim t As New BrushTile(CType(i, BrushKind))
@@ -99,7 +100,7 @@ Partial Friend Class frmEditor
         Next
         AddHandler _brushGrid.Resize, Sub() LayoutBrushTiles()
         L.Add(_brushGrid)
-        L.Y += 4 * 42 + 2
+        L.Y += brushRows * 42 + 2
         LayoutBrushTiles()
 
         ' 特效／材質：先選分類，再選項目（選項目時線條色換成建議顏色）。
@@ -169,6 +170,7 @@ Partial Friend Class frmEditor
         AddRow(L, DrawRow("dw_soft", "柔邊", 0, 100, pct, Function(d) d.Softness, Sub(d, v) d.Softness = v))
         AddRow(L, DrawRow("dw_opacity", "不透明度", 0, 100, pct, Function(d) d.Opacity, Sub(d, v) d.Opacity = v))
         AddRow(L, DrawRow("dw_flow", "流量", 2, 100, pct, Function(d) d.Flow, Sub(d, v) d.Flow = v))
+        BuildDrawAdvanced(L)
 
         _help.SetHelpLinked("draw.font", _drawFont, AddCaption(L, "圖說字型", L.Y), _drawFont)
         _drawFont.DropDownStyle = ComboBoxStyle.DropDownList
@@ -274,12 +276,17 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub SetDrawBrush(b As BrushKind)
+        ' 混色、塗抹、仿製要讀取畫布，只能直接繪製在點陣圖層上。
+        If DrawLayer.SamplesCanvas(b) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) Then
+            _drawStrip.SelectedTool = CInt(DrawShape.Raster)
+            SetStatusMessage($"「{DrawGeometry.BrushNames(CInt(b))}」會讀取照片的顏色，已切換到直接繪製（畫在點陣圖層上）。")
+        End If
         SetDrawProp(Sub(d) d.Brush = b)
         ' 換到特效筆、紋理筆時，線條色換成目前效果／材質的建議顏色。
         Dim cats = CurrentEffectCategories()
         If cats IsNot Nothing Then
             Dim st = If(StyleTarget(_recipe), _drawStyle)
-            Dim w = EffectCatalog.Locate(cats, If(b = BrushKind.FX, CInt(st.Fx), CInt(st.Material)))
+            Dim w = EffectCatalog.Locate(cats, EffectValue(st))
             ApplyEffectEntry(cats(w.Category).Items(w.Item))
         End If
     End Sub
@@ -338,7 +345,7 @@ Partial Friend Class frmEditor
             UpdateBrushPreviews(st)
             Dim cats = CurrentEffectCategories(st)
             Dim where = If(cats Is Nothing, (Category:=-1, Item:=-1),
-                           EffectCatalog.Locate(cats, If(st.Brush = BrushKind.FX, CInt(st.Fx), CInt(st.Material))))
+                           EffectCatalog.Locate(cats, EffectValue(st)))
             Dim catNames = If(cats Is Nothing, Array.Empty(Of String)(), cats.Select(Function(c) c.Name).ToArray())
             If Not catNames.SequenceEqual(_drawSubCat.Items.Cast(Of String)()) Then
                 _drawSubCat.Items.Clear()
@@ -359,6 +366,7 @@ Partial Friend Class frmEditor
             _drawStroke.Checked = st.Stroked
             _drawFill.Checked = st.Filled
             _drawShadow.Checked = st.Shadow
+            UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
             Dim sel = SelDraw(_recipe)
             For i = 1 To _layerButtons.Count - 1
@@ -373,13 +381,18 @@ Partial Friend Class frmEditor
     Private Shared Sub SetSwatch(b As Button, argb As Integer)
         Dim c = Color.FromArgb(255, Color.FromArgb(argb))
         b.BackColor = c
+        b.Tag = ThemeManager.SkipTag ' 顏色樣本：深色配色時也保持本身的顏色
         b.ForeColor = If(c.GetBrightness() < 0.55, Color.White, Color.Black)
     End Sub
 
     ''' <summary>筆刷格子的預覽用目前的線條色（太淡時改用深灰）；特效與材質改變時重畫。</summary>
     Private Sub UpdateBrushPreviews(st As DrawLayer)
         Dim c = Color.FromArgb(255, Color.FromArgb(st.StrokeColorArgb))
-        If c.GetBrightness() > 0.85 Then c = Color.FromArgb(60, 64, 72)
+        If ThemeManager.Dark Then
+            If c.GetBrightness() < 0.25 Then c = Color.FromArgb(210, 214, 222) ' 深色格子上看得到
+        ElseIf c.GetBrightness() > 0.85 Then
+            c = Color.FromArgb(60, 64, 72)
+        End If
         Dim key = $"{c.ToArgb()}|{st.Fx}|{st.Material}|{_brushGrid.Width}"
         If key = _brushPreviewKey OrElse _brushTiles.Count = 0 Then Return
         _brushPreviewKey = key
@@ -403,14 +416,50 @@ Partial Friend Class frmEditor
         st = If(st, If(StyleTarget(_recipe), _drawStyle))
         If st.Brush = BrushKind.FX Then Return EffectCatalog.FxCategories
         If st.Brush = BrushKind.Texture Then Return EffectCatalog.MaterialCategories
+        If st.Brush = BrushKind.Particle Then Return ParticleCategories
+        If st.Brush = BrushKind.StickerHose Then
+            ' 貼圖主題（內建＋貼圖資料夾），值為清單索引；選了主題不換線條色。
+            Dim c = Color.FromArgb(st.StrokeColorArgb)
+            Return {New EffectCatalog.Category With {.Name = "貼圖主題",
+                .Items = HoseThemes().Select(Function(n, i) New EffectCatalog.Entry With {.Value = i, .Name = n, .Color = c, .Tinted = True}).ToArray()}}
+        End If
         Return Nothing
     End Function
 
-    ''' <summary>選了一個特效或材質：套用，線條色換成它的建議顏色。</summary>
+    Private Shared ReadOnly ParticleCategories As EffectCatalog.Category() = {
+        New EffectCatalog.Category With {.Name = "粒子", .Items = {
+            New EffectCatalog.Entry With {.Value = ParticleKind.Gravity, .Name = "重力（噴泉、毛髮、火花）", .Color = Color.FromArgb(60, 80, 160), .Tinted = True},
+            New EffectCatalog.Entry With {.Value = ParticleKind.Flow, .Name = "流動（煙絲、水流、髮絲）", .Color = Color.FromArgb(70, 130, 190), .Tinted = True},
+            New EffectCatalog.Entry With {.Value = ParticleKind.Spring, .Name = "彈簧（甩出一圈圈的線）", .Color = Color.FromArgb(40, 42, 52), .Tinted = True}}}}
+
+    Private Shared Function HoseThemes() As List(Of String)
+        Dim list As New List(Of String) From {StickerLibrary.BuiltInTheme}
+        list.AddRange(StickerLibrary.Themes().Where(Function(t) t <> StickerLibrary.BuiltInTheme))
+        Return list
+    End Function
+
+    ''' <summary>目前筆刷在「效果」清單裡的值：特效、材質、粒子種類，或貼圖主題的索引。</summary>
+    Private Shared Function EffectValue(st As DrawLayer) As Integer
+        Select Case st.Brush
+            Case BrushKind.FX : Return CInt(st.Fx)
+            Case BrushKind.Particle : Return CInt(st.Particle)
+            Case BrushKind.StickerHose : Return Math.Max(0, HoseThemes().IndexOf(If(String.IsNullOrEmpty(st.HoseTheme), StickerLibrary.BuiltInTheme, st.HoseTheme)))
+            Case Else : Return CInt(st.Material)
+        End Select
+    End Function
+
+    ''' <summary>選了一個特效、材質或粒子種類：套用，線條色換成它的建議顏色；貼圖主題只換主題。</summary>
     Private Sub ApplyEffectEntry(entry As EffectCatalog.Entry)
         Dim argb = entry.Color.ToArgb()
         SetDrawProp(Sub(d)
-                        If d.Brush = BrushKind.FX Then d.Fx = CType(entry.Value, FxKind) Else d.Material = CType(entry.Value, MaterialKind)
+                        Select Case d.Brush
+                            Case BrushKind.FX : d.Fx = CType(entry.Value, FxKind)
+                            Case BrushKind.Particle : d.Particle = CType(entry.Value, ParticleKind)
+                            Case BrushKind.StickerHose
+                                d.HoseTheme = entry.Name
+                                Return
+                            Case Else : d.Material = CType(entry.Value, MaterialKind)
+                        End Select
                         d.StrokeColorArgb = argb
                     End Sub)
         If Not entry.Tinted Then SetStatusMessage($"「{entry.Name}」使用本身的顏色；線條色只會稍微影響或不影響。")
@@ -430,8 +479,19 @@ Partial Friend Class frmEditor
             Dim shape = CType(tool, DrawShape)
             Select Case shape
                 Case DrawShape.Raster
-                    text = If(_drawEraser.Checked, "橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方（B 換回畫筆）。",
-                              "直接畫在目前的點陣圖層上，畫完就是像素；沒有選圖層時自動新增。E 切換橡皮擦。") & pen
+                    If _drawEraser.Checked Then
+                        text = "橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方（B 換回畫筆）。"
+                    ElseIf _drawStyle.Brush = BrushKind.Clone Then
+                        text = If(_cloneSource.HasValue, "仿製筆：拖曳把來源（十字準星）的照片畫過來；Alt＋點一下換來源。",
+                                  "仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。")
+                    ElseIf _drawStyle.Brush = BrushKind.Smudge Then
+                        text = "塗抹筆：拖曳把照片與下面圖層的顏色推開、抹勻（結果畫在點陣圖層，原圖不動）。"
+                    ElseIf _drawStyle.Brush = BrushKind.Mixer Then
+                        text = "混色筆：帶著線條色畫，同時沾起畫布上的顏色混在一起。"
+                    Else
+                        text = "直接畫在目前的點陣圖層上，畫完就是像素；沒有選圖層時自動新增。E 切換橡皮擦。"
+                    End If
+                    text &= pen
                 Case DrawShape.Freehand : text = "在照片上拖曳畫線（向量，之後可以再調整）。換顏色或筆刷後再畫，會成為新的圖層。" & pen
                 Case DrawShape.Polygon : text = "點一下開始，逐點畫出多邊形。"
                 Case DrawShape.Line : text = "拖曳畫出直線（Shift：45° 角）；畫好後可拖曳兩端。"
@@ -461,26 +521,26 @@ Partial Friend Class frmEditor
         Dim g = e.Graphics
         Dim r = e.Bounds
         Dim selected = index = _drawIndex
-        Using bg As New SolidBrush(If(selected, Color.FromArgb(210, 228, 250), Color.White))
+        Using bg As New SolidBrush(ThemeManager.Back(If(selected, Color.FromArgb(210, 228, 250), Color.White)))
             g.FillRectangle(bg, r)
         End Using
         g.SmoothingMode = SmoothingMode.AntiAlias
-        Dim fg = If(d.Visible, Color.FromArgb(40, 44, 52), Color.FromArgb(160, 165, 172))
+        Dim fg = ThemeManager.Fore(If(d.Visible, Color.FromArgb(40, 44, 52), Color.FromArgb(160, 165, 172)))
         DrawEye(g, New RectangleF(r.X + 4, r.Y + 6, 18, 16), d.Visible)
         DrawLock(g, New RectangleF(r.X + 26, r.Y + 6, 16, 16), d.Locked)
         DrawIcons.DrawTool(g, CInt(d.Shape), New RectangleF(r.X + 48, r.Y + 4, 20, 20), fg)
         Dim name = If(String.IsNullOrEmpty(d.Name), DrawGeometry.ShapeNames(CInt(d.Shape)), d.Name)
         TextRenderer.DrawText(g, name, _layerList.Font, New Rectangle(r.X + 74, r.Y, r.Width - 74 - 46, r.Height), fg,
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
-        TextRenderer.DrawText(g, d.Opacity & "%", _layerList.Font, New Rectangle(r.Right - 46, r.Y, 42, r.Height), Color.FromArgb(130, 136, 146),
+        TextRenderer.DrawText(g, d.Opacity & "%", _layerList.Font, New Rectangle(r.Right - 46, r.Y, 42, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.Right)
-        Using line As New Pen(Color.FromArgb(232, 235, 240))
+        Using line As New Pen(ThemeManager.Line(Color.FromArgb(232, 235, 240)))
             g.DrawLine(line, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1)
         End Using
     End Sub
 
     Private Shared Sub DrawEye(g As Graphics, r As RectangleF, open As Boolean)
-        Dim c = If(open, Color.FromArgb(60, 66, 78), Color.FromArgb(175, 180, 188))
+        Dim c = ThemeManager.Fore(If(open, Color.FromArgb(60, 66, 78), Color.FromArgb(175, 180, 188)))
         Using pen As New Pen(c, 1.4F), br As New SolidBrush(c), path As New GraphicsPath()
             Dim cy = r.Y + r.Height / 2
             path.AddBezier(r.Left, cy, r.Left + r.Width * 0.3F, r.Top + 1, r.Right - r.Width * 0.3F, r.Top + 1, r.Right, cy)
@@ -731,7 +791,25 @@ Partial Friend Class frmEditor
             _canvas.Invalidate()
             Return
         End If
+        ' 對稱繪圖以照片中心為準（照片裁切後中心會變，每一筆都重新設定）。
+        If _drawStyle.Symmetry <> SymmetryKind.None Then
+            _drawStyle.SymX = Math.Round(PhotoAspect() / 2, 5) : _drawStyle.SymY = 0.5
+        End If
+        ' 混色、塗抹、仿製只能畫在點陣圖層：在向量的自由繪製裡選到時改成直接繪製。
+        If _drawStrip.SelectedTool = CInt(DrawShape.Freehand) AndAlso DrawLayer.SamplesCanvas(_drawStyle.Brush) Then
+            _drawStrip.SelectedTool = CInt(DrawShape.Raster)
+        End If
         If _drawStrip.SelectedTool = CInt(DrawShape.Raster) Then
+            If _drawStyle.Brush = BrushKind.Clone AndAlso Not _drawEraser.Checked Then
+                If ModifierKeys.HasFlag(Keys.Alt) Then
+                    SetCloneSource(u)
+                    Return
+                End If
+                If Not _cloneSource.HasValue Then
+                    SetStatusMessage("仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。")
+                    Return
+                End If
+            End If
             BeginRasterStroke(e, u)
             _canvas.Invalidate()
             Return
@@ -765,7 +843,7 @@ Partial Friend Class frmEditor
             Case DrawShape.Freehand
                 _dd = DrawDrag.Freehand
                 _freeRaster = False
-                _freePoints = New List(Of DrawPoint) From {New DrawPoint(u.X, u.Y, StrokePressure(e.Location, first:=True))}
+                _freePoints = New List(Of DrawPoint) From {StrokePoint(u, e.Location, True)}
             Case DrawShape.Polygon
                 _polyPoints = New List(Of PointF) From {u}
                 _polyHover = u
@@ -834,7 +912,7 @@ Partial Friend Class frmEditor
                 Dim last = UnitToScreen(_freePoints(_freePoints.Count - 1).ToPointF())
                 Dim minStep = Math.Max(1.5, _drawStyle.StrokeWidth * PxPerUnit() / 8)
                 If ScreenDist(last, e.Location) >= minStep Then
-                    _freePoints.Add(New DrawPoint(u.X, u.Y, StrokePressure(e.Location, first:=False)))
+                    _freePoints.Add(StrokePoint(u, e.Location, False))
                     _canvas.Invalidate()
                 End If
             Case DrawDrag.Move
@@ -972,7 +1050,7 @@ Partial Friend Class frmEditor
         Dim pts = _freePoints
         _freePoints = Nothing
         If pts Is Nothing OrElse pts.Count = 0 Then Return
-        Dim stroke As New DrawStroke With {.Points = pts.Select(Function(p) New DrawPoint(CSng(Math.Round(p.X, 5)), CSng(Math.Round(p.Y, 5)), CSng(Math.Round(p.P, 3)))).ToList()}
+        Dim stroke As New DrawStroke With {.Points = pts.Select(Function(p) New DrawPoint(CSng(Math.Round(p.X, 5)), CSng(Math.Round(p.Y, 5)), CSng(Math.Round(p.P, 3))) With {.Tx = CSng(Math.Round(p.Tx)), .Ty = CSng(Math.Round(p.Ty)), .R = CSng(Math.Round(p.R))}).ToList()}
         If _freeRaster Then
             CommitRasterStroke(stroke)
             Return
@@ -1193,6 +1271,7 @@ Partial Friend Class frmEditor
                     End Using
                 Else
                     g.DrawLines(pen, pts)
+                    PaintSymmetryPreview(g, pen, _freePoints)
                 End If
             End Using
         End If
@@ -1208,6 +1287,7 @@ Partial Friend Class frmEditor
             g.FillEllipse(Brushes.White, first.X - 5, first.Y - 5, 10, 10)
             g.DrawEllipse(Pens.Black, first.X - 5, first.Y - 5, 10, 10)
         End If
+        PaintCloneSource(g)
     End Sub
 
     ''' <summary>拖曳中的新形狀：用目前的線條色與粗細畫外形（實際筆刷效果放開後才算）。</summary>
@@ -1317,17 +1397,17 @@ Partial Friend Class frmEditor
         Protected Overrides Sub OnPaint(e As PaintEventArgs)
             Dim g = e.Graphics
             Dim r = New Rectangle(0, 0, Width - 1, Height - 1)
-            g.Clear(Color.FromArgb(236, 238, 242))
+            g.Clear(ThemeManager.Back(Color.FromArgb(236, 238, 242)))
             Dim top = New Rectangle(2, 2, Width - 4, Height - 18)
-            Using bg As New SolidBrush(If(_dark, Color.FromArgb(70, 72, 80), Color.White))
+            Using bg As New SolidBrush(If(_dark, Color.FromArgb(70, 72, 80), If(ThemeManager.Dark, Color.FromArgb(44, 48, 56), Color.White)))
                 g.FillRectangle(bg, top)
             End Using
             If _preview IsNot Nothing Then
                 g.DrawImage(_preview, top.X + (top.Width - _preview.Width) \ 2, top.Y + (top.Height - _preview.Height) \ 2)
             End If
             TextRenderer.DrawText(g, DrawGeometry.BrushNames(CInt(Brush)), NameFont, New Rectangle(0, Height - 17, Width, 16),
-                                  If(_selected, Color.FromArgb(24, 95, 165), Color.FromArgb(70, 76, 88)), TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
-            Using pen As New Pen(If(_selected, Color.FromArgb(55, 138, 221), If(_hover, Color.FromArgb(150, 170, 200), Color.FromArgb(205, 210, 218))), If(_selected, 2, 1))
+                                  ThemeManager.Fore(If(_selected, Color.FromArgb(24, 95, 165), Color.FromArgb(70, 76, 88))), TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Using pen As New Pen(If(_selected, Color.FromArgb(55, 138, 221), If(_hover, Color.FromArgb(150, 170, 200), ThemeManager.Line(Color.FromArgb(205, 210, 218)))), If(_selected, 2, 1))
                 g.DrawRectangle(pen, If(_selected, New Rectangle(1, 1, Width - 2, Height - 2), r))
             End Using
         End Sub

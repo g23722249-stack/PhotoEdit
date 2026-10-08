@@ -15,19 +15,27 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Shared Sub DrawRasterLayer(dst As Bitmap, layer As DrawLayer, w As Integer, h As Integer)
         Dim opacity = Math.Max(0, Math.Min(100, layer.Opacity)) / 100.0F
         If opacity <= 0 OrElse layer.Ops Is Nothing OrElse layer.Ops.Count = 0 Then Return
-        Dim bmp = RasterBitmap(layer, w, h)
-        If bmp Is Nothing Then Return
         Dim dest As New Rectangle(CInt(Math.Round(layer.X * h)), CInt(Math.Round(layer.Y * h)), w, h)
+        ' 混色、塗抹、仿製筆要讀取下面已經合成好的照片與圖層。
+        Dim below As Byte() = Nothing
+        If layer.Ops.Any(Function(o) Global.PhotoEdit.DrawLayer.SamplesCanvas(o.Brush)) AndAlso dst.Width = w AndAlso dst.Height = h Then
+            below = Perspective.ReadPixels(dst)
+        End If
+        Dim bmp = RasterBitmap(layer, w, h, below, dest.X, dest.Y)
+        If bmp Is Nothing Then Return
         SyncLock bmp
             LayerBlend.Composite(dst, bmp, dest, opacity, layer.Blend)
         End SyncLock
     End Sub
 
     ''' <summary>點陣圖層合成好的像素（w × h、未加位移與不透明度）；結果放在快取裡，呼叫端不可釋放。</summary>
-    Private Shared Function RasterBitmap(layer As DrawLayer, w As Integer, h As Integer) As Bitmap
+    Private Shared Function RasterBitmap(layer As DrawLayer, w As Integer, h As Integer,
+                                         Optional below As Byte() = Nothing, Optional ox As Integer = 0, Optional oy As Integer = 0) As Bitmap
         Dim ops = layer.Ops
         Dim keys(ops.Count) As ULong
-        keys(0) = ChainHash(0UL, $"raster|{w}x{h}")
+        keys(0) = ChainHash(0UL, $"raster|{w}x{h}|{ox},{oy}")
+        ' 有讀取畫布的筆時，下面的照片一改（例如調色），抹過的地方就要重算。
+        If below IsNot Nothing Then keys(0) = ChainHash(keys(0), BelowSignature(below))
         For i = 0 To ops.Count - 1
             keys(i + 1) = ChainHash(keys(i), System.Text.Json.JsonSerializer.Serialize(ops(i), _jsonOptions))
         Next
@@ -56,7 +64,13 @@ Partial Public NotInheritable Class DrawingRenderer
             bmp = New Bitmap(w, h, PixelFormat.Format32bppArgb)
         End If
         For i = start To ops.Count - 1
-            ApplyRasterOp(bmp, ops(i), w, h)
+            If Global.PhotoEdit.DrawLayer.SamplesCanvas(ops(i).Brush) AndAlso ops(i).Shape <> DrawShape.Raster AndAlso ops(i).Item Is Nothing Then
+                Dim px = Perspective.ReadPixels(bmp)
+                ApplySamplingOp(px, below, w, h, ops(i), ox, oy)
+                Perspective.WritePixels(bmp, px)
+            Else
+                ApplyRasterOp(bmp, ops(i), w, h)
+            End If
         Next
 
         SyncLock _rasterCache
@@ -174,6 +188,17 @@ Partial Public NotInheritable Class DrawingRenderer
     End Function
 
     ''' <summary>接續前一個雜湊值（SHA1 取前 8 位元組），算出「前 k 筆」的快取鍵。</summary>
+    ''' <summary>下面照片的指紋：均勻取約 16000 個像素算 SHA1（照片有改，抹過的地方才重算）。</summary>
+    Private Shared Function BelowSignature(below As Byte()) As String
+        Dim pixels = below.Length \ 4
+        Dim stepPx = Math.Max(1, pixels \ 16384)
+        Dim sample As New List(Of Byte)(16384 * 4 + 8)
+        For i = 0 To pixels - 1 Step stepPx
+            sample.Add(below(i * 4)) : sample.Add(below(i * 4 + 1)) : sample.Add(below(i * 4 + 2)) : sample.Add(below(i * 4 + 3))
+        Next
+        Return Convert.ToBase64String(System.Security.Cryptography.SHA1.HashData(sample.ToArray()))
+    End Function
+
     Private Shared Function ChainHash(seed As ULong, text As String) As ULong
         Dim bytes = System.Text.Encoding.UTF8.GetBytes(text)
         Dim buf(bytes.Length + 7) As Byte
