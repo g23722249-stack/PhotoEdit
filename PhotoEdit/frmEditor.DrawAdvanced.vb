@@ -82,7 +82,7 @@ Partial Friend Class frmEditor
     Private Sub PaintStabilizer(g As Graphics)
         Dim st = _stabilizer
         If st Is Nothing OrElse _dd <> DrawDrag.Freehand Then Return
-        Dim cur = _canvas.PointToClient(Control.MousePosition)
+        Dim cur = _canvas.PointToClient(_canvas.PointerPosition) ' 用筆時系統游標不會跟著動，問畫布筆在哪
         Dim a = st.Anchor
         Using outer As New Pen(Color.FromArgb(120, 0, 0, 0), 3), inner As New Pen(Color.FromArgb(230, 255, 255, 255), 1.2F) With {.DashStyle = DashStyle.Dot}
             g.DrawLine(outer, a, cur)

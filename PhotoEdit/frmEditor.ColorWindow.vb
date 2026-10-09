@@ -210,7 +210,7 @@ Partial Friend Class frmEditor
     ''' <summary>按下或放開 Alt 時馬上換游標（不必等滑鼠移動）。</summary>
     Private Sub RefreshAltCursor()
         If _tabs.SelectedIndex <> TabDraw OrElse _photo Is Nothing OrElse _dd <> DrawDrag.None Then Return
-        Dim p = _canvas.PointToClient(Control.MousePosition)
+        Dim p = _canvas.PointToClient(_canvas.PointerPosition)
         If Not _canvas.ClientRectangle.Contains(p) Then Return
         UpdateDrawCursor(p, ScreenToUnit(p))
     End Sub

@@ -42,18 +42,18 @@ Partial Friend Class frmEditor
         If keyData = Keys.Escape AndAlso _pickOnce Then
             _pickOnce = False
             SetStatusMessage("已取消吸管。")
-            Dim p = _canvas.PointToClient(Control.MousePosition)
+            Dim p = _canvas.PointToClient(_canvas.PointerPosition)
             If _canvas.ClientRectangle.Contains(p) Then UpdateDrawCursor(p, ScreenToUnit(p))
             Return True
         End If
         If keyData = Keys.Escape AndAlso HandleFullScreenEscape() Then Return True
         If keyData = Keys.F11 Then ToggleFullScreen() : Return True ' 選色視窗有焦點時也能切換
         If keyData = ParseKey(_appSettings.QuickPanelHotkey, Keys.F9) Then
-            ToggleQuickPanel(Control.MousePosition)
+            ToggleQuickPanel(_canvas.PointerPosition)
             Return True
         End If
         If keyData = ParseKey(_appSettings.QuickRadialHotkey, Keys.F10) Then
-            ToggleRadial(Control.MousePosition)
+            ToggleRadial(_canvas.PointerPosition)
             Return True
         End If
         Return False
@@ -115,7 +115,7 @@ Partial Friend Class frmEditor
                 End If
         End Select
         UpdateDrawHint()
-        Dim p = _canvas.PointToClient(Control.MousePosition)
+        Dim p = _canvas.PointToClient(_canvas.PointerPosition)
         If _canvas.ClientRectangle.Contains(p) Then UpdateDrawCursor(p, ScreenToUnit(p))
     End Sub
 
@@ -559,7 +559,7 @@ Partial Friend Class frmEditor
             If keyData = Keys.Escape OrElse keyData = ParseKey(_ed._appSettings.QuickPanelHotkey, Keys.F9) Then Hide() : Return True
             If keyData = ParseKey(_ed._appSettings.QuickRadialHotkey, Keys.F10) Then
                 Hide()
-                _ed.ToggleRadial(Control.MousePosition)
+                _ed.ToggleRadial(_ed._canvas.PointerPosition)
                 Return True
             End If
             Return MyBase.ProcessCmdKey(msg, keyData)
@@ -1097,7 +1097,7 @@ Partial Friend Class frmEditor
             If keyData = Keys.Escape OrElse keyData = ParseKey(_ed._appSettings.QuickRadialHotkey, Keys.F10) Then Hide() : Return True
             If keyData = ParseKey(_ed._appSettings.QuickPanelHotkey, Keys.F9) Then
                 Hide()
-                _ed.ToggleQuickPanel(Control.MousePosition)
+                _ed.ToggleQuickPanel(_ed._canvas.PointerPosition)
                 Return True
             End If
             Return MyBase.ProcessCmdKey(msg, keyData)

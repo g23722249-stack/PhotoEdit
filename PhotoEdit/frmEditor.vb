@@ -387,7 +387,7 @@ Partial Friend Class frmEditor
         ' 按下 Ctrl：繪圖時暫時切成選取，點陣圖層的選取框與游標馬上跟著變（放開在下一次移動滑鼠時恢復）
         If keyData = (Keys.ControlKey Or Keys.Control) AndAlso _photo IsNot Nothing AndAlso _dd = DrawDrag.None Then
             SyncCtrlBox()
-            Dim pt = _canvas.PointToClient(Cursor.Position)
+            Dim pt = _canvas.PointToClient(_canvas.PointerPosition)
             If _canvas.ClientRectangle.Contains(pt) AndAlso _tabs.SelectedIndex <> TabSelect Then UpdateDrawCursor(pt, ScreenToUnit(pt))
         End If
         ' 在文字框打字時，H、[、]、Enter、Delete 等單鍵要留給文字框，不當快捷鍵。

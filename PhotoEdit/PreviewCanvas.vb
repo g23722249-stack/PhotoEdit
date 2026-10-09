@@ -1096,9 +1096,28 @@ Partial Friend Class PreviewCanvas
         MyBase.WndProc(m) ' 交給系統轉成滑鼠訊息
     End Sub
 
+    ' 筆最後的位置（螢幕座標）：筆的輸入自己處理後，系統的滑鼠游標不會跟著筆動，
+    ' 要「目前指標在哪」的地方（穩定器拉線、Alt 吸色、快速面板開在游標處…）改問 PointerPosition。
+    Private _penScreenPos As Point
+    Private _mouseAtPen As Point
+    Private _penScreenValid As Boolean
+
+    ''' <summary>
+    ''' 目前指標的螢幕座標：最後用的是繪圖筆（之後滑鼠沒動過）就是筆的位置，否則是滑鼠游標。
+    ''' </summary>
+    Public ReadOnly Property PointerPosition As Point
+        Get
+            If _penScreenValid AndAlso Control.MousePosition = _mouseAtPen Then Return _penScreenPos
+            Return Control.MousePosition
+        End Get
+    End Property
+
     ''' <summary>筆的訊息自己轉成滑鼠事件：筆尖＝左鍵、筆身按鈕＝右鍵（暫時橡皮擦），快速點兩下＝按兩下。</summary>
     Private Function HandlePen(msg As Integer, info As POINTER_INFO) As Boolean
-        Dim p = PointToClient(New Point(info.ptPixelLocation.X, info.ptPixelLocation.Y))
+        _penScreenPos = New Point(info.ptPixelLocation.X, info.ptPixelLocation.Y)
+        _mouseAtPen = Control.MousePosition
+        _penScreenValid = True
+        Dim p = PointToClient(_penScreenPos)
         Select Case msg
             Case WM_POINTERDOWN
                 _penButton = If((info.pointerFlags And POINTER_FLAG_SECONDBUTTON) <> 0, MouseButtons.Right, MouseButtons.Left)
