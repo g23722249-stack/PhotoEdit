@@ -171,6 +171,7 @@ Partial Friend Class frmEditor
         If _drawStrip.Visible <> drawing Then
             _drawStrip.Visible = drawing
             _drawBar.Visible = drawing
+            AutoShowColorWindow(drawing) ' 選色視窗跟著繪圖分頁出現、收起
         End If
         If Not drawing Then
             CommitCalloutEditor()

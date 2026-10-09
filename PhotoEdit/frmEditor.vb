@@ -160,6 +160,8 @@ Partial Friend Class frmEditor
         Dim fileMenu = root.AddItem(New Aqua.MenuItem("檔案"))
         fileMenu.AddItem(Item("new", "新增… (Ctrl+N)"))
         fileMenu.AddItem(Item("open", "載入… (Ctrl+O)"))
+        _recentMenu = fileMenu.AddItem(New Aqua.MenuItem("最近開啟的檔案"))
+        RebuildRecentMenu()
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("save", "存檔 (Ctrl+S)"))
         fileMenu.AddItem(Item("saveas", "另存新檔… (Ctrl+Shift+S)"))
@@ -218,6 +220,9 @@ Partial Friend Class frmEditor
         viewMenu.AddItem(Item("actual", "100% (Ctrl+1)"))
         viewMenu.AddItem(Item("zoomin", "放大 (Ctrl++)"))
         viewMenu.AddItem(Item("zoomout", "縮小 (Ctrl+-)"))
+        viewMenu.AddItem(New Aqua.MenuItem("-"))
+        viewMenu.AddItem(Item("reference", "參考圖… (Ctrl+Shift+R)"))
+        viewMenu.AddItem(Item("fullscreen", "全螢幕繪圖 (F11)"))
 
         BuildWindowMenu(root) ' 多文件才有
 
@@ -240,11 +245,14 @@ Partial Friend Class frmEditor
 
     Private Sub RunCommand(name As String)
         If HandleMdiCommand(name) Then Return
+        If HandleRecentCommand(name) Then Return
         Select Case name
             Case "new" : NewImageWithDialog()
             Case "open" : OpenWithDialog()
             Case "collage" : OpenCollage()
             Case "pasteimage" : PasteAsNewImage()
+            Case "reference" : ShowReference()
+            Case "fullscreen" : ToggleFullScreen()
             Case "exit" : Close()
             Case "togglehelp"
                 _appSettings.ShowHelp = Not _appSettings.ShowHelp
@@ -338,7 +346,39 @@ Partial Friend Class frmEditor
         f.Show(Me)
     End Sub
 
+    <Runtime.InteropServices.DllImport("imm32.dll")>
+    Private Shared Function ImmGetVirtualKey(hWnd As IntPtr) As Integer
+    End Function
+    <Runtime.InteropServices.DllImport("imm32.dll")>
+    Private Shared Function ImmGetContext(hWnd As IntPtr) As IntPtr
+    End Function
+    <Runtime.InteropServices.DllImport("imm32.dll")>
+    Private Shared Function ImmReleaseContext(hWnd As IntPtr, hImc As IntPtr) As Boolean
+    End Function
+    <Runtime.InteropServices.DllImport("imm32.dll")>
+    Private Shared Function ImmNotifyIME(hImc As IntPtr, action As Integer, index As Integer, value As Integer) As Boolean
+    End Function
+
+    ''' <summary>
+    ''' 中文（注音）輸入法開著時，按鍵先被輸入法拿去組字，程式收到的是 ProcessKey。
+    ''' 不在文字框時查出原本按的鍵：是快捷鍵就照樣執行，並取消輸入法正在組的字。
+    ''' </summary>
+    Private Function HandleImeShortcut(ByRef msg As Message, keyData As Keys) As Boolean
+        If (keyData And Keys.KeyCode) <> Keys.ProcessKey OrElse TypeOf ActiveControl Is TextBoxBase Then Return False
+        Dim vk = ImmGetVirtualKey(msg.HWnd)
+        If vk = 0 OrElse vk = CInt(Keys.ProcessKey) Then Return False
+        Dim real = CType(vk, Keys) Or (keyData And Keys.Modifiers)
+        If Not (SelKey(real) OrElse HandleQuickKey(real) OrElse HandleDrawKey(real)) Then Return False
+        Dim imc = ImmGetContext(msg.HWnd)
+        If imc <> IntPtr.Zero Then
+            ImmNotifyIME(imc, &H15, &H4, 0) ' NI_COMPOSITIONSTR, CPS_CANCEL：取消組字
+            ImmReleaseContext(msg.HWnd, imc)
+        End If
+        Return True
+    End Function
+
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
+        If HandleImeShortcut(msg, keyData) Then Return True
         ' 在文字框打字時，H、[、]、Enter、Delete 等單鍵要留給文字框，不當快捷鍵。
         If (keyData And (Keys.Control Or Keys.Alt)) = Keys.None AndAlso keyData <> Keys.Escape AndAlso
            TypeOf ActiveControl Is TextBoxBase Then
@@ -350,6 +390,7 @@ Partial Friend Class frmEditor
             Return MyBase.ProcessCmdKey(msg, keyData)
         End If
         If SelKey(keyData) Then Return True
+        If HandleQuickKey(keyData) Then Return True ' 繪圖分頁：快速面板、輪盤（預設 F9、F10）
         If HandleDrawKey(keyData) Then Return True
         Dim cmd As String = Nothing
         Select Case keyData
@@ -375,6 +416,8 @@ Partial Friend Class frmEditor
             Case Keys.Control Or Keys.V : cmd = "pasteimage"
             Case Keys.Control Or Keys.L : cmd = "rotl"
             Case Keys.Control Or Keys.R : cmd = "rotr"
+            Case Keys.Control Or Keys.Shift Or Keys.R : cmd = "reference"
+            Case Keys.F11 : cmd = "fullscreen"
             Case Keys.Control Or Keys.K : cmd = "crop"
             Case Keys.Control Or Keys.D0, Keys.Control Or Keys.NumPad0 : cmd = "fit"
             Case Keys.Control Or Keys.D1, Keys.Control Or Keys.NumPad1 : cmd = "actual"
@@ -450,6 +493,7 @@ Partial Friend Class frmEditor
                 row.ValueLabel.Text = row.Format(v)
             Next
             SyncArtControls()
+            SyncPaperControls()
         Finally
             _syncing = False
         End Try
@@ -577,7 +621,10 @@ Partial Friend Class frmEditor
     ''' <summary>幾何或人像改變時，重算各預設集的縮圖（約 150px，十幾張也很快）。</summary>
     Private Sub UpdatePresetThumbnails()
         Dim geometry = _recipe.GeometryOnly()
-        geometry.Overlays = Nothing ' 縮圖只看濾鏡風格，不畫文字貼圖
+        ' 縮圖只看濾鏡風格，不畫文字貼圖與繪圖圖層（每畫一筆就重算縮圖會拖慢繪圖，也會擠掉點陣圖層的快取）
+        geometry.Overlays = Nothing
+        geometry.Drawings = Nothing
+        geometry.LayerOrder = Nothing
         Dim key = RecipeStore.ToJson(geometry) & "|" & _retouchKey
         If key = _thumbKey Then Return
         _thumbKey = key
@@ -760,8 +807,9 @@ Partial Friend Class frmEditor
     End Sub
 
     ''' <summary>開啟照片或專案檔（.pedx）。</summary>
-    Private Sub OpenPhoto(photoPath As String)
-        If ProjectFile.IsProject(photoPath) Then OpenProject(photoPath) : Return
+    ''' <param name="remember">記進「最近開啟的檔案」（剪貼簿貼上與新增影像的暫存檔不記）。</param>
+    Private Sub OpenPhoto(photoPath As String, Optional remember As Boolean = True)
+        If ProjectFile.IsProject(photoPath) Then OpenProject(photoPath, remember) : Return
         If Not ConfirmReplaceDocument() Then Return
 
         Dim photo As PhotoFile
@@ -779,6 +827,7 @@ Partial Friend Class frmEditor
             Cursor = Cursors.Default
         End Try
         ShowDocument(photo, If(RecipeStore.Load(photoPath), New EditRecipe()), docPath:=Nothing)
+        If remember Then AddRecentFile(photoPath)
     End Sub
 
     ''' <summary>換成新的照片與配方（docPath 為專案檔路徑；一般照片為 Nothing）。</summary>
@@ -887,6 +936,16 @@ Partial Friend Class frmEditor
 
     Protected Overrides Sub OnFormClosed(e As FormClosedEventArgs)
         DisposeInactiveDocuments() ' 多文件：其他分頁的照片與暫存
+        SaveColorWindowPosition()
+        _recentTimer.Dispose()
+        _applyTimer.Dispose()
+        _brushPreviewTimer.Dispose()
+        _colorWin?.Dispose()
+        _quickPanel?.Dispose()
+        _radial?.Dispose()
+        _brushBrowser?.Dispose()
+        _fsExit?.Dispose()
+        _dropper?.Dispose()
         _renderTimer.Dispose()
         _hiResTimer.Dispose()
         _canvas.Image = Nothing

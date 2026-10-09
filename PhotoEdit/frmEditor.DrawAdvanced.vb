@@ -30,6 +30,70 @@ Partial Friend Class frmEditor
         Return d
     End Function
 
+    '=====================================================================
+    ' 筆畫穩定器（拉線式）：自由繪製與直接繪製共用
+    '=====================================================================
+
+    Private _stabilizer As StrokeStabilizer
+
+    ''' <summary>穩定器的線長（螢幕像素）：設定 0..100 → 0..48 px，縮放畫面時手感一樣。</summary>
+    Private Function StabilizerRadius() As Single
+        Return Math.Max(0, Math.Min(100, _appSettings.Stabilizer)) * 0.48F
+    End Function
+
+    Private Sub StartFreehand(u As PointF, p As Point)
+        _freePoints = New List(Of DrawPoint) From {StrokePoint(u, p, True)}
+        Dim radius = StabilizerRadius()
+        _stabilizer = If(radius >= 1, New StrokeStabilizer(p, radius), Nothing)
+    End Sub
+
+    ''' <summary>拖曳中：有穩定器時畫的是被拉著走的筆尖，不是游標本身。</summary>
+    Private Sub FreehandMove(cursor As Point)
+        Dim target As PointF = cursor
+        If _stabilizer IsNot Nothing Then
+            _stabilizer.Pull(cursor)
+            target = _stabilizer.Anchor
+            _canvas.Invalidate() ' 拉線跟著游標
+        End If
+        AddFreehandPoint(target)
+    End Sub
+
+    Private Sub AddFreehandPoint(target As PointF)
+        Dim last = UnitToScreen(_freePoints(_freePoints.Count - 1).ToPointF())
+        Dim minStep = Math.Max(1.5, _drawStyle.StrokeWidth * PxPerUnit() / 8)
+        If ScreenDist(last, target) >= minStep Then
+            Dim pt = Point.Round(target)
+            _freePoints.Add(StrokePoint(ScreenToUnit(pt), pt, False))
+            _canvas.Invalidate()
+        End If
+    End Sub
+
+    ''' <summary>放開：筆尖補到放開的位置，筆畫才不會比手畫的短一截。</summary>
+    Private Sub FinishStabilizer(cursor As Point)
+        Dim st = _stabilizer
+        _stabilizer = Nothing
+        If st Is Nothing OrElse _freePoints Is Nothing Then Return
+        For Each p In st.Finish(cursor, CSng(Math.Max(1.5, _drawStyle.StrokeWidth * PxPerUnit() / 8)))
+            AddFreehandPoint(p)
+        Next
+    End Sub
+
+    ''' <summary>畫布上：穩定器的拉線（游標到筆尖）與線長範圍。</summary>
+    Private Sub PaintStabilizer(g As Graphics)
+        Dim st = _stabilizer
+        If st Is Nothing OrElse _dd <> DrawDrag.Freehand Then Return
+        Dim cur = _canvas.PointToClient(Control.MousePosition)
+        Dim a = st.Anchor
+        Using outer As New Pen(Color.FromArgb(120, 0, 0, 0), 3), inner As New Pen(Color.FromArgb(230, 255, 255, 255), 1.2F) With {.DashStyle = DashStyle.Dot}
+            g.DrawLine(outer, a, cur)
+            g.DrawLine(inner, a, cur)
+            Dim r = st.Radius
+            g.DrawEllipse(inner, a.X - r, a.Y - r, r * 2, r * 2)
+        End Using
+        g.FillEllipse(Brushes.White, a.X - 3, a.Y - 3, 6, 6)
+        g.DrawEllipse(Pens.Black, a.X - 3, a.Y - 3, 6, 6)
+    End Sub
+
     Private Sub SetCloneSource(u As PointF)
         _cloneSource = u
         _cloneOffset = Nothing
@@ -66,6 +130,16 @@ Partial Friend Class frmEditor
         AddRow(A, DrawRow("dw_lumj", "明暗變化", 0, 100, pct, Function(d) d.LumJitter, Sub(d, v) d.LumJitter = v))
         AddRow(A, DrawRow("dw_presop", "筆壓濃淡", 0, 100, pct, Function(d) d.PressureOpacity, Sub(d, v) d.PressureOpacity = v))
         AddRow(A, DrawRow("dw_wet", "濕度", 0, 100, pct, Function(d) d.Wet, Sub(d, v) d.Wet = v))
+        AddRow(A, DrawRow("dw_papergrain", "紙紋吃色", 0, 100, pct, Function(d) d.PaperGrain, Sub(d, v) d.PaperGrain = v))
+        ' 穩定器是手感設定，不存在圖層裡（記在 settings.json，換圖層、換文件都一樣）
+        AddRow(A, New SliderRow With {.Key = "dw_stabilizer", .Caption = "穩定器", .Minimum = 0, .Maximum = 100,
+                                      .Format = Function(v) If(v = 0, "關", v.ToString()),
+                                      .GetValue = Function(r) _appSettings.Stabilizer,
+                                      .SetValue = Sub(r, v)
+                                                      If _appSettings.Stabilizer = v Then Return
+                                                      _appSettings.Stabilizer = v
+                                                      _appSettings.Save()
+                                                  End Sub})
 
         Dim half = (A.Width - 8 - 6) \ 2
         _drawPenTilt.Text = "筆傾斜改變筆尖"

@@ -23,7 +23,120 @@ Public Enum DrawShape
     Lightning = 17
     ''' <summary>點陣圖層：直接繪製的筆畫、橡皮擦與點陣化的圖形依序疊成像素（見 DrawLayer.Ops）。</summary>
     Raster = 18
+    ''' <summary>油漆桶：只出現在點陣圖層的 Ops 裡，一次填色（種子點與選項見 DrawLayer.Bucket）。</summary>
+    Bucket = 19
+    ''' <summary>漸層：只出現在點陣圖層的 Ops 裡，拖曳的起點到終點（見 DrawLayer.Gradient）。</summary>
+    Gradient = 20
+    ''' <summary>
+    ''' 填滿圖層（同 Photoshop，非破壞性）：整個圖層是單色、漸層或材質，之後可以再改；Region 是遮色片（建立時的選取範圍）。
+    ''' 單色用 FillColorArgb；漸層用 Gradient（顏色 FillColorArgb → StrokeColorArgb，Param2 = 方向）；材質用 FillContent = Material、Material。
+    ''' </summary>
+    FillLayer = 21
 End Enum
+
+''' <summary>漸層的形狀。</summary>
+''' <summary>選取區填色（點陣圖層 Ops 裡的 Region 操作）的內容。</summary>
+''' <summary>橡皮擦的擦法。</summary>
+Public Enum EraseMode
+    ''' <summary>擦成透明。</summary>
+    Clear = 0
+    ''' <summary>漂白：越擦越淡、往白色靠（透明度不變）。</summary>
+    Bleach = 1
+    ''' <summary>加深：越擦越暗（透明度不變）。</summary>
+    Darken = 2
+End Enum
+
+Public Enum FillContent
+    Color = 0
+    ''' <summary>材質：紋理筆的 64 種材質（Material），顏色用 FillColorArgb。</summary>
+    Material = 1
+    ''' <summary>內容感知：從附近找紋理相近的區域補滿（移除雜物）。</summary>
+    ContentAware = 2
+End Enum
+
+Public Enum GradientKind
+    Linear = 0
+    Radial = 1
+    ''' <summary>角度（繞著起點轉一圈）。</summary>
+    Angle = 2
+    ''' <summary>反射（起點往兩邊對稱）。</summary>
+    Reflected = 3
+    Diamond = 4
+    ''' <summary>四色（PhotoImpact）：拖曳的範圍當成方框，四個角各一個顏色，中間平滑混合。</summary>
+    FourColor = 5
+End Enum
+
+''' <summary>漸層的顏色（四色漸層另用 Corner1..4）。</summary>
+Public Enum GradientColors
+    ''' <summary>線條色 → 填色。</summary>
+    StrokeToFill = 0
+    ''' <summary>線條色 → 透明。</summary>
+    StrokeToTransparent = 1
+    Rainbow = 2
+End Enum
+
+''' <summary>漸層的一次拖曳：起點、終點（圖層座標，照片高度單位）與選項；顏色取本操作的線條色、填色。</summary>
+Public NotInheritable Class GradientFill
+    Public Property X1 As Double
+    Public Property Y1 As Double
+    Public Property X2 As Double
+    Public Property Y2 As Double
+    Public Property Kind As GradientKind
+    Public Property Colors As GradientColors
+    Public Property Reverse As Boolean
+    ''' <summary>防色階：加一點看不出來的雜點，大片漸層不會出現一條條的色階。</summary>
+    Public Property Dither As Boolean = True
+    ''' <summary>四色漸層：左上、右上、左下、右下（相對於拖曳的方向）。</summary>
+    Public Property Corner1 As Integer = Color.FromArgb(235, 70, 60).ToArgb()
+    Public Property Corner2 As Integer = Color.FromArgb(250, 205, 60).ToArgb()
+    Public Property Corner3 As Integer = Color.FromArgb(60, 120, 230).ToArgb()
+    Public Property Corner4 As Integer = Color.FromArgb(70, 190, 110).ToArgb()
+
+    Public Function Clone() As GradientFill
+        Return DirectCast(MemberwiseClone(), GradientFill)
+    End Function
+End Class
+
+''' <summary>油漆桶判斷「相近顏色」時看的畫面。</summary>
+Public Enum BucketSample
+    ''' <summary>照片＋下面的圖層＋目前圖層（線稿在別的圖層也能填）。</summary>
+    AllLayers = 0
+    ''' <summary>只看目前圖層。</summary>
+    CurrentLayer = 1
+End Enum
+
+''' <summary>油漆桶填進去的內容。</summary>
+Public Enum BucketSource
+    ''' <summary>目前筆刷：線條色＋筆刷質感（紋理筆填材質、水彩有水彩邊…）。</summary>
+    Brush = 0
+    ''' <summary>原照片（照片＋下面圖層）的顏色：把蓋掉的地方補回來。</summary>
+    Photo = 1
+End Enum
+
+''' <summary>
+''' 油漆桶的一次填色：種子點（圖層座標，照片高度單位）與選項。
+''' 封閉缺口、擴張以照片高度的千分之一為單位，預覽與匯出一致。
+''' </summary>
+Public NotInheritable Class BucketFill
+    Public Property X As Double
+    Public Property Y As Double
+    ''' <summary>容許度 0..255：和點下去的顏色差多少以內算同一區。</summary>
+    Public Property Tolerance As Integer = 32
+    ''' <summary>只填相連的區域；False 時填滿整張圖所有相近的顏色。</summary>
+    Public Property Contiguous As Boolean = True
+    Public Property Sample As BucketSample = BucketSample.AllLayers
+    ''' <summary>封閉缺口 0..10（‰ 照片高度）：線稿上這麼寬以內的缺口當作封閉，不會漏出去。</summary>
+    Public Property GapClose As Integer
+    ''' <summary>擴張 0..10（‰ 照片高度）：填色往外多長一點，蓋住線稿邊緣的半透明像素。</summary>
+    Public Property Expand As Integer = 1
+    ''' <summary>柔邊：填色邊緣消除鋸齒。</summary>
+    Public Property AntiAlias As Boolean = True
+    Public Property Source As BucketSource = BucketSource.Brush
+
+    Public Function Clone() As BucketFill
+        Return DirectCast(MemberwiseClone(), BucketFill)
+    End Function
+End Class
 
 ''' <summary>筆刷（數值存進編輯檔，不可更動）。</summary>
 Public Enum BrushKind
@@ -209,6 +322,8 @@ Public Class DrawLayer
     Public Property PenRotation As Boolean
     ''' <summary>混色筆、塗抹筆的濕度 0..100：越濕沾起越多畫布顏色、抹得越長。</summary>
     Public Property Wet As Integer = 50
+    ''' <summary>紙紋吃色 0..100：文件有紙張時，筆畫依筆壓只畫到紙紋凸起的地方（輕畫只碰到凸起）。</summary>
+    Public Property PaperGrain As Integer = 50
     ''' <summary>對稱繪圖；中心 SymX、SymY（照片高度單位），等分數 SymCount。</summary>
     Public Property Symmetry As SymmetryKind
     Public Property SymCount As Integer = 6
@@ -231,6 +346,8 @@ Public Class DrawLayer
     Public Property Ops As List(Of DrawLayer)
     ''' <summary>點陣圖層裡的一筆橡皮擦：用筆刷的形狀擦掉下面已經畫上去的像素。</summary>
     Public Property Eraser As Boolean
+    ''' <summary>橡皮擦的擦法（同 Painter 的橡皮擦類）：擦成透明、漂白（往白色）、加深（往黑色）。</summary>
+    Public Property EraseMode As EraseMode
     ''' <summary>
     ''' 合併圖層時併進點陣圖層的文字或貼圖（只出現在 Ops 裡）；Param1 記合併時的照片寬高比，用來算範圍。
     ''' </summary>
@@ -240,6 +357,14 @@ Public Class DrawLayer
     ''' 線寬 StrokeWidth（照片高度單位），Param2 為描邊位置（0 內側、1 置中、2 外側），Param1 記照片寬高比。
     ''' </summary>
     Public Property Region As SelectionSpec
+    ''' <summary>油漆桶（Shape = Bucket，只出現在 Ops 裡）：種子點與選項；顏色、筆刷、不透明度、混合模式用本圖層的設定。</summary>
+    Public Property Bucket As BucketFill
+    ''' <summary>漸層（Shape = Gradient，只出現在 Ops 裡）：起點終點與選項；有選取範圍時 Region 是裁切範圍。</summary>
+    Public Property Gradient As GradientFill
+    ''' <summary>選取區填色（Region）的內容：單色、材質（FillColorArgb＋Material）、內容感知（用附近的照片補滿）。</summary>
+    Public Property FillContent As FillContent
+    ''' <summary>保留透明度（同 Photoshop）：這一筆只改有內容的像素的顏色，透明度不變（透明的地方不會被畫上）。</summary>
+    Public Property KeepAlpha As Boolean
 
     Public Function Clone() As DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
@@ -248,6 +373,8 @@ Public Class DrawLayer
         c.Ops = Ops?.Select(Function(o) o.Clone()).ToList()
         c.Item = Item?.Clone()
         c.Region = Region?.Clone()
+        c.Bucket = Bucket?.Clone()
+        c.Gradient = Gradient?.Clone()
         Return c
     End Function
 
@@ -259,7 +386,7 @@ Public Class DrawLayer
         Filled = s.Filled : Stroked = s.Stroked : Shadow = s.Shadow
         FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
         SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
-        PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet
+        PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
         Symmetry = s.Symmetry : SymCount = s.SymCount : SymX = s.SymX : SymY = s.SymY
         Particle = s.Particle : HoseTheme = s.HoseTheme
     End Sub
@@ -271,7 +398,7 @@ Public Class DrawLayer
                Flow = s.Flow AndAlso Shadow = s.Shadow AndAlso
                SpacingPct = s.SpacingPct AndAlso Scatter = s.Scatter AndAlso SizeJitter = s.SizeJitter AndAlso HueJitter = s.HueJitter AndAlso
                LumJitter = s.LumJitter AndAlso PressureOpacity = s.PressureOpacity AndAlso PenTilt = s.PenTilt AndAlso PenRotation = s.PenRotation AndAlso
-               Wet = s.Wet AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso
+               Wet = s.Wet AndAlso PaperGrain = s.PaperGrain AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso
                Math.Abs(SymX - s.SymX) < 0.00001 AndAlso Math.Abs(SymY - s.SymY) < 0.00001 AndAlso
                Particle = s.Particle AndAlso HoseTheme = s.HoseTheme
     End Function
@@ -296,7 +423,7 @@ Public NotInheritable Class DrawGeometry
 
     Public Shared ReadOnly ShapeNames As String() = {
         "自由繪製（向量）", "直線", "貝茲曲線", "矩形", "圓角矩形", "橢圓", "多邊形", "箭頭", "愛心",
-        "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製"}
+        "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製", "油漆桶", "漸層", "填滿圖層"}
 
     Public Shared ReadOnly BrushNames As String() = {
         "硬筆", "軟筆", "鉛筆", "炭筆", "粉筆", "蠟筆", "水彩", "油畫", "壓克力", "墨水", "毛筆", "麥克筆", "噴槍", "乾刷", "紋理筆", "特效筆",
@@ -316,7 +443,7 @@ Public NotInheritable Class DrawGeometry
     End Property
 
     Public Shared Function IsBox(s As DrawShape) As Boolean
-        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster
+        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer
     End Function
 
     Public Shared Function IsCallout(s As DrawShape) As Boolean
@@ -329,7 +456,7 @@ Public NotInheritable Class DrawGeometry
     End Function
 
     Public Shared Function IsClosed(s As DrawShape) As Boolean
-        Return s <> DrawShape.Freehand AndAlso s <> DrawShape.Line AndAlso s <> DrawShape.Bezier AndAlso s <> DrawShape.Raster
+        Return s <> DrawShape.Freehand AndAlso s <> DrawShape.Line AndAlso s <> DrawShape.Bezier AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer
     End Function
 
     ''' <summary>新圖層的預設形狀參數。</summary>
@@ -472,7 +599,7 @@ Public NotInheritable Class DrawGeometry
                 If layer.Points IsNot Nothing AndAlso layer.Points.Count >= 2 Then
                     list.Add(New Figure With {.Points = layer.Points.Select(Function(p) p.ToPointF()).ToArray(), .Closed = layer.Points.Count >= 3})
                 End If
-            Case DrawShape.Raster
+            Case DrawShape.Raster, DrawShape.Bucket, DrawShape.Gradient, DrawShape.FillLayer
                 ' 點陣圖層沒有外形線，範圍見 RasterBounds。
             Case Else
                 For Each f In LocalFigures(layer)
@@ -889,6 +1016,12 @@ Public NotInheritable Class DrawGeometry
                 Continue For
             End If
             If op.Shape = DrawShape.Raster Then add(RasterBounds(op)) : Continue For ' 合併進來的點陣圖層（已含它的位移）
+            If op.Shape = DrawShape.Bucket OrElse op.Shape = DrawShape.Gradient OrElse op.Shape = DrawShape.FillLayer Then
+                ' 填色範圍要算圖才知道：當作整張照片（Param1 = 填色時的照片寬高比；圖層座標，要扣掉位移）
+                Dim aspect = CSng(If(op.Param1 > 0, op.Param1, 1))
+                add(New RectangleF(CSng(-layer.X), CSng(-layer.Y), aspect, 1))
+                Continue For
+            End If
             Dim pts = Figures(op).SelectMany(Function(f) f.Points).ToList()
             If pts.Count = 0 Then Continue For
             Dim pad = CSng(op.StrokeWidth / 2)

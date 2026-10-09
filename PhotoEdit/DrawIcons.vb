@@ -44,6 +44,29 @@ Friend Module DrawIcons
                             g.FillRectangle(bg, 9.8F, 9.8F, 4.4F, 4.4F)
                             g.DrawRectangle(thin, 9.8F, 9.8F, 4.4F, 4.4F)
                         End Using
+                    Case DrawShape.FillLayer
+                        Using br As New SolidBrush(Color.FromArgb(170, color))
+                            g.FillRectangle(br, 3, 7.5F, 15, 13)
+                        End Using
+                    Case DrawShape.Gradient
+                        ' 五條由淡到濃的色條
+                        For i = 0 To 4
+                            Using br As New SolidBrush(Color.FromArgb(25 + i * 55, color))
+                                g.FillRectangle(br, 3.8F + i * 3.3F, 6.3F, 3.4F, 11.4F)
+                            End Using
+                        Next
+                    Case DrawShape.Bucket
+                        ' 從桶口流下的顏料與一滴顏料（熱點在顏料滴的下緣）
+                        Using br As New SolidBrush(color)
+                            Using drip As New GraphicsPath()
+                                drip.AddBezier(8.5F, 9.5F, 6.5F, 11.5F, 5, 13.5F, 4.6F, 16.5F)
+                                drip.AddLine(4.6F, 16.5F, 6.6F, 16.5F)
+                                drip.AddBezier(6.6F, 16.5F, 7.2F, 14, 9, 12.5F, 11.2F, 12)
+                                drip.CloseFigure()
+                                g.FillPath(br, drip)
+                            End Using
+                            g.FillEllipse(br, 3.2F, 17.4F, 4.4F, 4.4F)
+                        End Using
                     Case DrawShape.Raster
                         ' 直接繪製：畫筆的金屬箍與沾了顏料的筆尖，下方一抹顏料。
                         Using br As New SolidBrush(color)
@@ -80,6 +103,18 @@ Friend Module DrawIcons
             Case DrawShape.Raster
                 ' 筆桿（斜放）
                 p.AddPolygon({New PointF(19.2F, 2.6F), New PointF(21.4F, 4.8F), New PointF(13.6F, 12.8F), New PointF(11.2F, 10.4F)})
+            Case DrawShape.FillLayer
+                ' 填滿圖層：疊在一起的兩張（後面一張只露出邊）
+                p.AddRectangle(New RectangleF(6, 3.5F, 15, 13))
+                p.AddRectangle(New RectangleF(3, 7.5F, 15, 13))
+            Case DrawShape.Gradient
+                ' 漸層：外框（裡面由淡到濃的色條在 DrawTool 畫）
+                p.AddRectangle(New RectangleF(3, 5.5F, 18, 13))
+            Case DrawShape.Bucket
+                ' 油漆桶：斜放的桶身（桶口朝左下）與提把
+                p.AddPolygon({New PointF(8.5F, 9.5F), New PointF(15.5F, 3.5F), New PointF(22, 11), New PointF(15, 17)})
+                p.StartFigure()
+                p.AddBezier(12, 6.5F, 13.5F, 1.5F, 21, 2.5F, 19, 7.5F)
             Case DrawShape.Line
                 p.AddLine(4, 19, 20, 5)
             Case DrawShape.Bezier

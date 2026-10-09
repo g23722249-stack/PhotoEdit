@@ -83,9 +83,19 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' <summary>把配方裡的繪圖圖層（由下而上）畫到 bmp 上。</summary>
     Public Shared Sub DrawLayers(bmp As Bitmap, recipe As EditRecipe)
         If recipe.Drawings Is Nothing OrElse recipe.Drawings.Count = 0 Then Return
-        For Each layer In recipe.Drawings
-            If layer.Visible Then DrawOne(bmp, layer)
-        Next
+        CurrentPaper = recipe.Paper
+        Try
+            Dim visible = recipe.Drawings.Where(Function(d) d.Visible).ToList()
+            For k = 0 To visible.Count - 1
+                Dim above = visible.Skip(k + 1).ToList()
+                AboveDrawer = Sub(b) above.ForEach(Sub(a) DrawOne(b, a)) ' 油漆桶「取樣所有圖層」看得到上面的圖層
+                DrawOne(bmp, visible(k))
+                AboveDrawer = Nothing
+            Next
+        Finally
+            AboveDrawer = Nothing
+            CurrentPaper = Nothing
+        End Try
     End Sub
 
     ''' <summary>畫上一個繪圖圖層（依它的不透明度與混合模式；不看 Visible）。</summary>
@@ -104,7 +114,7 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim keyLayer = layer.Clone()
         keyLayer.Opacity = 100 : keyLayer.Name = "" : keyLayer.Visible = True : keyLayer.Locked = False
         keyLayer.Id = Nothing : keyLayer.Blend = BlendMode.Normal
-        Dim key = System.Text.Json.JsonSerializer.Serialize(keyLayer, _jsonOptions) & "|" & w & "x" & h
+        Dim key = System.Text.Json.JsonSerializer.Serialize(keyLayer, _jsonOptions) & "|" & w & "x" & h & PaperKey()
         Dim item As Rendered = Nothing
         SyncLock _cache
             If _cache.TryGetValue(key, item) Then
@@ -132,7 +142,9 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
         If item.Bitmap Is Nothing Then Return
         SyncLock item
-            LayerBlend.Composite(dst, item.Bitmap, item.Region, opacity, layer.Blend)
+            Using shaded = SurfaceOnDrawing(item.Bitmap, item.Region, w, h) ' 表面紋理「只有繪圖」
+                LayerBlend.Composite(dst, If(shaded, item.Bitmap), item.Region, opacity, layer.Blend)
+            End Using
         End SyncLock
     End Sub
 
@@ -178,6 +190,8 @@ Partial Public NotInheritable Class DrawingRenderer
 
     Private Shared Function Render(layer As DrawLayer, w As Integer, h As Integer) As Rendered
         Dim scale = CSng(h)
+        PreparePaper(w, h)
+        If layer.Shape = DrawShape.FillLayer Then Return RenderFillLayer(layer, w, h)
         Dim figs = DrawGeometry.Figures(layer).
             Select(Function(f) New DrawGeometry.Figure With {.Points = f.Points.Select(Function(p) New PointF(p.X * scale, p.Y * scale)).ToArray(),
                                                              .Closed = f.Closed, .Pressure = f.Pressure, .Angle = f.Angle, .Flat = f.Flat}).
@@ -233,6 +247,9 @@ Partial Public NotInheritable Class DrawingRenderer
             ElseIf layer.Brush = BrushKind.StickerHose Then
                 RenderHose(cv, figs, layer, widthPx, rnd)
             Else
+                If PaperGrainAmount(layer) > 0 AndAlso IsGrainy(layer.Brush) AndAlso layer.PressureOpacity < 50 Then
+                    layer = layer.Clone() : layer.PressureOpacity = 50 ' 有紙張時筆壓也影響濃淡：輕畫只碰到紙紋凸起
+                End If
                 Dim sp = Spec(layer.Brush, layer.Fx)
                 Dim cov(cv.W * cv.H - 1) As Single
                 Dim streak As Single() = If(sp.Tip = TipKind.Bristle, New Single(cv.W * cv.H - 1) {}, Nothing)
@@ -436,6 +453,16 @@ Partial Public NotInheritable Class DrawingRenderer
         Return (hue2(h + 1 / 3.0F), hue2(h), hue2(h - 1 / 3.0F))
     End Function
 
+    ''' <summary>繪圖筆傾斜的程度 0..1（由筆尖的扁平程度換算：扁平 1 = 筆直立，0.4 = 傾斜 60° 以上）。</summary>
+    Private Shared Function SideAmount(flat As Single) As Single
+        Return Clamp01((1 - flat) / 0.6F)
+    End Function
+
+    ''' <summary>用筆側塗時會變淡的乾性筆（真的鉛筆、炭筆斜著塗就是淡淡一大片）。</summary>
+    Private Shared Function SideShades(brush As BrushKind) As Boolean
+        Return brush = BrushKind.Pencil OrElse brush = BrushKind.Charcoal OrElse brush = BrushKind.Chalk OrElse brush = BrushKind.Crayon
+    End Function
+
     ''' <summary>頭尾收筆：起筆與收筆各一段由細到粗。</summary>
     Private Shared Function TaperAt(s As Single, total As Single, widthPx As Single) As Single
         If total <= 0 Then Return 1
@@ -476,10 +503,12 @@ Partial Public NotInheritable Class DrawingRenderer
                  Dim a = amount * cap
                  Dim tipAngle = Single.NaN, ratio = 1.0F
                  If Not Single.IsNaN(ang) Then
-                     ' 繪圖筆：筆越斜筆觸越寬越扁，扁的方向跟著筆。
+                     ' 繪圖筆：筆越斜筆觸越寬越扁，扁的方向跟著筆；乾性筆用筆側塗時顏色較淡（只碰到紙紋凸起）。
                      tipAngle = ang
                      ratio = flat
-                     size *= 1 + 0.6F * (1 - flat)
+                     Dim side = SideAmount(flat)
+                     size *= 1 + 0.8F * side
+                     If layer IsNot Nothing AndAlso SideShades(layer.Brush) Then a *= 1 - 0.5F * side
                  End If
                  If rnd IsNot Nothing Then
                      If sizeJ > 0 Then size *= Math.Max(0.15F, 1 + CSng(rnd.NextDouble() * 2 - 1) * sizeJ * 0.7F)
@@ -603,11 +632,16 @@ Partial Public NotInheritable Class DrawingRenderer
                  Dim along = If(total > 0, s / total, 0)
                  ' 筆毛排成一列；預設橫跨筆畫方向，繪圖筆的角度會轉動這一列，筆越斜排得越寬。
                  Dim nx = -dy, ny = dx
+                 Dim side = 0.0F
                  If Not Single.IsNaN(ang) Then
                      nx = CSng(Math.Cos(ang)) : ny = CSng(Math.Sin(ang))
-                     size *= 1 + 0.6F * (1 - flat)
+                     side = SideAmount(flat)
+                     size *= 1 + 0.8F * side
                  End If
                  Dim pf = If(presOp > 0, 1 - presOp * (1 - p), 1.0F)
+                 ' 筆放得越斜，沾到畫布的顏料越少：油畫、壓克力的筆毛開始斷開（乾擦）
+                 Dim dryOut = If(brush = BrushKind.OilPaint OrElse brush = BrushKind.Acrylic, side * 0.45F, 0.0F)
+                 pf *= 1 - 0.2F * side
                  Dim rb = Math.Max(0.55F, size / count * 0.8F)
                  For i = 0 To count - 1
                      Dim n = Noise1(s / Math.Max(1, widthPx * 0.9F), i * 17 + seed)
@@ -624,6 +658,7 @@ Partial Public NotInheritable Class DrawingRenderer
                          Case Else ' 壓克力
                              intensity = If(along > 0.93F AndAlso n < (along - 0.93F) * 8, 0, 0.92F + 0.08F * n)
                      End Select
+                     If dryOut > 0 AndAlso Noise1(s / Math.Max(1, widthPx * 0.5F), i * 29 + seed + 3) < dryOut Then intensity = 0
                      If intensity <= 0 Then Continue For
                      Dim o = offsets(i) * size
                      Dab(cov, streak, tones(i), cv, x + nx * o, y + ny * o, rb * sizes(i), Math.Min(edge, 0.6F),
@@ -675,6 +710,9 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim emboss = brush = BrushKind.OilPaint OrElse brush = BrushKind.Acrylic OrElse
                      (brush = BrushKind.FX AndAlso layer.Fx = FxKind.Blood)
         If isFill Then emboss = False
+        ' 紙張：這支筆吃紙紋的程度（沒有紙張時 0）
+        Dim grain = If(isFill, 0.0F, PaperGrainAmount(layer))
+        Dim ownGrain = brush = BrushKind.Pencil OrElse brush = BrushKind.Charcoal OrElse brush = BrushKind.Chalk OrElse brush = BrushKind.Crayon OrElse brush = BrushKind.Watercolor
 
         For y = 0 To cv.H - 1
             Dim gy = y + cv.OY
@@ -685,24 +723,25 @@ Partial Public NotInheritable Class DrawingRenderer
                 If a > 1 Then a = 1
                 Dim gx = x + cv.OX
                 Dim alpha = a, lum = 1.0F
+                Dim ph = If(grain > 0, PaperAt(gx, gy), 0.5F)
                 Select Case brush
                     Case BrushKind.Pencil
-                        Dim n = Fbm(gx / fine, gy / fine, seed, 2)
+                        Dim n = PaperNoise(Fbm(gx / fine, gy / fine, seed, 2), ph, grain)
                         alpha = a * Clamp01(0.2F + (n - 0.5F) * 2.6F + a * 0.45F) * 0.9F
                     Case BrushKind.Charcoal
-                        Dim n = Fbm(gx / fine, gy / (fine * 1.6F), seed, 3)
+                        Dim n = PaperNoise(Fbm(gx / fine, gy / (fine * 1.6F), seed, 3), ph, grain)
                         alpha = a * SmoothStep(0.32F, 0.72F, n * 0.85F + a * 0.45F)
                         lum = 0.82F
                     Case BrushKind.Chalk
-                        Dim n = Fbm(gx / (fine * 1.3F), gy / (fine * 1.3F), seed + 5, 2)
+                        Dim n = PaperNoise(Fbm(gx / (fine * 1.3F), gy / (fine * 1.3F), seed + 5, 2), ph, grain)
                         alpha = a * SmoothStep(0.38F, 0.5F, n + (a - 0.6F) * 0.35F)
                         lum = 1.06F
                     Case BrushKind.Crayon
-                        Dim n = Fbm(gx / fine, gy / (fine * 2.5F), seed + 9, 2)
+                        Dim n = PaperNoise(Fbm(gx / fine, gy / (fine * 2.5F), seed + 9, 2), ph, grain)
                         alpha = a * SmoothStep(0.22F, 0.5F, n + (a - 0.5F) * 0.3F) * 0.96F
                     Case BrushKind.Watercolor
                         Dim edge = Clamp01((a - blurred(i)) * 2.8F)
-                        Dim gran = Fbm(gx / medium, gy / medium, seed + 3, 3)
+                        Dim gran = PaperNoise(Fbm(gx / medium, gy / medium, seed + 3, 3), ph, grain) ' 有紙張時顏料沉積在紙紋凹處
                         alpha = Clamp01(a * 0.45F + edge * 0.38F + (gran - 0.5F) * 0.16F * a)
                         lum = 0.96F + gran * 0.08F
                     Case BrushKind.Marker
@@ -714,6 +753,8 @@ Partial Public NotInheritable Class DrawingRenderer
                     Case BrushKind.FX ' 血液
                         lum = 0.78F
                 End Select
+                ' 其他筆刷：紙紋遮罩（輕的地方只留凸起）；鉛筆、炭筆、粉筆、蠟筆、水彩已經直接用紙紋當紋路
+                If grain > 0 AndAlso Not ownGrain Then alpha *= PaperMask(a, ph, grain)
                 If emboss Then
                     ' 以覆蓋率的斜率當作厚度起伏，光從左上來。
                     Dim e = (Sample(mask, cv, x - 1, y - 1) - Sample(mask, cv, x + 1, y + 1))

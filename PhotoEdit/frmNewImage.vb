@@ -28,6 +28,7 @@ Friend Class frmNewImage
     Private Shared _lastDpiPerCm As Boolean
     Private Shared _lastUnit As SizeUnit = SizeUnit.Pixels
     Private Shared _lastCustom As Size = New Size(1920, 1080)
+    Private Shared _lastPaper As PaperKind = PaperKind.WatercolorFine
     Private Shared _lastFit As PictureFit = PictureFit.Cover
 
     Private Shared ReadOnly DpiPresets As (Name As String, Dpi As Double)() = {
@@ -54,6 +55,8 @@ Friend Class frmNewImage
     Private ReadOnly _rbBlack As New RadioButton With {.Text = "黑色(&K)"}
     Private ReadOnly _rbColor As New RadioButton With {.Text = "自訂色彩(&M)"}
     Private ReadOnly _rbTransparent As New RadioButton With {.Text = "透明(&T)"}
+    Private ReadOnly _rbPaper As New RadioButton With {.Text = "紙張(&P)"}
+    Private ReadOnly _paperBox As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _colorButton As New Button With {.FlatStyle = FlatStyle.Flat}
     ' 底圖
     Private ReadOnly _pictureLabel As New Label With {.AutoEllipsis = True}
@@ -103,7 +106,7 @@ Friend Class frmNewImage
         StartPosition = FormStartPosition.CenterParent
         AutoScaleMode = AutoScaleMode.Dpi
         _boldFont = New Font(Font, FontStyle.Bold)
-        ClientSize = New Size(700, 548)
+        ClientSize = New Size(700, 574)
 
         BuildLayout()
         LoadSettings()
@@ -125,18 +128,27 @@ Friend Class frmNewImage
 
         ' 底色
         Dim fillGroup As New GroupBox With {.Text = "底色"}
-        fillGroup.SetBounds(L, y, W, 78)
+        fillGroup.SetBounds(L, y, W, 104)
         _rbWhite.SetBounds(14, 22, 150, 22)
         _rbBlack.SetBounds(220, 22, 150, 22)
         _rbColor.SetBounds(14, 48, 120, 22)
         _colorButton.SetBounds(140, 47, 36, 22)
         _rbTransparent.SetBounds(220, 48, 150, 22)
-        fillGroup.Controls.AddRange(New Control() {_rbWhite, _rbBlack, _rbColor, _colorButton, _rbTransparent})
-        For Each rb In {_rbWhite, _rbBlack, _rbColor, _rbTransparent}
+        _rbPaper.SetBounds(14, 74, 120, 22)
+        _paperBox.SetBounds(140, 73, 200, 24)
+        _paperBox.Items.AddRange(Papers.Names.Take(Papers.Names.Length - 1).Cast(Of Object)().ToArray()) ' 自訂紙紋要在效果分頁匯入
+        AddHandler _paperBox.SelectedIndexChanged, Sub()
+                                                       If _syncing OrElse _paperBox.SelectedIndex < 0 Then Return
+                                                       _spec.PaperKind = CType(_paperBox.SelectedIndex, PaperKind)
+                                                       _lastPaper = _spec.PaperKind
+                                                       If Not _rbPaper.Checked Then _rbPaper.Checked = True Else UpdateAll()
+                                                   End Sub
+        fillGroup.Controls.AddRange(New Control() {_rbWhite, _rbBlack, _rbColor, _colorButton, _rbTransparent, _rbPaper, _paperBox})
+        For Each rb In {_rbWhite, _rbBlack, _rbColor, _rbTransparent, _rbPaper}
             AddHandler rb.CheckedChanged, Sub(s, e) If DirectCast(s, RadioButton).Checked Then OnFillChanged()
         Next
         AddHandler _colorButton.Click, Sub() PickColor()
-        y += 86
+        y += 112
 
         ' 底圖
         Dim pictureGroup As New GroupBox With {.Text = "底圖（可直接帶入一張圖當背景）"}
@@ -261,11 +273,14 @@ Friend Class frmNewImage
         Try
             _spec.Dpi = _lastDpi
             _spec.CustomColor = _lastColor
+            _spec.PaperKind = _lastPaper
+            _paperBox.SelectedIndex = CInt(_lastPaper)
             _colorButton.BackColor = _lastColor
             Select Case _lastFill
                 Case NewImageFill.Black : _rbBlack.Checked = True
                 Case NewImageFill.Custom : _rbColor.Checked = True
                 Case NewImageFill.Transparent : _rbTransparent.Checked = True
+                Case NewImageFill.Paper : _rbPaper.Checked = True
                 Case Else : _rbWhite.Checked = True
             End Select
             _spec.Fill = _lastFill
@@ -324,7 +339,7 @@ Friend Class frmNewImage
     Private Sub OnFillChanged()
         If _syncing Then Return
         _spec.Fill = If(_rbBlack.Checked, NewImageFill.Black, If(_rbColor.Checked, NewImageFill.Custom,
-                     If(_rbTransparent.Checked, NewImageFill.Transparent, NewImageFill.White)))
+                     If(_rbTransparent.Checked, NewImageFill.Transparent, If(_rbPaper.Checked, NewImageFill.Paper, NewImageFill.White))))
         UpdateAll()
     End Sub
 
@@ -485,6 +500,14 @@ Friend Class frmNewImage
     Public Function CreateImage() As Bitmap
         Return NewImage.Create(_spec)
     End Function
+
+    ''' <summary>底色選「紙張」時是哪種紙（建立後文件套用這種紙張與表面紋理）；其他底色為 Nothing。</summary>
+    Public ReadOnly Property PaperChoice As PaperKind?
+        Get
+            If _spec.Fill <> NewImageFill.Paper Then Return Nothing
+            Return _spec.PaperKind
+        End Get
+    End Property
 
     '---------------------------------------------------------------------
     ' 更新畫面

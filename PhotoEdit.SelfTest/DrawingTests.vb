@@ -47,7 +47,7 @@ Module DrawingTests
         ' ---- 幾何 ----
         Dim allShapes = [Enum].GetValues(GetType(DrawShape)).Cast(Of DrawShape)().Where(Function(s) DrawGeometry.IsBox(s)).ToList()
         Check("每種方框形狀都有外形", allShapes.All(Function(s) DrawGeometry.Figures(Box(s, 0.5, 0.5, 0.3, 0.2)).Count > 0))
-        Check("工具名稱 19 個、筆刷名稱 21 個", DrawGeometry.ShapeNames.Length = 19 AndAlso DrawGeometry.BrushNames.Length = 21)
+        Check("工具名稱 22 個（含油漆桶、漸層、填滿圖層）、筆刷名稱 21 個", DrawGeometry.ShapeNames.Length = 22 AndAlso DrawGeometry.BrushNames.Length = 21)
         Dim star = Box(DrawShape.Star5, 0.5, 0.5, 0.2, 0.2)
         Check("五角星 10 個頂點", DrawGeometry.Figures(star)(0).Points.Length = 10)
         Dim rect = Box(DrawShape.Rectangle, 0.5, 0.5, 0.4, 0.2)

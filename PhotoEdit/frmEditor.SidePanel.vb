@@ -169,6 +169,7 @@ Partial Friend Class frmEditor
         AddRow(L, MakeRow("toningstrength", "強度", 0, 100, AddressOf Plain, Function(r) r.ToningStrength, Sub(r, v) r.ToningStrength = v))
         AddHint(L, "例如：飽和度 -100 + 色相 35° = 褐色老照片。" & vbCrLf & "下方濾鏡列可一次套用整組風格。")
         BuildArtSection(L)
+        BuildPaperSection(L)
     End Sub
 
     Private Sub BuildPortraitPage(page As Aqua.TabPage)
@@ -335,6 +336,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>切換分頁時換畫布工具；離開「修補」分頁會關掉修補筆刷，避免在別的分頁誤塗。</summary>
     Private Sub OnSideTabChanged()
+        If _fullScreen AndAlso _tabs.SelectedIndex <> TabDraw Then ExitFullScreen() ' 全螢幕只在繪圖分頁
         If _tabs.SelectedIndex = TabLayers AndAlso _lastTab <> TabLayers Then SyncStackSelectionFromTab(_lastTab)
         _lastTab = _tabs.SelectedIndex
         UpdateToolFromTab()

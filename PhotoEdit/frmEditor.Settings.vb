@@ -7,6 +7,7 @@ Partial Friend Class frmEditor
         End Using
         ' 配色換了：重畫自己畫的部分（筆刷預覽、直方圖、圖層清單…）
         _brushPreviewKey = Nothing
+        SyncSliders() ' 穩定器在設定與繪圖分頁兩邊都能調
         UpdateDrawControls()
         Invalidate(True)
     End Sub

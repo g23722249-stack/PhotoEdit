@@ -112,6 +112,16 @@ Public Class EditRecipe
     ''' <summary>筆觸、網點、色塊大小，0..100（50 為標準，越大越粗獷）。</summary>
     Public Property ArtDetail As Integer = 50
 
+    ''' <summary>紙張（筆刷吃紙紋、表面紋理、藝術風格的紙紋）；Nothing 為不用（筆刷用內建紋路）。</summary>
+    Public Property Paper As PaperSettings
+
+    ''' <summary>有壓印表面紋理。</summary>
+    Public ReadOnly Property HasSurface As Boolean
+        Get
+            Return Paper IsNot Nothing AndAlso Paper.SurfaceStrength > 0
+        End Get
+    End Property
+
     Public ReadOnly Property HasArt As Boolean
         Get
             Return ArtStyle <> ArtStyle.None AndAlso ArtStrength > 0
@@ -168,6 +178,7 @@ Public Class EditRecipe
         r.Cutout = Cutout?.Clone()
         r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))
         r.Selection = Selection?.Clone()
+        r.Paper = Paper?.Clone()
         Return r
     End Function
 
@@ -227,7 +238,7 @@ Public Class EditRecipe
 
     Public ReadOnly Property IsIdentity As Boolean
         Get
-            Return Not HasGeometry AndAlso Not HasTone AndAlso Not HasEffects AndAlso Not HasSourceFix AndAlso Not HasArt AndAlso
+            Return Not HasGeometry AndAlso Not HasTone AndAlso Not HasEffects AndAlso Not HasSourceFix AndAlso Not HasArt AndAlso Not HasSurface AndAlso
                    Not HasCreative AndAlso Sharpness = 0
         End Get
     End Property

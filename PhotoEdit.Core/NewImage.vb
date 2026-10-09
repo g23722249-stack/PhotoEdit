@@ -16,6 +16,8 @@ Public Enum NewImageFill
     Black = 1
     Custom = 2
     Transparent = 3
+    ''' <summary>紙張：紙的底色，建立後文件套用這種紙張與表面紋理。</summary>
+    Paper = 4
 End Enum
 
 ''' <summary>底圖放進畫布的方式。</summary>
@@ -108,6 +110,8 @@ Public Class NewImageSpec
     Public Property Dpi As Double = 300
     Public Property Fill As NewImageFill = NewImageFill.White
     Public Property CustomColor As Color = Color.White
+    ''' <summary>底色為「紙張」時用哪種紙。</summary>
+    Public Property PaperKind As PaperKind = PaperKind.WatercolorFine
     ''' <summary>底圖（Nothing 表示不放底圖）。由呼叫端負責釋放。</summary>
     Public Property Picture As Image
     Public Property Fit As PictureFit = PictureFit.Cover
@@ -119,6 +123,7 @@ Public Class NewImageSpec
                 Case NewImageFill.Black : Return Color.Black
                 Case NewImageFill.Custom : Return Color.FromArgb(255, CustomColor)
                 Case NewImageFill.Transparent : Return Color.Transparent
+                Case NewImageFill.Paper : Return Papers.BaseColors(CInt(PaperKind))
                 Case Else : Return Color.White
             End Select
         End Get

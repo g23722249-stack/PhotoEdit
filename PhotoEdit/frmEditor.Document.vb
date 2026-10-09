@@ -73,7 +73,7 @@ Partial Friend Class frmEditor
     ' 載入專案
     '---------------------------------------------------------------------
 
-    Private Sub OpenProject(projectPath As String)
+    Private Sub OpenProject(projectPath As String, Optional remember As Boolean = True)
         If Not ConfirmReplaceDocument() Then Return
         CleanOldWorkDirs()
         Dim workDir = Path.Combine(ProjectTempRoot, Guid.NewGuid().ToString("N"))
@@ -96,6 +96,7 @@ Partial Friend Class frmEditor
         End Try
         StickerLibrary.ClearCache() ' 貼圖副本換了，讓快取重新找檔
         ShowDocument(photo, loaded.Recipe, projectPath, workDir)
+        If remember Then AddRecentFile(projectPath)
         SetStatusMessage("已載入專案：" & projectPath)
     End Sub
 
@@ -204,6 +205,7 @@ Partial Friend Class frmEditor
         _savedRecipe = _recipe.Clone()
         _aiMaskDirty = False
         UpdateTitle()
+        AddRecentFile(projectPath) ' 存過的專案也列進最近開啟的檔案
         SetStatusMessage("已存檔：" & projectPath)
         Return True
     End Function

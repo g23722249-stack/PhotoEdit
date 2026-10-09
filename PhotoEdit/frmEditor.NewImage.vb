@@ -51,8 +51,10 @@ Partial Friend Class frmEditor
         Dim clipboardPicture As Func(Of Bitmap) = If(clipboardSize.HasValue, New Func(Of Bitmap)(AddressOf ReadClipboardBitmap), Nothing)
 
         Dim file As String = Nothing
+        Dim paperChoice As PaperKind? = Nothing
         Using dlg As New frmNewImage(currentSize, currentPicture, clipboardSize, clipboardPicture)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
+            paperChoice = dlg.PaperChoice
             Cursor = Cursors.WaitCursor
             Try
                 Using bmp = dlg.CreateImage()
@@ -71,9 +73,15 @@ Partial Friend Class frmEditor
         ' 已在上面確認過是否儲存，這裡直接換成新影像。
         _savedRecipe = _recipe.Clone()
         _aiMaskDirty = False
-        OpenPhoto(file)
+        OpenPhoto(file, remember:=False)
         If _photo IsNot Nothing AndAlso _photo.Path = file Then
-            SetStatusMessage($"已新增 {_photo.Image.Width} × {_photo.Image.Height} 的影像，存成 {file}")
+            If paperChoice.HasValue Then
+                ' 紙張當底：文件套用這種紙（筆刷吃紙紋），並壓印淡淡的表面紋理
+                Dim kind = paperChoice.Value
+                ApplyChange(Sub(r) r.Paper = New PaperSettings With {.Kind = kind, .SurfaceStrength = 40, .SurfaceTarget = SurfaceTarget.Photo})
+            End If
+            SetStatusMessage($"已新增 {_photo.Image.Width} × {_photo.Image.Height} 的影像，存成 {file}" &
+                             If(paperChoice.HasValue, $"（紙張：{Papers.Names(CInt(paperChoice.Value))}）", ""))
         End If
     End Sub
 

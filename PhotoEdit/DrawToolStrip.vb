@@ -16,8 +16,10 @@ Friend Class DrawToolStrip
         BackColor = Color.FromArgb(236, 238, 242)
         Width = Gap * 3 + ButtonSize * 2 + 8
         Padding = New Padding(4, 6, 4, 6)
-        ' 直接繪製排在向量的自由繪製前面，其餘依 DrawShape 順序。
-        Dim tools = {DrawIcons.SelectTool, CInt(DrawShape.Raster)}.Concat(Enumerable.Range(0, DrawGeometry.ShapeNames.Length).Where(Function(t) t <> DrawShape.Raster)).ToArray()
+        ' 直接繪製、油漆桶、漸層排在向量的自由繪製前面，其餘依 DrawShape 順序。
+        Dim pixelTools = {CInt(DrawShape.Raster), CInt(DrawShape.Bucket), CInt(DrawShape.Gradient)}
+        Dim notTools = {CInt(DrawShape.FillLayer)} ' 填滿圖層從圖層區的「填滿…」新增，不是畫的工具
+        Dim tools = {DrawIcons.SelectTool}.Concat(pixelTools).Concat(Enumerable.Range(0, DrawGeometry.ShapeNames.Length).Where(Function(t) Not pixelTools.Contains(t) AndAlso Not notTools.Contains(t))).ToArray()
         For i = 0 To tools.Length - 1
             Dim b As New ToolButton(tools(i))
             b.SetBounds(4 + Gap + (i Mod 2) * (ButtonSize + Gap), 6 + (i \ 2) * (ButtonSize + Gap), ButtonSize, ButtonSize)

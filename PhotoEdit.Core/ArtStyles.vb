@@ -67,10 +67,21 @@ Public NotInheritable Class ArtStyles
     ' 進入點
     '=====================================================================
 
+    ''' <summary>依配方套用（紙紋用文件的紙張）。</summary>
     Public Shared Sub Apply(bmp As Bitmap, recipe As EditRecipe)
         If recipe.ArtStyle = ArtStyle.None OrElse recipe.ArtStrength <= 0 Then Return
-        Apply(bmp, recipe.ArtStyle, recipe.ArtStrength, recipe.ArtLine, recipe.ArtDetail)
+        _artPaper = recipe.Paper
+        Try
+            Apply(bmp, recipe.ArtStyle, recipe.ArtStrength, recipe.ArtLine, recipe.ArtDetail)
+        Finally
+            _artPaper = Nothing
+            _artMap = Nothing
+        End Try
     End Sub
+
+    <ThreadStatic> Private Shared _artPaper As PaperSettings
+    <ThreadStatic> Private Shared _artMap As Single()
+    <ThreadStatic> Private Shared _artW As Integer
 
     ' 最近一次的結果：輸入畫面與參數都沒變時（例如只改了暗角、文字、繪圖）直接用，不必重算。
     Private Shared _cacheKey As String
@@ -85,7 +96,7 @@ Public NotInheritable Class ArtStyles
             Return
         End If
         Dim input = Perspective.ReadPixels(bmp)
-        Dim key = $"{CInt(style)}|{strength}|{line}|{detail}|{bmp.Width}x{bmp.Height}|" &
+        Dim key = $"{CInt(style)}|{strength}|{line}|{detail}|{bmp.Width}x{bmp.Height}|{_artPaper?.HeightKey()}|" &
                   Convert.ToBase64String(System.Security.Cryptography.SHA1.HashData(input))
         SyncLock _cacheLock
             If key = _cacheKey AndAlso _cachePixels IsNot Nothing AndAlso _cachePixels.Length = input.Length Then
@@ -118,6 +129,8 @@ Public NotInheritable Class ArtStyles
             src.B(i) = px(i * 4) / 255.0F : src.G(i) = px(i * 4 + 1) / 255.0F : src.R(i) = px(i * 4 + 2) / 255.0F
         Next
         Dim unit = CSng(Math.Max(0.5, Math.Sqrt(CDbl(src.W) * src.H) / 1000.0) * (0.4 + Math.Max(0, Math.Min(100, detail)) / 100.0 * 1.2))
+        _artMap = If(_artPaper Is Nothing, Nothing, Papers.HeightMap(_artPaper, src.W, src.H))
+        _artW = src.W
         Dim lineK = CSng(0.3 + Math.Max(0, Math.Min(100, line)) / 100.0 * 1.4)
         Dim art = Stylize(src, style, Math.Max(0.2F, unit), lineK)
 
@@ -234,7 +247,8 @@ Public NotInheritable Class ArtStyles
         For y = 0 To h - 1
             For x = 0 To w - 1
                 Dim i = y * w + x
-                Dim gran = 0.9F + 0.1F * Fbm(x / (1.6F * s), y / (1.6F * s), 21)
+                ' 顆粒：有紙張時顏料沉積在紙紋凹處
+                Dim gran = If(_artMap IsNot Nothing, 0.86F + 0.14F * _artMap(i), 0.9F + 0.1F * Fbm(x / (1.6F * s), y / (1.6F * s), 21))
                 Dim pap = Paper(x, y, s)
                 Dim e = Clamp01(edge(i) * 9 / Math.Max(0.6F, s))
                 Dim rr = c.R(i), gg = c.G(i), bb = c.B(i)
@@ -829,6 +843,8 @@ Public NotInheritable Class ArtStyles
 
     ''' <summary>紙紋（0.9..1）：細顆粒＋淡淡的纖維。</summary>
     Private Shared Function Paper(x As Integer, y As Integer, s As Single) As Single
+        ' 文件有紙張時用紙張的紋路
+        If _artMap IsNot Nothing Then Return 0.88F + 0.12F * _artMap(Math.Min(_artMap.Length - 1, y * _artW + x))
         Dim fine = Hash(x, y, 91)
         Dim fiber = Noise(x / (1.2F * s), y / (14 * s), 93)
         Return 0.93F + 0.04F * fine + 0.03F * fiber

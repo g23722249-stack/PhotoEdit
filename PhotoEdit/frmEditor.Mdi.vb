@@ -556,7 +556,7 @@ Partial Friend Class frmEditor
         Private Const Grip As Integer = 14
 
         Public ReadOnly Doc As EditorDocument
-        Public ReadOnly Body As New Panel()
+        Public ReadOnly Body As New BufferedPanel()
         Public Event ActivateRequested As EventHandler
         Public Event CloseRequested As EventHandler
 
@@ -601,6 +601,11 @@ Partial Friend Class frmEditor
             End Set
         End Property
 
+        ''' <summary>縮好的快照（同一張快照、同樣大小時重複使用，重畫時不必每次高品質縮放）。</summary>
+        Private _scaled As Bitmap
+        Private _scaledSource As Image
+        Private _scaledSize As Size
+
         ''' <summary>不是目前的文件：把最後一次的畫面縮放置中畫出來。</summary>
         Private Sub PaintSnapshot(sender As Object, e As PaintEventArgs)
             If _active Then Return
@@ -611,13 +616,36 @@ Partial Friend Class frmEditor
                 area.Inflate(-8, -8)
                 Dim k = Math.Min(area.Width / CDbl(img.Width), area.Height / CDbl(img.Height))
                 If k <= 0 Then Return
-                Dim w = CInt(img.Width * k), h = CInt(img.Height * k)
-                e.Graphics.InterpolationMode = Drawing2D.InterpolationMode.HighQualityBilinear
-                e.Graphics.DrawImage(img, New Rectangle(area.X + (area.Width - w) \ 2, area.Y + (area.Height - h) \ 2, w, h))
+                Dim w = Math.Max(1, CInt(img.Width * k)), h = Math.Max(1, CInt(img.Height * k))
+                If _scaled Is Nothing OrElse _scaledSource IsNot img OrElse _scaledSize <> New Size(w, h) Then
+                    _scaled?.Dispose()
+                    _scaled = New Bitmap(w, h)
+                    Using g = Graphics.FromImage(_scaled)
+                        g.InterpolationMode = Drawing2D.InterpolationMode.HighQualityBicubic
+                        g.PixelOffsetMode = Drawing2D.PixelOffsetMode.HighQuality
+                        g.DrawImage(img, New Rectangle(0, 0, w, h))
+                    End Using
+                    _scaledSource = img
+                    _scaledSize = New Size(w, h)
+                End If
+                e.Graphics.DrawImageUnscaled(_scaled, area.X + (area.Width - w) \ 2, area.Y + (area.Height - h) \ 2)
             Catch ex As ArgumentException
                 ' 影像已被釋放（文件剛關閉）：不畫
             End Try
         End Sub
+
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            If disposing Then _scaled?.Dispose() : _scaled = Nothing
+            MyBase.Dispose(disposing)
+        End Sub
+
+        ''' <summary>內容區：雙緩衝，重畫時不會先清成底色再畫（多文件時非作用中的視窗不會閃）。</summary>
+        Friend NotInheritable Class BufferedPanel
+            Inherits Panel
+            Public Sub New()
+                SetStyle(ControlStyles.OptimizedDoubleBuffer Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.UserPaint, True)
+            End Sub
+        End Class
 
         Private ReadOnly Property CloseBox As Rectangle
             Get

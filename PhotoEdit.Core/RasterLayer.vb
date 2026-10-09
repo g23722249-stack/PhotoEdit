@@ -8,7 +8,12 @@ Imports System.Runtime.InteropServices
 ''' </summary>
 Partial Public NotInheritable Class DrawingRenderer
 
-    Private Const MaxRasterCache As Integer = 8
+    ''' <summary>
+    ''' 快取上限：至少留 8 張；記憶體預算內可以更多（圖層多時每層的結果都要留著，否則每畫一筆都得從頭重畫所有圖層）。
+    ''' </summary>
+    Private Const MinRasterCache As Integer = 8
+    Private Const MaxRasterCache As Integer = 64
+    Private Const RasterCacheBudget As Long = 600L * 1024 * 1024
     Private Shared ReadOnly _rasterCache As New Dictionary(Of ULong, Bitmap)()
     Private Shared ReadOnly _rasterOrder As New LinkedList(Of ULong)()
 
@@ -18,24 +23,46 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim dest As New Rectangle(CInt(Math.Round(layer.X * h)), CInt(Math.Round(layer.Y * h)), w, h)
         ' 混色、塗抹、仿製筆要讀取下面已經合成好的照片與圖層。
         Dim below As Byte() = Nothing
-        If layer.Ops.Any(Function(o) Global.PhotoEdit.DrawLayer.SamplesCanvas(o.Brush)) AndAlso dst.Width = w AndAlso dst.Height = h Then
+        If layer.Ops.Any(Function(o) (Global.PhotoEdit.DrawLayer.SamplesCanvas(o.Brush) AndAlso o.Shape <> DrawShape.Bucket AndAlso o.Shape <> DrawShape.Gradient AndAlso o.Region Is Nothing) OrElse
+                                     BucketNeedsBelow(o) OrElse (o.Region IsNot Nothing AndAlso o.FillContent = FillContent.ContentAware)) AndAlso
+           dst.Width = w AndAlso dst.Height = h Then
             below = Perspective.ReadPixels(dst)
         End If
-        Dim bmp = RasterBitmap(layer, w, h, below, dest.X, dest.Y)
+        ' 油漆桶「取樣所有圖層」：上面的圖層也要看（畫在透明底上；畫的時候不再往上找，避免互相遞迴）
+        Dim above As Byte() = Nothing
+        Dim drawAbove = AboveDrawer
+        If drawAbove IsNot Nothing AndAlso dst.Width = w AndAlso dst.Height = h AndAlso
+           layer.Ops.Any(Function(o) o.Shape = DrawShape.Bucket AndAlso o.Bucket IsNot Nothing AndAlso o.Bucket.Sample = BucketSample.AllLayers) Then
+            AboveDrawer = Nothing
+            Try
+                Using tmp As New Bitmap(w, h, PixelFormat.Format32bppArgb)
+                    drawAbove(tmp)
+                    above = Perspective.ReadPixels(tmp)
+                End Using
+            Finally
+                AboveDrawer = drawAbove
+            End Try
+        End If
+        Dim bmp = RasterBitmap(layer, w, h, below, dest.X, dest.Y, above)
         If bmp Is Nothing Then Return
         SyncLock bmp
-            LayerBlend.Composite(dst, bmp, dest, opacity, layer.Blend)
+            Using shaded = SurfaceOnDrawing(bmp, dest, w, h) ' 表面紋理「只有繪圖」
+                LayerBlend.Composite(dst, If(shaded, bmp), dest, opacity, layer.Blend)
+            End Using
         End SyncLock
     End Sub
 
     ''' <summary>點陣圖層合成好的像素（w × h、未加位移與不透明度）；結果放在快取裡，呼叫端不可釋放。</summary>
     Private Shared Function RasterBitmap(layer As DrawLayer, w As Integer, h As Integer,
-                                         Optional below As Byte() = Nothing, Optional ox As Integer = 0, Optional oy As Integer = 0) As Bitmap
+                                         Optional below As Byte() = Nothing, Optional ox As Integer = 0, Optional oy As Integer = 0,
+                                         Optional above As Byte() = Nothing) As Bitmap
         Dim ops = layer.Ops
         Dim keys(ops.Count) As ULong
-        keys(0) = ChainHash(0UL, $"raster|{w}x{h}|{ox},{oy}")
+        keys(0) = ChainHash(0UL, $"raster|{w}x{h}|{ox},{oy}" & PaperKey())
         ' 有讀取畫布的筆時，下面的照片一改（例如調色），抹過的地方就要重算。
         If below IsNot Nothing Then keys(0) = ChainHash(keys(0), BelowSignature(below))
+        ' 油漆桶取樣所有圖層：上面的圖層改了（例如線稿）也要重算
+        If above IsNot Nothing Then keys(0) = ChainHash(keys(0), "above|" & BelowSignature(above))
         For i = 0 To ops.Count - 1
             keys(i + 1) = ChainHash(keys(i), System.Text.Json.JsonSerializer.Serialize(ops(i), _jsonOptions))
         Next
@@ -64,12 +91,30 @@ Partial Public NotInheritable Class DrawingRenderer
             bmp = New Bitmap(w, h, PixelFormat.Format32bppArgb)
         End If
         For i = start To ops.Count - 1
-            If Global.PhotoEdit.DrawLayer.SamplesCanvas(ops(i).Brush) AndAlso ops(i).Shape <> DrawShape.Raster AndAlso ops(i).Item Is Nothing Then
+            Dim op = ops(i)
+            ' 保留透明度：先記下每個像素的透明度，畫完再放回去（只改顏色，透明的地方不會被畫上）
+            Dim keptAlpha As Byte() = If(op.KeepAlpha, Perspective.ReadPixels(bmp), Nothing)
+            If op.Shape = DrawShape.Gradient Then
+                ApplyGradientOp(bmp, w, h, op)
+            ElseIf op.Shape = DrawShape.Bucket Then
+                ApplyBucketOp(bmp, below, above, w, h, ox, oy, op)
+            ElseIf op.Region IsNot Nothing AndAlso op.FillContent = FillContent.ContentAware Then
+                ApplyContentFillOp(bmp, below, w, h, ox, oy, op)
+            ElseIf op.Region IsNot Nothing AndAlso op.FillContent = FillContent.Material AndAlso op.Filled Then
+                ApplyMaterialRegionOp(bmp, w, h, op)
+            ElseIf Global.PhotoEdit.DrawLayer.SamplesCanvas(op.Brush) AndAlso op.Shape <> DrawShape.Raster AndAlso op.Item Is Nothing Then
                 Dim px = Perspective.ReadPixels(bmp)
-                ApplySamplingOp(px, below, w, h, ops(i), ox, oy)
+                ApplySamplingOp(px, below, w, h, op, ox, oy)
                 Perspective.WritePixels(bmp, px)
             Else
-                ApplyRasterOp(bmp, ops(i), w, h)
+                ApplyRasterOp(bmp, op, w, h)
+            End If
+            If keptAlpha IsNot Nothing Then
+                Dim px = Perspective.ReadPixels(bmp)
+                For k = 3 To px.Length - 1 Step 4
+                    px(k) = keptAlpha(k)
+                Next
+                Perspective.WritePixels(bmp, px)
             End If
         Next
 
@@ -81,7 +126,7 @@ Partial Public NotInheritable Class DrawingRenderer
             End If
             _rasterCache(keys(ops.Count)) = bmp
             _rasterOrder.AddFirst(keys(ops.Count))
-            While _rasterOrder.Count > MaxRasterCache
+            While _rasterOrder.Count > MaxRasterCache OrElse (_rasterOrder.Count > MinRasterCache AndAlso RasterCacheBytes() > RasterCacheBudget)
                 Dim old = _rasterOrder.Last.Value
                 _rasterOrder.RemoveLast()
                 Dim oldBmp = _rasterCache(old)
@@ -141,8 +186,19 @@ Partial Public NotInheritable Class DrawingRenderer
                     For x = 0 To r.Width - 1
                         Dim sa = s(x * 4 + 3)
                         If sa = 0 OrElse d(x * 4 + 3) = 0 Then Continue For
-                        Dim keep = 1.0F - sa / 255.0F * opacity
-                        d(x * 4 + 3) = CByte(Math.Max(0, Math.Min(255, Math.Round(d(x * 4 + 3) * keep))))
+                        Dim amount = sa / 255.0F * opacity
+                        Select Case op.EraseMode
+                            Case EraseMode.Bleach, EraseMode.Darken
+                                ' 漂白／加深：每一筆往白（黑）靠一半的筆刷覆蓋率，多擦幾次越來越淡（暗）；透明度不變
+                                Dim k = amount * 0.5F
+                                Dim targetV = If(op.EraseMode = EraseMode.Bleach, 255.0F, 0.0F)
+                                For ch = 0 To 2
+                                    Dim v = d(x * 4 + ch)
+                                    d(x * 4 + ch) = CByte(Math.Max(0, Math.Min(255, Math.Round(v + (targetV - v) * k))))
+                                Next
+                            Case Else
+                                d(x * 4 + 3) = CByte(Math.Max(0, Math.Min(255, Math.Round(d(x * 4 + 3) * (1.0F - amount)))))
+                        End Select
                         changed = True
                     Next
                     If changed Then Marshal.Copy(d, 0, dp, d.Length)
@@ -205,6 +261,14 @@ Partial Public NotInheritable Class DrawingRenderer
         BitConverter.GetBytes(seed).CopyTo(buf, 0)
         bytes.CopyTo(buf, 8)
         Return BitConverter.ToUInt64(System.Security.Cryptography.SHA1.HashData(buf), 0)
+    End Function
+
+    Private Shared Function RasterCacheBytes() As Long
+        Dim total = 0L
+        For Each b In _rasterCache.Values
+            total += CLng(b.Width) * b.Height * 4
+        Next
+        Return total
     End Function
 
     Private Shared Sub ClearRasterCache()

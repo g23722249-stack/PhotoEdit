@@ -108,3 +108,42 @@ Friend NotInheritable Class WandCursor
         End Using
     End Function
 End Class
+
+''' <summary>從程式畫的圖做游標（指定熱點）。</summary>
+Friend NotInheritable Class CursorFactory
+    Private Sub New()
+    End Sub
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure ICONINFO
+        Public fIcon As Boolean
+        Public xHotspot As Integer
+        Public yHotspot As Integer
+        Public hbmMask As IntPtr
+        Public hbmColor As IntPtr
+    End Structure
+
+    <DllImport("user32.dll")>
+    Private Shared Function CreateIconIndirect(ByRef icon As ICONINFO) As IntPtr
+    End Function
+
+    <DllImport("gdi32.dll")>
+    Private Shared Function DeleteObject(handle As IntPtr) As Boolean
+    End Function
+
+    Public Shared Function Create(bmp As Bitmap, hotX As Integer, hotY As Integer) As Cursor
+        Dim colorBits = bmp.GetHbitmap(Color.FromArgb(0))
+        Dim mask As IntPtr
+        Using maskBmp As New Bitmap(bmp.Width, bmp.Height)
+            mask = maskBmp.GetHbitmap(Color.Black)
+        End Using
+        Try
+            Dim info As New ICONINFO With {.fIcon = False, .xHotspot = hotX, .yHotspot = hotY, .hbmMask = mask, .hbmColor = colorBits}
+            Dim icon = CreateIconIndirect(info)
+            Return If(icon = IntPtr.Zero, Cursors.Cross, New Cursor(icon))
+        Finally
+            DeleteObject(colorBits)
+            DeleteObject(mask)
+        End Try
+    End Function
+End Class

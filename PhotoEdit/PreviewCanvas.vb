@@ -273,6 +273,8 @@ Partial Friend Class PreviewCanvas
         SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or
                  ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw Or ControlStyles.Selectable, True)
         BackColor = Color.FromArgb(38, 38, 40)
+        ' 畫布不打字：停用輸入法，中文（注音）模式下按 E、B 等快捷鍵才不會被拿去組字
+        ImeMode = ImeMode.Disable
         InitScrollBars()
         ForeColor = Color.FromArgb(170, 170, 175)
     End Sub
@@ -287,6 +289,28 @@ Partial Friend Class PreviewCanvas
             Invalidate()
         End Set
     End Property
+
+    ''' <summary>
+    ''' 吸色：畫布上這一點看到的顏色（照片＋所有可見圖層的合成結果），取 3×3 平均避開單一雜點；
+    ''' 不在影像上或沒有影像時為 Nothing。半透明處（去背）以 alpha 加權，忽略全透明。
+    ''' </summary>
+    Public Function SampleColor(p As Point) As Color?
+        Dim bmp = TryCast(_image, Bitmap)
+        If bmp Is Nothing Then Return Nothing
+        Dim b = ImageBounds()
+        If b.Width <= 0 OrElse Not b.Contains(p) Then Return Nothing
+        Dim x = CInt(Math.Floor((p.X - b.X) / b.Width * bmp.Width)), y = CInt(Math.Floor((p.Y - b.Y) / b.Height * bmp.Height))
+        Dim r = 0.0, g = 0.0, bl = 0.0, w = 0.0
+        For yy = Math.Max(0, y - 1) To Math.Min(bmp.Height - 1, y + 1)
+            For xx = Math.Max(0, x - 1) To Math.Min(bmp.Width - 1, x + 1)
+                Dim c = bmp.GetPixel(xx, yy)
+                Dim a = c.A / 255.0
+                r += c.R * a : g += c.G * a : bl += c.B * a : w += a
+            Next
+        Next
+        If w <= 0 Then Return Nothing
+        Return Color.FromArgb(CInt(Math.Round(r / w)), CInt(Math.Round(g / w)), CInt(Math.Round(bl / w)))
+    End Function
 
     ''' <summary>Image 一個像素等於幾個原圖像素（預覽縮圖 &gt; 1，全尺寸 = 1）。</summary>
     Public Property ImageScale As Double
@@ -527,12 +551,52 @@ Partial Friend Class PreviewCanvas
             g.DrawImage(_image, visible, src, GraphicsUnit.Pixel)
         End If
 
+        DrawTrace(g, b, visible)
         If _cropMode Then DrawCropOverlay(g, b)
         If IsPaintTool Then DrawBrush(g, b)
         If _tool = CanvasTool.Gradient Then DrawGradient(g, b)
         If _tool = CanvasTool.Overlay Then DrawOverlaySelection(g, b)
         If _tool = CanvasTool.Draw Then _drawHost?.DrawPaint(g)
         AfterPaint?.Invoke(g)
+    End Sub
+
+    '---------------------------------------------------------------------
+    ' 描圖：參考圖半透明疊在照片上（只顯示，不存進文件也不匯出）
+    '---------------------------------------------------------------------
+
+    Private _traceSource As Bitmap
+    Private _traceScaled As Bitmap
+    Private _traceOpacity As Single = 0.35F
+
+    ''' <summary>描圖用的參考圖（Nothing = 不描圖）；畫布另存一份縮小的複本，重畫才快。</summary>
+    Friend Sub SetTrace(image As Bitmap, opacity As Single)
+        If image IsNot _traceSource Then
+            _traceScaled?.Dispose()
+            _traceScaled = Nothing
+            _traceSource = image
+            If image IsNot Nothing Then
+                Dim s = Math.Min(1.0, 2048.0 / Math.Max(image.Width, image.Height))
+                _traceScaled = New Bitmap(image, Math.Max(1, CInt(image.Width * s)), Math.Max(1, CInt(image.Height * s)))
+            End If
+        End If
+        _traceOpacity = opacity
+        Invalidate()
+    End Sub
+
+    ''' <summary>參考圖等比例放進照片範圍、置中。</summary>
+    Private Sub DrawTrace(g As Graphics, b As RectangleF, visible As RectangleF)
+        If _traceScaled Is Nothing OrElse visible.Width <= 0 OrElse visible.Height <= 0 Then Return
+        Dim s = Math.Min(b.Width / _traceScaled.Width, b.Height / _traceScaled.Height)
+        Dim w = _traceScaled.Width * s, h = _traceScaled.Height * s
+        Dim dest As New RectangleF(b.X + (b.Width - w) / 2, b.Y + (b.Height - h) / 2, w, h)
+        Dim state = g.Save()
+        g.SetClip(visible)
+        g.InterpolationMode = InterpolationMode.Bilinear
+        Using attr As New Imaging.ImageAttributes()
+            attr.SetColorMatrix(New Imaging.ColorMatrix With {.Matrix33 = _traceOpacity})
+            g.DrawImage(_traceScaled, Rectangle.Round(dest), 0, 0, _traceScaled.Width, _traceScaled.Height, GraphicsUnit.Pixel, attr)
+        End Using
+        g.Restore(state)
     End Sub
 
     ''' <summary>不論目前工具，最後再畫的東西（選取區的螞蟻線）。</summary>
@@ -702,7 +766,7 @@ Partial Friend Class PreviewCanvas
             Dim n = ScreenToNormalized(e.Location)
             If n.X >= 0 AndAlso n.Y >= 0 AndAlso n.X <= 1 AndAlso n.Y <= 1 Then RaiseEvent WandClicked(n, ModifierKeys.HasFlag(Keys.Alt))
             Return
-        ElseIf _tool = CanvasTool.Draw AndAlso e.Button = MouseButtons.Left Then
+        ElseIf _tool = CanvasTool.Draw AndAlso (e.Button = MouseButtons.Left OrElse e.Button = MouseButtons.Right) Then ' 繪圖：右鍵按住是暫時的橡皮擦（中鍵仍可拖曳畫面）
             _drag = DragMode.Draw
             _drawHost?.DrawMouseDown(e)
         ElseIf IsPaintTool AndAlso e.Button = MouseButtons.Left Then
@@ -912,6 +976,8 @@ Partial Friend Class PreviewCanvas
 
     Private _penPressure As Single?
     Private _penTime As Integer
+    ''' <summary>繪圖筆倒過來用（橡皮擦端）：PEN_FLAG_INVERTED 或 PEN_FLAG_ERASER。</summary>
+    Private _penEraser As Boolean
     Private _penTiltX As Single, _penTiltY As Single, _penRotation As Single
 
     ''' <summary>繪圖筆的傾斜（度）與筆身旋轉（度）；不是用筆時全部為 0。</summary>
@@ -975,6 +1041,13 @@ Partial Friend Class PreviewCanvas
         End Get
     End Property
 
+    ''' <summary>現在用的是繪圖筆的橡皮擦端（筆倒過來）。</summary>
+    Public ReadOnly Property PenEraser As Boolean
+        Get
+            Return _penEraser AndAlso Environment.TickCount - _penTime <= 400
+        End Get
+    End Property
+
     Protected Overrides Sub WndProc(ByRef m As Message)
         If m.Msg = WM_POINTERDOWN OrElse m.Msg = WM_POINTERUPDATE OrElse m.Msg = WM_POINTERUP Then ReadPen(m)
         MyBase.WndProc(m) ' 交給系統轉成滑鼠訊息
@@ -991,6 +1064,7 @@ Partial Friend Class PreviewCanvas
             _penTiltX = If((info.penMask And PEN_MASK_TILT_X) <> 0, CSng(info.tiltX), 0)
             _penTiltY = If((info.penMask And PEN_MASK_TILT_Y) <> 0, CSng(info.tiltY), 0)
             _penRotation = If((info.penMask And PEN_MASK_ROTATION) <> 0, CSng(info.rotation), 0)
+            _penEraser = (info.penFlags And &H6UI) <> 0 ' 0x2 倒過來、0x4 按著橡皮擦端
             If m.Msg = WM_POINTERUP Then
                 _penPressure = Nothing
             ElseIf (info.penMask And PEN_MASK_PRESSURE) = 0 Then

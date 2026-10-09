@@ -200,20 +200,37 @@ Public NotInheritable Class LayerStack
     Public Shared Sub Draw(bmp As Bitmap, recipe As EditRecipe)
         Dim layers = Order(recipe).Where(Function(r) r.Visible).ToList()
         If layers.Count = 0 Then Return
+        DrawingRenderer.CurrentPaper = recipe.Paper ' 筆刷吃紙紋、「只有繪圖」的表面紋理
         Dim photo As Bitmap = Nothing
         If layers.Any(Function(r) r.IsOverlay AndAlso r.Overlay.Kind = OverlayKind.Text AndAlso r.Overlay.FillMode = TextFill.Photo) Then
             photo = DirectCast(bmp.Clone(), Bitmap) ' 還沒蓋上任何圖層的照片（「照片本身」填字用）
         End If
         Try
-            For Each r In layers
+            For k = 0 To layers.Count - 1
+                Dim r = layers(k)
                 If r.IsOverlay Then
                     Creative.DrawOverlayOnto(bmp, r.Overlay, photo)
                 Else
+                    ' 油漆桶「取樣所有圖層」也要看得到上面的圖層（例如上色圖層放在線稿下面）
+                    Dim above = layers.Skip(k + 1).ToList()
+                    Dim photoForText = photo
+                    DrawingRenderer.AboveDrawer = Sub(b)
+                                                      For Each a In above
+                                                          If a.IsOverlay Then
+                                                              Creative.DrawOverlayOnto(b, a.Overlay, photoForText)
+                                                          Else
+                                                              DrawingRenderer.DrawOne(b, a.Drawing)
+                                                          End If
+                                                      Next
+                                                  End Sub
                     DrawingRenderer.DrawOne(bmp, r.Drawing)
+                    DrawingRenderer.AboveDrawer = Nothing
                 End If
             Next
         Finally
             photo?.Dispose()
+            DrawingRenderer.AboveDrawer = Nothing
+            DrawingRenderer.CurrentPaper = Nothing
         End Try
     End Sub
 

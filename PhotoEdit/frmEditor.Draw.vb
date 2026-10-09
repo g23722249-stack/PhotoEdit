@@ -71,6 +71,7 @@ Partial Friend Class frmEditor
         AddHandler redo.Click, Sub() RunCommand("redo")
         AddHandler done.Click, Sub() FinishDrawAction()
         BuildEraserToggle()
+        BuildEraseModeCombo()
         _drawHint.Dock = DockStyle.Fill
         _drawHint.AutoEllipsis = True
         _drawHint.TextAlign = ContentAlignment.MiddleLeft
@@ -78,10 +79,26 @@ Partial Friend Class frmEditor
         _drawHint.ForeColor = Color.FromArgb(70, 76, 88)
         ' 停靠順序：最後加入的最先停靠。
         _drawBar.Controls.Add(_drawHint)
+        Dim full = MakeButton("⛶ 全螢幕", "draw.fullscreen")
+        full.Dock = DockStyle.Right
+        full.Width = 96
+        AddHandler full.Click, Sub() ToggleFullScreen()
+        _drawBar.Controls.Add(full) ' 在「完成」左邊
         _drawBar.Controls.Add(done)
-        _drawBar.Controls.Add(_drawEraser)
+        ' 橡皮擦按鈕＋擦法選單：放在同一個由左到右的小容器裡，順序固定
+        Dim eraserGroup As New FlowLayoutPanel With {.Dock = DockStyle.Left, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                                                     .WrapContents = False, .BackColor = Color.Transparent, .Padding = Padding.Empty, .Margin = Padding.Empty}
+        _drawEraser.Dock = DockStyle.None
+        _drawEraser.Height = 28
+        _drawEraser.Margin = New Padding(0)
+        _eraseMode.Dock = DockStyle.None
+        _eraseMode.Margin = New Padding(4, 3, 0, 0)
+        eraserGroup.Controls.AddRange({_drawEraser, _eraseMode})
+        _drawBar.Controls.Add(eraserGroup)
         _drawBar.Controls.Add(redo)
         _drawBar.Controls.Add(undo)
+        BuildBucketBar(done)
+        BuildGradientBar(done)
         _canvas.DrawHost = Me
     End Sub
 
@@ -144,12 +161,10 @@ Partial Friend Class frmEditor
             _help.SetHelp(colorButtons(i).Item2, b)
             L.Add(b)
         Next
-        AddHandler _drawStrokeColor.Click, Sub() PickDrawColor(Function(d) d.StrokeColorArgb, Sub(d, v) d.StrokeColorArgb = v)
-        AddHandler _drawFillColor.Click, Sub() PickDrawColor(Function(d) d.FillColorArgb, Sub(d, v)
-                                                                                           d.FillColorArgb = v
-                                                                                           d.Filled = True
-                                                                                       End Sub)
-        AddHandler _drawTextColor.Click, Sub() PickDrawColor(Function(d) d.TextColorArgb, Sub(d, v) d.TextColorArgb = v)
+        ' 三個顏色按鈕打開浮動的選色視窗（Aqua.ColorPickerWindow），切到對應的目標
+        AddHandler _drawStrokeColor.Click, Sub() ShowColorWindow(TargetStroke)
+        AddHandler _drawFillColor.Click, Sub() ShowColorWindow(TargetFill)
+        AddHandler _drawTextColor.Click, Sub() ShowColorWindow(TargetText)
         L.Y += 38
         Dim checks = {(_drawStroke, "外框", "draw.stroke"), (_drawFill, "填色", "draw.fill"), (_drawShadow, "陰影", "draw.shadow")}
         For i = 0 To 2
@@ -186,8 +201,9 @@ Partial Friend Class frmEditor
         AddRow(L, DrawRow("dw_textsize", "圖說字級", 10, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.TextSize * 1000)), Sub(d, v) d.TextSize = v / 1000.0))
 
         AddHeading(L, "圖層")
-        Dim names = {("新增", "draw.layer.add"), ("複製", "draw.layer.dup"), ("上移", "draw.layer.up"), ("下移", "draw.layer.down"), ("刪除", "draw.layer.delete")}
-        Dim bw = (L.Width - 8 - 4 * 4) \ 5
+        Dim names = {("新增", "draw.layer.add"), ("複製", "draw.layer.dup"), ("上移", "draw.layer.up"), ("下移", "draw.layer.down"), ("刪除", "draw.layer.delete"),
+                     ("填滿…", "draw.layer.fill")}
+        Dim bw = (L.Width - 8 - 4 * (names.Length - 1)) \ names.Length
         For i = 0 To names.Length - 1
             Dim b = MakeButton(names(i).Item1, names(i).Item2)
             b.SetBounds(8 + i * (bw + 4), L.Y + 2, bw, 28)
@@ -259,25 +275,26 @@ Partial Friend Class frmEditor
         Dim sel = SelDraw(r)
         If sel Is Nothing Then Return Nothing
         ' 直接繪製時筆刷設定只給下一筆用；選取的圖層（不論種類）都不跟著改。
-        If _drawStrip.SelectedTool = CInt(DrawShape.Raster) Then Return Nothing
+        If _drawStrip.SelectedTool = CInt(DrawShape.Raster) OrElse IsFillTool() Then Return Nothing
         If (sel.Shape = DrawShape.Freehand OrElse sel.Shape = DrawShape.Raster) AndAlso _drawStrip.SelectedTool <> DrawIcons.SelectTool Then Return Nothing
         Return sel
     End Function
 
-    Private Sub SetDrawProp(change As Action(Of DrawLayer))
+    ''' <param name="groupKey">連續的同類修改（例如在選色視窗拖曳）在復原紀錄裡合併成一步。</param>
+    Private Sub SetDrawProp(change As Action(Of DrawLayer), Optional groupKey As String = Nothing)
         change(_drawStyle)
         If _photo IsNot Nothing Then
             ApplyChange(Sub(r)
                             Dim t = StyleTarget(r)
                             If t IsNot Nothing Then change(t)
-                        End Sub)
+                        End Sub, groupKey)
         End If
         UpdateDrawControls()
     End Sub
 
     Private Sub SetDrawBrush(b As BrushKind)
         ' 混色、塗抹、仿製要讀取畫布，只能直接繪製在點陣圖層上。
-        If DrawLayer.SamplesCanvas(b) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) Then
+        If DrawLayer.SamplesCanvas(b) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso Not IsFillTool() Then
             _drawStrip.SelectedTool = CInt(DrawShape.Raster)
             SetStatusMessage($"「{DrawGeometry.BrushNames(CInt(b))}」會讀取照片的顏色，已切換到直接繪製（畫在點陣圖層上）。")
         End If
@@ -289,15 +306,6 @@ Partial Friend Class frmEditor
             Dim w = EffectCatalog.Locate(cats, EffectValue(st))
             ApplyEffectEntry(cats(w.Category).Items(w.Item))
         End If
-    End Sub
-
-    Private Sub PickDrawColor(getter As Func(Of DrawLayer, Integer), setter As Action(Of DrawLayer, Integer))
-        Dim current = Color.FromArgb(getter(If(StyleTarget(_recipe), _drawStyle)))
-        Using dlg As New ColorDialog With {.Color = current, .FullOpen = True}
-            If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
-            Dim argb = dlg.Color.ToArgb()
-            SetDrawProp(Sub(d) setter(d, argb))
-        End Using
     End Sub
 
     Private Sub SelectDrawLayer(index As Integer)
@@ -315,8 +323,12 @@ Partial Friend Class frmEditor
         CommitCalloutEditor()
         ' 換成畫圖工具時放開選取的圖形（像小畫家），之後改筆刷、顏色只影響新畫的。
         ' 直接繪製例外：像 Photoshop 一樣畫在目前選取的圖層上。
-        If _drawStrip.SelectedTool <> DrawIcons.SelectTool AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) Then _drawIndex = -1
+        If _drawStrip.SelectedTool <> DrawIcons.SelectTool AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso
+           Not IsFillTool() Then _drawIndex = -1 ' 油漆桶、漸層也畫在目前選取的圖層
         _drawEraser.Visible = _drawStrip.SelectedTool = CInt(DrawShape.Raster)
+        _eraseMode.Visible = _drawEraser.Visible
+        _bucketBar.Visible = _drawStrip.SelectedTool = CInt(DrawShape.Bucket)
+        _gradientBar.Visible = _drawStrip.SelectedTool = CInt(DrawShape.Gradient)
         ' 換成畫圖工具時，選取中的自由繪製圖層不再是設定對象：同步面板。
         SyncSliders()
         UpdateDrawControls()
@@ -363,13 +375,15 @@ Partial Friend Class frmEditor
             SetSwatch(_drawStrokeColor, st.StrokeColorArgb)
             SetSwatch(_drawFillColor, st.FillColorArgb)
             SetSwatch(_drawTextColor, st.TextColorArgb)
+            SyncColorWindow()
+            SyncQuickPanel()
             _drawStroke.Checked = st.Stroked
             _drawFill.Checked = st.Filled
             _drawShadow.Checked = st.Shadow
             UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
             Dim sel = SelDraw(_recipe)
-            For i = 1 To _layerButtons.Count - 1
+            For i = 1 To 4 ' 複製、上移、下移、刪除要先選圖層；新增、填滿不用
                 _layerButtons(i).Enabled = sel IsNot Nothing
             Next
             UpdateDrawHint()
@@ -387,6 +401,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>筆刷格子的預覽用目前的線條色（太淡時改用深灰）；特效與材質改變時重畫。</summary>
     Private Sub UpdateBrushPreviews(st As DrawLayer)
+        If DeferBrushPreviews() Then Return ' 正在選色視窗拖曳：停下來再畫
         Dim c = Color.FromArgb(255, Color.FromArgb(st.StrokeColorArgb))
         If ThemeManager.Dark Then
             If c.GetBrightness() < 0.25 Then c = Color.FromArgb(210, 214, 222) ' 深色格子上看得到
@@ -478,9 +493,15 @@ Partial Friend Class frmEditor
         Else
             Dim shape = CType(tool, DrawShape)
             Select Case shape
+                Case DrawShape.Gradient
+                    text = "漸層：在照片上拖一條線，起點是線條色、終點是填色（Shift 鎖 45°）；有選取範圍時只畫在範圍裡。"
+                Case DrawShape.Bucket
+                    text = "油漆桶：點一下把顏色相近的區域填滿（線條色＋目前筆刷的質感），填在選取的點陣圖層。" &
+                           "線稿有缺口就調高「補缺口」；Alt＋點一下吸色。"
                 Case DrawShape.Raster
                     If _drawEraser.Checked Then
-                        text = "橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方（B 換回畫筆）。"
+                        text = {"橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方", "漂白：拖曳讓畫過的地方越來越淡（往白色）", "加深：拖曳讓畫過的地方越來越暗"}(Math.Max(0, Math.Min(2, _appSettings.EraseMode))) &
+                               "（B 換回畫筆；平常按住右鍵或用繪圖筆的橡皮擦端也能擦）。"
                     ElseIf _drawStyle.Brush = BrushKind.Clone Then
                         text = If(_cloneSource.HasValue, "仿製筆：拖曳把來源（十字準星）的照片畫過來；Alt＋點一下換來源。",
                                   "仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。")
@@ -579,6 +600,7 @@ Partial Friend Class frmEditor
     Private Sub RenameDrawLayer()
         Dim d = SelDraw(_recipe)
         If d Is Nothing Then Return
+        If d.Shape = DrawShape.FillLayer Then EditFillLayer(_drawIndex) : Return ' 填滿圖層：按兩下修改內容（名稱也在對話框裡）
         Dim name = Microsoft.VisualBasic.Interaction.InputBox("圖層名稱：", AppName, d.Name)
         If String.IsNullOrWhiteSpace(name) Then Return
         Dim index = _drawIndex
@@ -590,6 +612,8 @@ Partial Friend Class frmEditor
         If _photo Is Nothing Then Return
         Dim index = _drawIndex
         Select Case command
+            Case 5
+                NewFillLayer()
             Case 0
                 ' 像 Photoshop：新增的是空白的點陣圖層，接著用直接繪製畫在上面。
                 _drawStrip.SelectedTool = CInt(DrawShape.Raster)
@@ -760,6 +784,8 @@ Partial Friend Class frmEditor
         Param
         Vertex
         RectScale
+        ''' <summary>漸層工具：拖曳起點到終點。</summary>
+        GradientLine
     End Enum
 
     Private _dd As DrawDrag
@@ -778,8 +804,24 @@ Partial Friend Class frmEditor
 
     Private Sub DrawMouseDown(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseDown
         If _photo Is Nothing Then Return
-        If _tabs.SelectedIndex = TabSelect Then SelMouseDown(e) : Return
+        If _tabs.SelectedIndex = TabSelect Then
+            If e.Button = MouseButtons.Left Then SelMouseDown(e) ' 選取分頁不用右鍵
+            Return
+        End If
         CommitCalloutEditor()
+        ' Alt 吸色（仿製筆的 Alt 例外：設定仿製來源，下面處理）
+        If e.Button = MouseButtons.Left AndAlso WantsAltPick() Then
+            BeginAltPick(e.Location)
+            Return
+        End If
+        ' 暫時的橡皮擦（不管目前是什麼工具）：按住右鍵畫，或繪圖筆倒過來用橡皮擦端
+        If e.Button = MouseButtons.Right OrElse _canvas.PenEraser Then
+            _tempErase = True
+            BeginRasterStroke(e, ScreenToUnit(e.Location))
+            If _dd <> DrawDrag.Freehand Then _tempErase = False ' 沒有可以擦的點陣圖層
+            _canvas.Invalidate()
+            Return
+        End If
         Dim u = ScreenToUnit(e.Location)
         If _polyPoints IsNot Nothing Then
             If _polyPoints.Count >= 3 AndAlso ScreenDist(UnitToScreen(_polyPoints(0)), e.Location) <= 9 Then
@@ -814,6 +856,14 @@ Partial Friend Class frmEditor
             _canvas.Invalidate()
             Return
         End If
+        If _drawStrip.SelectedTool = CInt(DrawShape.Bucket) Then
+            If e.Button = MouseButtons.Left Then BucketClick(u)
+            Return
+        End If
+        If _drawStrip.SelectedTool = CInt(DrawShape.Gradient) Then
+            If e.Button = MouseButtons.Left Then BeginGradientDrag(u) : _canvas.Invalidate()
+            Return
+        End If
 
         Dim sel = SelDraw(_recipe)
         If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
@@ -843,7 +893,7 @@ Partial Friend Class frmEditor
             Case DrawShape.Freehand
                 _dd = DrawDrag.Freehand
                 _freeRaster = False
-                _freePoints = New List(Of DrawPoint) From {StrokePoint(u, e.Location, True)}
+                StartFreehand(u, e.Location)
             Case DrawShape.Polygon
                 _polyPoints = New List(Of PointF) From {u}
                 _polyHover = u
@@ -875,7 +925,7 @@ Partial Friend Class frmEditor
     ''' <summary>筆壓：繪圖筆用真的筆壓；滑鼠在毛筆、墨水時依速度模擬（越快越細），其餘為 1。</summary>
     Private Function StrokePressure(p As Point, first As Boolean) As Single
         Dim pen = _canvas.PenPressure
-        If pen.HasValue Then Return pen.Value
+        If pen.HasValue Then Return _appSettings.PenCurve().Map(pen.Value) ' 繪圖筆：套用「設定」裡的筆壓曲線
         If Not DrawingRenderer.SimulatesPressure(_drawStyle.Brush) Then Return 1
         Dim now = Environment.TickCount
         If first Then
@@ -896,6 +946,7 @@ Partial Friend Class frmEditor
     Private Sub DrawMouseMove(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseMove
         If _photo Is Nothing Then Return
         If _tabs.SelectedIndex = TabSelect Then SelMouseMove(e) : Return
+        If _altPicking Then AltPickAt(e.Location) : Return
         Dim u = ScreenToUnit(e.Location)
         Dim shift = ModifierKeys.HasFlag(Keys.Shift)
         Select Case _dd
@@ -909,12 +960,7 @@ Partial Friend Class frmEditor
                 _ddCur = u
                 _canvas.Invalidate()
             Case DrawDrag.Freehand
-                Dim last = UnitToScreen(_freePoints(_freePoints.Count - 1).ToPointF())
-                Dim minStep = Math.Max(1.5, _drawStyle.StrokeWidth * PxPerUnit() / 8)
-                If ScreenDist(last, e.Location) >= minStep Then
-                    _freePoints.Add(StrokePoint(u, e.Location, False))
-                    _canvas.Invalidate()
-                End If
+                FreehandMove(e.Location)
             Case DrawDrag.Move
                 Dim dx = u.X - _ddStart.X, dy = u.Y - _ddStart.Y
                 ReplaceDragLayer(Sub(d) DrawGeometry.Offset(d, dx, dy))
@@ -932,6 +978,8 @@ Partial Friend Class frmEditor
             Case DrawDrag.RectScale
                 Dim nb = DrawGeometry.DragRect(_ddBounds, _ddHandle, u, shift)
                 ReplaceDragLayer(Sub(d) DrawGeometry.ScalePoints(d, _ddLayer, _ddBounds, nb))
+            Case DrawDrag.GradientLine
+                GradientDragMove(u)
         End Select
     End Sub
 
@@ -947,6 +995,18 @@ Partial Friend Class frmEditor
 
     Private Sub UpdateDrawCursor(p As Point, u As PointF)
         Dim sel = SelDraw(_recipe)
+        If WantsAltPick() Then
+            If _canvas.Cursor IsNot DropperCursor() Then _canvas.Cursor = DropperCursor()
+            Return
+        End If
+        If _drawStrip.SelectedTool = CInt(DrawShape.Bucket) Then
+            If _canvas.Cursor IsNot BucketCursor() Then _canvas.Cursor = BucketCursor()
+            Return
+        End If
+        If _drawStrip.SelectedTool = CInt(DrawShape.Gradient) Then
+            If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
+            Return
+        End If
         Dim c = If(_drawStrip.SelectedTool = DrawIcons.SelectTool, Cursors.Default, Cursors.Cross)
         If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) Then
             Dim h = HitHandle(sel, p)
@@ -965,7 +1025,11 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub DrawMouseUp(e As MouseEventArgs) Implements PreviewCanvas.IDrawHost.DrawMouseUp
-        If _tabs.SelectedIndex = TabSelect Then SelMouseUp(e) : Return
+        If _tabs.SelectedIndex = TabSelect Then
+            If e.Button = MouseButtons.Left Then SelMouseUp(e)
+            Return
+        End If
+        If _altPicking Then EndAltPick(e.Location) : Return
         Dim kind = _dd
         _dd = DrawDrag.None
         Select Case kind
@@ -977,8 +1041,12 @@ Partial Friend Class frmEditor
                     If DrawGeometry.IsCallout(d.Shape) Then OpenCalloutEditor()
                 End If
             Case DrawDrag.Freehand
+                FinishStabilizer(e.Location)
                 CommitFreehand()
+            Case DrawDrag.GradientLine
+                EndGradientDrag()
         End Select
+        _tempErase = False
         _canvas.Invalidate()
     End Sub
 
@@ -1261,7 +1329,7 @@ Partial Friend Class frmEditor
         ElseIf _dd = DrawDrag.Freehand AndAlso _freePoints IsNot Nothing Then
             Dim c = Color.FromArgb(CInt(Math.Max(40, _drawStyle.Opacity * 2.55)), Color.FromArgb(_drawStyle.StrokeColorArgb))
             ' 橡皮擦：半透明白色，看得出擦過的路徑。
-            If _freeRaster AndAlso _drawEraser.Checked Then c = Color.FromArgb(150, 255, 255, 255)
+            If _freeRaster AndAlso IsErasing() Then c = Color.FromArgb(150, 255, 255, 255)
             Dim w = CSng(Math.Max(1, _drawStyle.StrokeWidth * px))
             Using pen As New Pen(c, w) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round, .LineJoin = LineJoin.Round}
                 Dim pts = _freePoints.Select(Function(p) UnitToScreen(p.ToPointF())).ToArray()
@@ -1274,7 +1342,9 @@ Partial Friend Class frmEditor
                     PaintSymmetryPreview(g, pen, _freePoints)
                 End If
             End Using
+            PaintStabilizer(g)
         End If
+        PaintGradientDrag(g)
         If _polyPoints IsNot Nothing Then
             Dim pts = _polyPoints.Concat({_polyHover}).Select(Function(p) UnitToScreen(p)).ToArray()
             Using outer As New Pen(Color.FromArgb(150, 0, 0, 0), 3), pen As New Pen(Color.FromArgb(_drawStyle.StrokeColorArgb), 1.6F)

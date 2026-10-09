@@ -61,6 +61,8 @@ Friend Module ThemeManager
 
     ''' <summary>Tag 設成這個值的控制項不換顏色（例如顏色樣本按鈕）。</summary>
     Public Const SkipTag As String = "theme:skip"
+    ''' <summary>連同子控制項整個不換色（例如 Aqua.ColorPickerWindow，自己跟著 Aqua.Theme 換）。</summary>
+    Public Const SkipTreeTag As String = "theme:skiptree"
 
     ''' <summary>分隔線、外框等中間灰：深色時變成深底上看得到的灰。</summary>
     Public Function Line(c As Color) As Color
@@ -94,6 +96,8 @@ Friend Module ThemeManager
     End Sub
 
     Private Sub ApplyTree(c As Control)
+        ' 自己處理深淺色的元件（Aqua 的選色視窗跟著 Aqua.Theme 換色）：整棵樹都不碰
+        If TypeOf c.Tag Is String AndAlso CStr(c.Tag) = SkipTreeTag Then Return
         ApplyOne(c)
         Dim hook As Object = Nothing
         If Not _hooked.TryGetValue(c, hook) Then

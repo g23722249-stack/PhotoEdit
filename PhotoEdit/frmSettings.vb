@@ -23,7 +23,7 @@ Friend Class frmSettings
         StartPosition = FormStartPosition.CenterParent
         ShowInTaskbar = False
         KeyPreview = True
-        ClientSize = New Size(520, 470)
+        ClientSize = New Size(520, 744)
         Padding = New Padding(16, 23 + 12, 16, 14)
 
         Dim heading As New Label With {.Text = "外觀", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
@@ -38,12 +38,14 @@ Friend Class frmSettings
         AddHandler _dark.Click, Sub() Choose(True)
 
         Dim close As New Button With {.Text = "關閉", .UseVisualStyleBackColor = True}
-        close.SetBounds(400, 428, 100, 30)
+        close.SetBounds(400, 702, 100, 30)
         AddHandler close.Click, Sub() Me.Close()
         CancelButton = close
 
         Controls.AddRange({heading, hint, _light, _dark, close})
         BuildDocumentMode()
+        BuildPen()
+        BuildQuickKeys()
         UpdateCards()
         ThemeManager.Attach(Me)
     End Sub
@@ -72,6 +74,136 @@ Friend Class frmSettings
         hint.SetBounds(24, 376, 480, 22)
         Controls.AddRange({heading, _sdi, _mdiRadio, hint})
     End Sub
+
+    ''' <summary>繪圖筆：筆壓曲線（軟硬、最小筆壓、滿壓力道）與穩定器，左邊畫出曲線，拉滑桿立刻更新、立刻生效。</summary>
+    Private Sub BuildPen()
+        Dim heading As New Label With {.Text = "繪圖筆", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
+        heading.SetBounds(20, 410, 480, 22)
+        Dim curve As New PenCurveView With {.Curve = _settings.PenCurve()}
+        curve.SetBounds(20, 438, 150, 150)
+        Controls.AddRange({heading, curve})
+        Dim y = 438
+        Dim addSlider = Sub(key As String, caption As String, min As Integer, max As Integer, value As Integer, format As Func(Of Integer, String), apply As Action(Of Integer))
+                            Dim cap As New Label With {.Text = caption, .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleLeft}
+                            cap.SetBounds(186, y, 76, 26)
+                            Dim s As New Aqua.Slider With {.Minimum = min, .Maximum = max, .Value = Math.Max(min, Math.Min(max, value)), .ShowTicks = False, .Name = key}
+                            s.SetBounds(262, y + 1, 186, 24)
+                            Dim v As New Label With {.Text = format(s.Value), .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleRight}
+                            v.SetBounds(450, y, 52, 26)
+                            AddHandler s.ValueChanged, Sub()
+                                                           v.Text = format(s.Value)
+                                                           apply(s.Value)
+                                                           _settings.Save()
+                                                           curve.Curve = _settings.PenCurve()
+                                                       End Sub
+                            Controls.AddRange({cap, s, v})
+                            y += 32
+                        End Sub
+        addSlider("pen_soft", "軟硬", -100, 100, _settings.PenSoftness,
+                  Function(v) If(v = 0, "線性", If(v > 0, "軟 " & v, "硬 " & -v)), Sub(v) _settings.PenSoftness = v)
+        addSlider("pen_min", "最小筆壓", 0, 50, _settings.PenMinPressure, Function(v) v & "%", Sub(v) _settings.PenMinPressure = v)
+        addSlider("pen_full", "滿壓力道", 40, 100, _settings.PenFullPressure, Function(v) v & "%", Sub(v) _settings.PenFullPressure = v)
+        addSlider("pen_stab", "穩定器", 0, 100, _settings.Stabilizer, Function(v) If(v = 0, "關", v.ToString()), Sub(v) _settings.Stabilizer = v)
+        Dim hint As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120),
+                                    .Text = "軟：輕畫就夠粗夠濃；硬：要用力才會粗。手輕的人把「滿壓力道」調低。穩定器去掉手抖。"}
+        hint.SetBounds(186, y + 2, 316, 44)
+        Controls.Add(hint)
+    End Sub
+
+    ''' <summary>可以當快速工具熱鍵的鍵：A–Z（繪圖分頁已用的 B、E 除外）與 F1–F12。</summary>
+    Private Shared Function QuickKeyChoices() As String()
+        Dim letters = Enumerable.Range(AscW("A"c), 26).Select(Function(c) ChrW(c).ToString()).Where(Function(s) s <> "B" AndAlso s <> "E")
+        Return letters.Concat(Enumerable.Range(1, 12).Select(Function(i) "F" & i)).ToArray()
+    End Function
+
+    ''' <summary>快速工具：繪圖分頁在滑鼠位置叫出快速面板、輪盤的熱鍵。</summary>
+    Private Sub BuildQuickKeys()
+        Dim heading As New Label With {.Text = "快速工具（繪圖分頁）", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
+        heading.SetBounds(20, 618, 480, 22)
+        Controls.Add(heading)
+        Dim keys = QuickKeyChoices()
+        Dim x = 24
+        For Each item In {("快速面板", _settings.QuickPanelHotkey, CType(Sub(v As String) _settings.QuickPanelHotkey = v, Action(Of String)), "settings.quickpanel"),
+                          ("輪盤", _settings.QuickRadialHotkey, CType(Sub(v As String) _settings.QuickRadialHotkey = v, Action(Of String)), "settings.quickradial")}
+            Dim cap As New Label With {.Text = item.Item1, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(x, 650)}
+            Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Width = 70, .Location = New Point(x + 70, 646)}
+            combo.Items.AddRange(keys)
+            combo.SelectedItem = If(keys.Contains(item.Item2), item.Item2, keys(0))
+            Dim apply = item.Item3
+            AddHandler combo.SelectedIndexChanged, Sub()
+                                                       apply(CStr(combo.SelectedItem))
+                                                       _settings.Save()
+                                                   End Sub
+            Controls.AddRange({cap, combo})
+            x += 170
+        Next
+        Dim hint As New Label With {.Text = "在畫布上按一下就在滑鼠位置出現；再按一次或 Esc 收起。", .AutoSize = False, .BackColor = Color.Transparent,
+                                    .ForeColor = Color.FromArgb(105, 110, 120)}
+        hint.SetBounds(24, 676, 480, 22)
+        Controls.Add(hint)
+    End Sub
+
+    ''' <summary>筆壓曲線圖：橫軸是繪圖板讀到的筆壓，縱軸是筆刷用的筆壓；虛線為線性。</summary>
+    Private Class PenCurveView
+        Inherits Control
+
+        Private _curve As New PhotoEdit.PenCurve()
+
+        Public Sub New()
+            SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
+            AccessibleName = "筆壓曲線"
+        End Sub
+
+        Public Property Curve As PhotoEdit.PenCurve
+            Get
+                Return _curve
+            End Get
+            Set(value As PhotoEdit.PenCurve)
+                _curve = value
+                Invalidate()
+            End Set
+        End Property
+
+        Protected Overrides Sub OnPaint(e As PaintEventArgs)
+            Dim g = e.Graphics
+            g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+            g.Clear(ThemeManager.Back(Color.White))
+            Dim box As New Rectangle(18, 6, Width - 26, Height - 26)
+            Using grid As New Pen(ThemeManager.Line(Color.FromArgb(225, 228, 234)))
+                For i = 1 To 3
+                    g.DrawLine(grid, box.X + box.Width * i \ 4, box.Y, box.X + box.Width * i \ 4, box.Bottom)
+                    g.DrawLine(grid, box.X, box.Y + box.Height * i \ 4, box.Right, box.Y + box.Height * i \ 4)
+                Next
+            End Using
+            Using frame As New Pen(ThemeManager.Line(Color.FromArgb(190, 196, 206)))
+                g.DrawRectangle(frame, box)
+            End Using
+            Using diag As New Pen(ThemeManager.Line(Color.FromArgb(180, 186, 196))) With {.DashStyle = Drawing2D.DashStyle.Dash}
+                g.DrawLine(diag, box.X, box.Bottom, box.Right, box.Y)
+            End Using
+            Dim pts = Enumerable.Range(0, 61).Select(Function(i)
+                                                         Dim x = i / 60.0F
+                                                         Return New PointF(box.X + x * box.Width, box.Bottom - _curve.Map(x) * box.Height)
+                                                     End Function).ToArray()
+            Using p As New Pen(Color.FromArgb(47, 128, 237), 2.2F)
+                g.DrawLines(p, pts)
+            End Using
+            Dim fore = ThemeManager.Fore(Color.FromArgb(105, 110, 120))
+            Using f As New Font(Font.FontFamily, 7.5F)
+                TextRenderer.DrawText(g, "筆的力道 →", f, New Rectangle(box.X, box.Bottom + 2, box.Width, 16), fore, TextFormatFlags.HorizontalCenter)
+                g.TranslateTransform(0, box.Bottom)
+                g.RotateTransform(-90)
+                ' TextRenderer 不吃座標轉換，直的字用 DrawString
+                Using br As New SolidBrush(fore), sf As New StringFormat With {.Alignment = StringAlignment.Center}
+                    g.TextRenderingHint = Drawing.Text.TextRenderingHint.ClearTypeGridFit
+                    g.DrawString("筆刷 →", f, br, New RectangleF(0, 1, box.Height, 16), sf)
+                End Using
+                g.ResetTransform()
+            End Using
+        End Sub
+    End Class
 
     Protected Overrides Sub OnFormClosed(e As FormClosedEventArgs)
         MyBase.OnFormClosed(e)

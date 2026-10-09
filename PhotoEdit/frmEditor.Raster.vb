@@ -8,6 +8,28 @@ Imports PhotoEdit
 Partial Friend Class frmEditor
 
     Private ReadOnly _drawEraser As New CheckBox()
+    ''' <summary>橡皮擦的擦法：擦掉、漂白、加深（同 Painter 的橡皮擦類，記在設定）。</summary>
+    Private ReadOnly _eraseMode As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Dock = DockStyle.Left, .Width = 70}
+    ''' <summary>這一筆是暫時的橡皮擦：按住右鍵畫，或用繪圖筆的橡皮擦端（筆倒過來）。</summary>
+    Private _tempErase As Boolean
+
+    ''' <summary>這一筆要擦：橡皮擦按鈕按下，或右鍵／筆的橡皮擦端。</summary>
+    Private Function IsErasing() As Boolean
+        Return _drawEraser.Checked OrElse _tempErase
+    End Function
+
+    Private Sub BuildEraseModeCombo()
+        _eraseMode.Items.AddRange({"擦掉", "漂白", "加深"})
+        _eraseMode.SelectedIndex = Math.Max(0, Math.Min(2, _appSettings.EraseMode))
+        _eraseMode.Visible = False
+        _help.SetHelp("draw.erasemode", _eraseMode)
+        AddHandler _eraseMode.SelectedIndexChanged, Sub()
+                                                        If _eraseMode.SelectedIndex < 0 OrElse _appSettings.EraseMode = _eraseMode.SelectedIndex Then Return
+                                                        _appSettings.EraseMode = _eraseMode.SelectedIndex
+                                                        _appSettings.Save()
+                                                        UpdateDrawHint()
+                                                    End Sub
+    End Sub
     ''' <summary>拖曳中的這一筆是直接繪製（放開時加進點陣圖層），不是向量的自由繪製。</summary>
     Private _freeRaster As Boolean
 
@@ -46,13 +68,13 @@ Partial Friend Class frmEditor
                 BeginInvoke(Sub() AskRasterize(index))
                 Return
             End If
-        ElseIf _drawEraser.Checked Then
+        ElseIf IsErasing() Then
             SetStatusMessage("先在圖層清單選一個點陣圖層，再用橡皮擦擦。")
             Return
         End If
         _dd = DrawDrag.Freehand
         _freeRaster = True
-        _freePoints = New List(Of DrawPoint) From {StrokePoint(u, e.Location, True)}
+        StartFreehand(u, e.Location)
     End Sub
 
     ''' <summary>向量圖層不能直接畫：點陣化它，或在它上面新增一個點陣圖層。</summary>
@@ -92,7 +114,8 @@ Partial Friend Class frmEditor
     ''' <summary>直接繪製放開：這一筆（或橡皮擦）加進選取的點陣圖層；沒有選圖層時新增一個。</summary>
     Private Sub CommitRasterStroke(stroke As DrawStroke)
         _freeRaster = False
-        Dim op As New DrawLayer With {.Shape = DrawShape.Freehand, .Seed = _drawRandom.Next(1, 100000), .Eraser = _drawEraser.Checked}
+        Dim op As New DrawLayer With {.Shape = DrawShape.Freehand, .Seed = _drawRandom.Next(1, 100000), .Eraser = IsErasing(), .EraseMode = CType(Math.Max(0, Math.Min(2, _appSettings.EraseMode)), EraseMode)}
+        _tempErase = False ' 右鍵、筆的橡皮擦端只擦這一筆
         op.CopyStyleFrom(_drawStyle)
         If op.Eraser Then op.Shadow = False
         If op.Brush = BrushKind.Clone AndAlso Not op.Eraser AndAlso stroke.Points.Count > 0 Then

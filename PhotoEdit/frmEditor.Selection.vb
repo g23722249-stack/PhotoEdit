@@ -121,7 +121,7 @@ Partial Friend Class frmEditor
         AddHeading(L, "選取區操作")
         AddSelButtons(L, {("複製", "select.copy", "copy"), ("剪下", "select.cut", "cut"), ("貼成物件", "select.paste", "pasteobject")})
         AddSelButtons(L, {("複製成物件", "select.toobject", "toobject"), ("只調整選取區", "select.adjust", "seladjust")})
-        AddSelButtons(L, {("刪除（透明）", "select.delete", "seldelete"), ("填色…", "select.fill", "selfill"), ("描邊…", "select.stroke", "selstroke")})
+        AddSelButtons(L, {("刪除（透明）", "select.delete", "seldelete"), ("填滿…", "select.fill", "selfill"), ("描邊…", "select.stroke", "selstroke")})
         AddSelButtons(L, {("裁切到選取區", "select.crop", "selcrop"), ("當作去背範圍", "select.cutout", "selcutout")})
 
         AddHandler _antsTimer.Tick, Sub() OnAntsTick()
@@ -800,17 +800,92 @@ Partial Friend Class frmEditor
                     End Sub)
     End Sub
 
-    ''' <summary>填色：新增一個點陣圖層，把選取區填滿顏色（之後可以改不透明度、混合模式或移動）。</summary>
+    ''' <summary>上次「填滿」的選擇（這次開啟程式期間記得）。</summary>
+    Private _lastFill As FillChoice
+
+    ''' <summary>
+    ''' 填滿（同 Photoshop 的「編輯 → 填滿」）：顏色、漸層、材質或內容感知，填在新圖層或選取的點陣圖層（可保留透明度）。
+    ''' </summary>
     Private Sub FillSelection()
-        Dim c As Color
-        Using dlg As New ColorDialog With {.Color = Color.FromArgb(_drawStyle.FillColorArgb), .FullOpen = True}
+        If _lastFill Is Nothing Then _lastFill = New FillChoice With {.ColorArgb = _drawStyle.FillColorArgb, .Gradient = GradientOptions().Kind, .Material = _drawStyle.Material}
+        Dim sel = SelDraw(_recipe)
+        Dim target = If(sel IsNot Nothing AndAlso sel.Shape = DrawShape.Raster AndAlso sel.Visible AndAlso Not sel.Locked,
+                        If(String.IsNullOrEmpty(sel.Name), "點陣圖層", sel.Name), Nothing)
+        Dim c As FillChoice
+        Using dlg As New frmFillSelection(_lastFill, target, _help)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
-            c = dlg.Color
+            c = dlg.Choice
         End Using
-        AddRegionLayer("填色", New DrawLayer With {.Shape = DrawShape.Raster, .Region = _recipe.Selection.Clone(), .Filled = True, .Stroked = False,
-                                                   .FillColorArgb = c.ToArgb(), .Opacity = 100, .Param1 = PhotoAspect()})
-        SetStatusMessage("已把選取區填色（新的點陣圖層，可以在「圖層」分頁調不透明度與混合模式）。")
+        _lastFill = c.Clone()
+        ApplyFill(c)
     End Sub
+
+    ''' <summary>依「填滿」的選擇加上一筆操作（新圖層或選取的點陣圖層）。</summary>
+    Private Sub ApplyFill(c As FillChoice)
+        If Not HasSelection Then Return
+        Dim sel = SelDraw(_recipe)
+        Dim target = If(sel IsNot Nothing AndAlso sel.Shape = DrawShape.Raster AndAlso sel.Visible AndAlso Not sel.Locked,
+                        If(String.IsNullOrEmpty(sel.Name), "點陣圖層", sel.Name), Nothing)
+        Dim aspect = PhotoAspect()
+        Dim region = _recipe.Selection.Clone()
+        Dim op As DrawLayer
+        Dim names = {"填色", "漸層", "材質", "內容感知"}
+        If c.Content = FillKind.Gradient Then
+            ' 漸層：依選取範圍的外框與方向決定起點、終點（照片高度單位）
+            Dim b = SelectionMask.Bounds(region, 1024, 1024)
+            Dim box As New RectangleF(CSng(b.X * aspect), b.Y, CSng(b.Width * aspect), b.Height)
+            Dim g = GradientOptions().Clone()
+            g.Kind = c.Gradient
+            g.Colors = c.GradientColors
+            Dim ends = GradientEnds(box, c.Direction, c.Gradient)
+            g.X1 = Math.Round(ends.A.X, 5) : g.Y1 = Math.Round(ends.A.Y, 5) : g.X2 = Math.Round(ends.B.X, 5) : g.Y2 = Math.Round(ends.B.Y, 5)
+            op = New DrawLayer With {.Shape = DrawShape.Gradient, .Gradient = g, .Region = region,
+                                     .StrokeColorArgb = c.ColorArgb, .FillColorArgb = c.Color2Argb} ' 漸層：顏色 → 第二色
+        Else
+            op = New DrawLayer With {.Shape = DrawShape.Raster, .Region = region, .Filled = True, .Stroked = False, .FillColorArgb = c.ColorArgb,
+                                     .FillContent = If(c.Content = FillKind.Material, FillContent.Material, If(c.Content = FillKind.ContentAware, FillContent.ContentAware, FillContent.Color)),
+                                     .Material = c.Material}
+        End If
+        op.Opacity = c.Opacity
+        op.Blend = c.Blend
+        op.Param1 = Math.Round(aspect, 5)
+        op.Seed = _drawRandom.Next(1, 100000)
+
+        If c.IntoLayer AndAlso target IsNot Nothing Then
+            op.KeepAlpha = c.KeepAlpha
+            If op.Gradient IsNot Nothing Then ' 圖層移動過時，漸層的起點終點扣掉位移
+                op.Gradient.X1 -= sel.X : op.Gradient.X2 -= sel.X : op.Gradient.Y1 -= sel.Y : op.Gradient.Y2 -= sel.Y
+            End If
+            Dim index = _drawIndex
+            ApplyChange(Sub(r)
+                            If r.Drawings(index).Ops Is Nothing Then r.Drawings(index).Ops = New List(Of DrawLayer)()
+                            r.Drawings(index).Ops.Add(op)
+                        End Sub)
+            SetStatusMessage($"已把選取範圍填滿{names(CInt(c.Content))}（在「{target}」{If(op.KeepAlpha, "，保留透明度", "")}）。")
+        Else
+            AddRegionLayer(names(CInt(c.Content)), op)
+            SetStatusMessage($"已把選取範圍填滿{names(CInt(c.Content))}（新的點陣圖層，可以在「圖層」分頁調不透明度與混合模式）。")
+        End If
+    End Sub
+
+    ''' <summary>選取範圍外框上的漸層起點、終點：線性類從一邊到對邊，放射類從中心到邊。</summary>
+    Private Shared Function GradientEnds(box As RectangleF, direction As Integer, kind As GradientKind) As (A As PointF, B As PointF)
+        Dim l = box.Left, r = box.Right, t = box.Top, b = box.Bottom
+        Dim cx = (l + r) / 2, cy = (t + b) / 2
+        If kind = GradientKind.FourColor Then Return (New PointF(l, t), New PointF(r, b))
+        Dim a, e As PointF
+        Select Case direction
+            Case 1 : a = New PointF(r, cy) : e = New PointF(l, cy)
+            Case 2 : a = New PointF(cx, t) : e = New PointF(cx, b)
+            Case 3 : a = New PointF(cx, b) : e = New PointF(cx, t)
+            Case 4 : a = New PointF(l, t) : e = New PointF(r, b)
+            Case 5 : a = New PointF(r, b) : e = New PointF(l, t)
+            Case Else : a = New PointF(l, cy) : e = New PointF(r, cy)
+        End Select
+        If kind = GradientKind.Linear Then Return (a, e)
+        ' 放射、角度、反射、菱形：從中心出發，到方向那一邊
+        Return (New PointF(cx, cy), e)
+    End Function
 
     ''' <summary>描邊：選顏色、寬度與位置，新增一個點陣圖層畫出選取區的邊。</summary>
     Private Sub StrokeSelection()

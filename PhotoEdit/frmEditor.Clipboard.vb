@@ -95,7 +95,7 @@ Partial Friend Class frmEditor
             Return
         End If
         Dim before = _photo?.Path
-        OpenPhoto(file)
+        OpenPhoto(file, remember:=False)
         If _photo IsNot Nothing AndAlso _photo.Path = file AndAlso file <> before Then
             SetStatusMessage(If(file.StartsWith(PasteFolder, StringComparison.OrdinalIgnoreCase),
                                 "已從剪貼簿貼上，存成 " & file, "已開啟剪貼簿裡的檔案：" & file))

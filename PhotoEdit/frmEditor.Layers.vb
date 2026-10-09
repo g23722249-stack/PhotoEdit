@@ -269,6 +269,7 @@ Partial Friend Class frmEditor
         SyncSliders()
         UpdateCreativeControls()
         UpdateToolFromTab()
+        If Not s.IsOverlay AndAlso s.Drawing.Shape = DrawShape.FillLayer Then EditFillLayer(_drawIndex) ' 填滿圖層：直接開對話框修改
     End Sub
 
     Private Sub DeleteStackLayer()
