@@ -39,6 +39,7 @@ Module Program
             GradientTestsRun()
             SelectionFillTestsRun()
             EraserTestsRun()
+            BeautyTestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

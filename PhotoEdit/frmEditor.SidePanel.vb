@@ -67,9 +67,16 @@ Partial Friend Class frmEditor
         _sidePanel.Padding = New Padding(6, 6, 6, 4)
         _sidePanel.Font = _panelFont
 
-        ' 上：直方圖
-        Dim top As New Panel With {.Dock = DockStyle.Top, .Height = 110, .Padding = New Padding(2, 0, 2, 8)}
+        ' 上：直方圖（點標題列收起／展開，預設收起，記在設定）
+        Dim top As New Panel With {.Dock = DockStyle.Top, .Padding = New Padding(2, 0, 2, 6)}
         _histogramView.Dock = DockStyle.Fill
+        _histogramView.Collapsed = Not _appSettings.HistogramExpanded
+        top.Height = _histogramView.PreferredHeight + top.Padding.Vertical
+        AddHandler _histogramView.CollapsedChanged, Sub()
+                                                        top.Height = _histogramView.PreferredHeight + top.Padding.Vertical
+                                                        _appSettings.HistogramExpanded = Not _histogramView.Collapsed
+                                                        _appSettings.Save()
+                                                    End Sub
         top.Controls.Add(_histogramView)
 
         ' 下：重設與對照（兩顆按鈕平分寬度）
@@ -170,21 +177,6 @@ Partial Friend Class frmEditor
         AddHint(L, "例如：飽和度 -100 + 色相 35° = 褐色老照片。" & vbCrLf & "下方濾鏡列可一次套用整組風格。")
         BuildArtSection(L)
         BuildPaperSection(L)
-    End Sub
-
-    Private Sub BuildPortraitPage(page As Aqua.TabPage)
-        Dim L = NewLayout(page)
-        AddHeading(L, "人像", _portraitHeading)
-        AddRow(L, MakeRow("skin", "磨皮", 0, 100, AddressOf Plain, Function(r) r.SkinSmoothing, Sub(r, v) r.SkinSmoothing = v))
-        AddRow(L, MakeRow("facebright", "臉部提亮", 0, 100, AddressOf Plain, Function(r) r.FaceBrighten, Sub(r, v) r.FaceBrighten = v))
-        AddRow(L, MakeRow("eyebright", "亮眼", 0, 100, AddressOf Plain, Function(r) r.EyeBrighten, Sub(r, v) r.EyeBrighten = v))
-        AddHint(L, "開啟照片後會自動偵測人臉，只修飾臉部膚色，眼睛與嘴唇保持清晰。" & vbCrLf &
-                   "裁切時選比例或按「智慧構圖」會依臉的位置構圖。")
-        L.Y += 4
-        Dim smart = MakeButton("智慧構圖", "btn.smartcrop")
-        smart.SetBounds(8, L.Y, L.Width - 8, 30)
-        AddHandler smart.Click, Sub() RunCommand("smartcrop")
-        L.Add(smart)
     End Sub
 
     Private Sub BuildRepairPage(page As Aqua.TabPage)

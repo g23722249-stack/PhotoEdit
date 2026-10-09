@@ -37,6 +37,8 @@ Friend Class AppSettings
     Public Property EraseMode As Integer
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
+    ''' <summary>右側面板上方的直方圖展開（預設收起，只剩標題列）。</summary>
+    Public Property HistogramExpanded As Boolean
     ''' <summary>最近開啟的檔案（照片與專案，新的在前，最多 10 個）。</summary>
     Public Property RecentFiles As List(Of String)
 

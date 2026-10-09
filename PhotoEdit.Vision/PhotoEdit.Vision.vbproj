@@ -30,6 +30,7 @@
   <ItemGroup>
     <!-- -p:SkipModelCopy=true：模型下載中（檔案被占用）時仍可編譯測試。 -->
     <None Include="Models\*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="Models" Condition="'$(SkipModelCopy)' != 'true'" />
+    <None Include="Models\*.yaml" CopyToOutputDirectory="PreserveNewest" LinkBase="Models" Condition="'$(SkipModelCopy)' != 'true'" />
   </ItemGroup>
 
 </Project>

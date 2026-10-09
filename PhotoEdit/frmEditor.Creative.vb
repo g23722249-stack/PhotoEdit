@@ -151,6 +151,8 @@ Partial Friend Class frmEditor
             Select Case _tabs.SelectedIndex
                 Case TabRepair
                     If _healToggle.Checked Then tool = PreviewCanvas.CanvasTool.Heal
+                Case TabPortrait
+                    If _liquifyToggle.Checked Then tool = PreviewCanvas.CanvasTool.Liquify
                 Case TabLocal
                     Dim sel = SelLocal(_recipe)
                     If sel IsNot Nothing AndAlso sel.Kind <> LocalKind.Selection Then tool = If(sel.Kind = LocalKind.Gradient, PreviewCanvas.CanvasTool.Gradient, PreviewCanvas.CanvasTool.LocalBrush)
@@ -167,6 +169,7 @@ Partial Friend Class frmEditor
             End Select
         End If
         If _tabs.SelectedIndex <> TabRepair AndAlso _healToggle.Checked Then _healToggle.Checked = False
+        If _tabs.SelectedIndex <> TabPortrait AndAlso _liquifyToggle.Checked Then _liquifyToggle.Checked = False
         Dim drawing = _tabs.SelectedIndex = TabDraw
         If _drawStrip.Visible <> drawing Then
             _drawStrip.Visible = drawing
@@ -180,6 +183,7 @@ Partial Friend Class frmEditor
 
         Select Case tool
             Case PreviewCanvas.CanvasTool.Heal : _canvas.BrushRadius = _brushSize.Value
+            Case PreviewCanvas.CanvasTool.Liquify : _canvas.BrushRadius = _liquifySize.Value
             Case PreviewCanvas.CanvasTool.LocalBrush : _canvas.BrushRadius = _localBrushSize.Value
             Case PreviewCanvas.CanvasTool.MaskBrush
                 _canvas.BrushRadius = _maskBrushSize.Value
@@ -195,8 +199,9 @@ Partial Friend Class frmEditor
 
     ''' <summary>畫面用的配方：檢查遮罩時，去背背景換成半透明紅色（不影響存檔與匯出）。</summary>
     Private Function DisplayRecipe() As EditRecipe
-        If Not _cutoutShowMask OrElse _recipe.Cutout Is Nothing Then Return _recipe
-        Dim r = _recipe.Clone()
+        Dim baseRecipe = If(_beautyCompare, WithoutBeauty(_recipe), _recipe) ' 按住看未美顏
+        If Not _cutoutShowMask OrElse baseRecipe.Cutout Is Nothing Then Return baseRecipe
+        Dim r = baseRecipe.Clone()
         r.Cutout.Background = CutoutBackground.MaskPreview
         Return r
     End Function

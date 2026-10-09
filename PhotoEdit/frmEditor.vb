@@ -74,7 +74,6 @@ Partial Friend Class frmEditor
         Public Slider As Aqua.Slider
     End Class
 
-    Private Shared ReadOnly PortraitKeys As String() = {"skin", "facebright", "eyebright"}
 
     Public Sub New(Optional startupPath As String = Nothing)
         _startupPath = startupPath
@@ -129,7 +128,10 @@ Partial Friend Class frmEditor
         AddHandler _canvas.OverlayRotated, AddressOf OnOverlayRotated
         AddHandler _canvas.OverlayWheel, AddressOf OnOverlayWheel
         AddHandler _canvas.Resize, Sub() UpdateStatus()
-        _canvas.AfterPaint = AddressOf PaintSelectionAnts
+        _canvas.AfterPaint = Sub(g)
+                                 PaintSelectionAnts(g)
+                                 PaintBeautyFaces(g)
+                             End Sub
         AddHandler _canvas.DragEnter, AddressOf OnFileDragEnter
         AddHandler _canvas.DragDrop, AddressOf OnFileDragDrop
         AddHandler _canvas.DragOver, AddressOf OnFileDragEnter
@@ -426,6 +428,8 @@ Partial Friend Class frmEditor
             Case Keys.W
                 If _tabs.SelectedIndex = TabCutout AndAlso _photo IsNot Nothing Then _wandToggle.Checked = Not _wandToggle.Checked : Return True
             Case Keys.H : cmd = "heal"
+            Case Keys.L
+                If _tabs.SelectedIndex = TabPortrait AndAlso _photo IsNot Nothing Then _liquifyToggle.Checked = Not _liquifyToggle.Checked : Return True
             Case Keys.Delete
                 If _canvas.Tool = PreviewCanvas.CanvasTool.Overlay AndAlso Not _overlayText.Focused AndAlso SelOverlay(_recipe) IsNot Nothing Then DeleteOverlay() : Return True
             Case Keys.OemOpenBrackets, Keys.OemCloseBrackets
@@ -445,6 +449,7 @@ Partial Friend Class frmEditor
             Case Keys.Escape
                 If _cropMode Then ExitCropMode(apply:=False) : Return True
                 If _healToggle.Checked Then _healToggle.Checked = False : Return True
+                If _liquifyToggle.Checked Then _liquifyToggle.Checked = False : Return True
         End Select
         If cmd Is Nothing Then Return MyBase.ProcessCmdKey(msg, keyData)
         RunCommand(cmd)
@@ -475,6 +480,7 @@ Partial Friend Class frmEditor
         UpdateTitle()
         _presetStrip.UpdateSelection(_recipe)
         UpdateCreativeControls()
+        UpdateBeautyExtras() ' 一鍵美顏小圖的選取框、強度、「跟隨全部」
         RequestRender()
     End Sub
 
@@ -658,6 +664,8 @@ Partial Friend Class frmEditor
         If display.HasSourceFix Then
             key = String.Join("|", System.Text.Json.JsonSerializer.Serialize(display.Spots), display.Denoise, display.ColorNoise,
                               display.SkinSmoothing, display.FaceBrighten, display.EyeBrighten, If(_faces?.Count, -1),
+                              System.Text.Json.JsonSerializer.Serialize(display.Beauty), System.Text.Json.JsonSerializer.Serialize(display.FaceBeauty),
+                              System.Text.Json.JsonSerializer.Serialize(display.Liquify),
                               System.Text.Json.JsonSerializer.Serialize(display.Cutout), _aiMaskVersion)
         End If
         If key <> _retouchKey Then
@@ -681,7 +689,11 @@ Partial Friend Class frmEditor
         Dim copy = DirectCast(_previewBase.Clone(), Bitmap)
         _faceState = "偵測人臉中…"
         UpdatePortraitControls()
-        Task.Run(Function() Detector.Value.Detect(copy)).ContinueWith(
+        Task.Run(Function()
+                     Dim found = Detector.Value.Detect(copy)
+                     FaceLandmarks.Fit(copy, found) ' 68 點（有模型時）：臉型、唇色、眉毛用
+                     Return found
+                 End Function).ContinueWith(
             Sub(t)
                 copy.Dispose()
                 Dim faces As List(Of FaceRegion) = If(t.Status = TaskStatus.RanToCompletion, t.Result, Nothing)
@@ -706,6 +718,7 @@ Partial Friend Class frmEditor
     Private Sub UpdatePortraitControls()
         Dim usable = _faces IsNot Nothing AndAlso _faces.Count > 0
         _portraitHeading.Text = "人像" & If(_faceState = "" OrElse _photo Is Nothing, "", "（" & _faceState & "）")
+        RefreshBeautyTargets()
         For Each row In _rows.Where(Function(r) PortraitKeys.Contains(r.Key))
             row.Slider.Enabled = usable
         Next

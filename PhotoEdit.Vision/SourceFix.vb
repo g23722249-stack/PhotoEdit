@@ -21,7 +21,7 @@ Public NotInheritable Class SourceFix
     End Function
 
     Private Shared Function ApplyRetouch(source As Bitmap, faces As IReadOnlyList(Of FaceRegion), recipe As EditRecipe) As Bitmap
-        If Not (recipe.HasSpots OrElse recipe.Denoise > 0 OrElse recipe.ColorNoise > 0 OrElse recipe.HasPortrait) Then Return Nothing
+        If Not (recipe.HasSpots OrElse recipe.Denoise > 0 OrElse recipe.ColorNoise > 0 OrElse recipe.HasPortrait OrElse recipe.HasLiquify) Then Return Nothing
 
         Dim fixedImage As Bitmap = Nothing
         If recipe.HasSpots OrElse recipe.Denoise > 0 OrElse recipe.ColorNoise > 0 Then
@@ -39,7 +39,13 @@ Public NotInheritable Class SourceFix
         Dim portrait = PortraitRetouch.Apply(If(fixedImage, source), faces, recipe)
         If portrait IsNot Nothing Then
             fixedImage?.Dispose()
-            Return portrait
+            fixedImage = portrait
+        End If
+        ' 液化在美顏之後（美顏依偵測到的臉的位置，變形前算才對得上）
+        If recipe.HasLiquify Then
+            Dim warped = Liquify.Apply(If(fixedImage, source), recipe.Liquify)
+            fixedImage?.Dispose()
+            fixedImage = warped
         End If
         Return fixedImage
     End Function

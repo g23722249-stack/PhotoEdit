@@ -137,6 +137,51 @@ Public Class EditRecipe
     Public Property FaceBrighten As Integer
     ''' <summary>亮眼，0..100。</summary>
     Public Property EyeBrighten As Integer
+    ''' <summary>其他美顏（勻膚、去紅、美白、大眼…），全部的臉共用；磨皮、臉部提亮、亮眼仍存在上面三個欄位。Nothing 表示沒有。</summary>
+    Public Property Beauty As BeautySettings
+    ''' <summary>個別臉的美顏（FaceX/FaceY 認臉）；有設定的臉不套用全部共用的那組。</summary>
+    Public Property FaceBeauty As List(Of BeautySettings)
+    ''' <summary>液化筆觸（人像分頁）；在人像修飾之後套用。</summary>
+    Public Property Liquify As List(Of LiquifyStroke)
+
+    ''' <summary>全部的臉共用的美顏（含磨皮、臉部提亮、亮眼）。</summary>
+    Public Function GlobalBeauty() As BeautySettings
+        Dim b = If(Beauty?.Clone(), New BeautySettings())
+        b.Smoothing = SkinSmoothing
+        b.Brighten = FaceBrighten
+        b.Eyes = EyeBrighten
+        b.FaceX = Nothing : b.FaceY = Nothing
+        Return b
+    End Function
+
+    ''' <summary>設定全部的臉共用的美顏（磨皮、臉部提亮、亮眼寫回原本的欄位）。</summary>
+    Public Sub SetGlobalBeauty(b As BeautySettings)
+        SkinSmoothing = b.Smoothing
+        FaceBrighten = b.Brighten
+        EyeBrighten = b.Eyes
+        Dim rest = b.Clone()
+        rest.Smoothing = 0 : rest.Brighten = 0 : rest.Eyes = 0
+        rest.FaceX = Nothing : rest.FaceY = Nothing
+        Beauty = If(rest.IsBlank, Nothing, rest)
+    End Sub
+
+    ''' <summary>臉框 box（已轉正原圖 0..1）的個別設定；沒有時 Nothing。</summary>
+    Public Function FaceBeautyFor(box As System.Drawing.RectangleF) As BeautySettings
+        If FaceBeauty Is Nothing Then Return Nothing
+        Return FaceBeauty.FirstOrDefault(Function(b) b.FaceX.HasValue AndAlso b.FaceY.HasValue AndAlso
+                                                    box.Contains(CSng(b.FaceX.Value), CSng(b.FaceY.Value)))
+    End Function
+
+    ''' <summary>這張臉實際套用的美顏：有個別設定用個別的，否則用共用的。</summary>
+    Public Function BeautyFor(box As System.Drawing.RectangleF) As BeautySettings
+        Return If(FaceBeautyFor(box), GlobalBeauty())
+    End Function
+
+    Public ReadOnly Property HasLiquify As Boolean
+        Get
+            Return Liquify IsNot Nothing AndAlso Liquify.Count > 0
+        End Get
+    End Property
 
     ' ---- 創意特效 ----
     ''' <summary>局部調整（漸層濾鏡、筆刷）；Nothing 或空清單表示沒有。</summary>
@@ -178,6 +223,9 @@ Public Class EditRecipe
         r.Cutout = Cutout?.Clone()
         r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))
         r.Selection = Selection?.Clone()
+        r.Beauty = Beauty?.Clone()
+        r.FaceBeauty = FaceBeauty?.Select(Function(b) b.Clone()).ToList()
+        r.Liquify = Liquify?.Select(Function(s) s.Clone()).ToList()
         r.Paper = Paper?.Clone()
         Return r
     End Function
@@ -218,7 +266,9 @@ Public Class EditRecipe
 
     Public ReadOnly Property HasPortrait As Boolean
         Get
-            Return SkinSmoothing <> 0 OrElse FaceBrighten <> 0 OrElse EyeBrighten <> 0
+            Return SkinSmoothing <> 0 OrElse FaceBrighten <> 0 OrElse EyeBrighten <> 0 OrElse
+                   (Beauty IsNot Nothing AndAlso Not Beauty.IsEmpty) OrElse
+                   (FaceBeauty IsNot Nothing AndAlso FaceBeauty.Any(Function(b) Not b.IsEmpty))
         End Get
     End Property
 
@@ -231,7 +281,7 @@ Public Class EditRecipe
     ''' <summary>需要在原圖上先處理的項目（修補、降噪、人像），由 PhotoEdit.Vision 執行。</summary>
     Public ReadOnly Property HasSourceFix As Boolean
         Get
-            Return HasSpots OrElse Denoise <> 0 OrElse ColorNoise <> 0 OrElse HasPortrait OrElse
+            Return HasSpots OrElse Denoise <> 0 OrElse ColorNoise <> 0 OrElse HasPortrait OrElse HasLiquify OrElse
                    (Cutout IsNot Nothing AndAlso Cutout.ChangesImage)
         End Get
     End Property
@@ -314,6 +364,7 @@ Public Class EditRecipe
         SkinSmoothing = other.SkinSmoothing
         FaceBrighten = other.FaceBrighten
         EyeBrighten = other.EyeBrighten
+        Beauty = other.Beauty?.Clone()
         Denoise = other.Denoise
         ColorNoise = other.ColorNoise
         BackgroundBlur = other.BackgroundBlur
@@ -327,6 +378,7 @@ Public Class EditRecipe
     Public Sub ResetAdjustments()
         CopyAdjustmentsFrom(New EditRecipe())
         LocalAdjustments = Nothing
+        FaceBeauty = Nothing
     End Sub
 
     ''' <summary>只保留幾何（算濾鏡縮圖、自動調整分析用）。</summary>
@@ -357,6 +409,9 @@ Public Class EditRecipe
         If r.Drawings IsNot Nothing AndAlso r.Drawings.Count = 0 Then r.Drawings = Nothing
         If r.LayerOrder IsNot Nothing AndAlso r.LayerOrder.Count = 0 Then r.LayerOrder = Nothing
         If r.Selection IsNot Nothing AndAlso r.Selection.IsEmpty Then r.Selection = Nothing
+        If r.Beauty IsNot Nothing AndAlso r.Beauty.IsBlank Then r.Beauty = Nothing
+        If r.FaceBeauty IsNot Nothing AndAlso r.FaceBeauty.Count = 0 Then r.FaceBeauty = Nothing
+        If r.Liquify IsNot Nothing AndAlso r.Liquify.Count = 0 Then r.Liquify = Nothing
         Return System.Text.Json.JsonSerializer.Serialize(r)
     End Function
 

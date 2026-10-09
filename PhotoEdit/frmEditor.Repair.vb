@@ -28,6 +28,10 @@ Partial Friend Class frmEditor
             OnMaskStroke(points, screenRadius)
             Return
         End If
+        If _canvas.Tool = PreviewCanvas.CanvasTool.Liquify Then
+            OnLiquifyStroke(points, screenRadius)
+            Return
+        End If
         Dim stroke = MakeSourceStroke(points, screenRadius)
         ApplyChange(Sub(r)
                         If r.Spots Is Nothing Then r.Spots = New List(Of SpotStroke)()

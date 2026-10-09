@@ -39,6 +39,8 @@ Partial Friend Class PreviewCanvas
         Draw
         ''' <summary>魔術棒：左鍵點一下送出 WandClicked（Alt 為補回）。</summary>
         Wand
+        ''' <summary>液化筆刷（人像分頁）：同修補筆刷，筆觸顯示為紫色，放開時送出 StrokeCompleted。</summary>
+        Liquify
     End Enum
 
     Private _maskKeep As Boolean = True
@@ -195,7 +197,7 @@ Partial Friend Class PreviewCanvas
 
     Private ReadOnly Property IsPaintTool As Boolean
         Get
-            Return _tool = CanvasTool.Heal OrElse _tool = CanvasTool.LocalBrush OrElse _tool = CanvasTool.MaskBrush
+            Return _tool = CanvasTool.Heal OrElse _tool = CanvasTool.LocalBrush OrElse _tool = CanvasTool.MaskBrush OrElse _tool = CanvasTool.Liquify
         End Get
     End Property
 
@@ -656,9 +658,9 @@ Partial Friend Class PreviewCanvas
         g.SmoothingMode = SmoothingMode.AntiAlias
         If _stroke IsNot Nothing AndAlso _stroke.Count > 0 Then
             Dim pts = _stroke.Select(Function(p) New PointF(b.X + p.X * b.Width, b.Y + p.Y * b.Height)).ToArray()
-            Dim strokeColor = If(_tool = CanvasTool.Heal, Color.FromArgb(110, 255, 60, 60),
+            Dim strokeColor = If(_tool = CanvasTool.Heal, Color.FromArgb(110, 255, 60, 60), If(_tool = CanvasTool.Liquify, Color.FromArgb(80, 170, 90, 255),
                                  If(_tool = CanvasTool.MaskBrush, If(_maskKeep, Color.FromArgb(120, 40, 200, 70), Color.FromArgb(120, 230, 40, 40)),
-                                    Color.FromArgb(110, 60, 140, 255)))
+                                    Color.FromArgb(110, 60, 140, 255))))
             Using br As New SolidBrush(strokeColor)
                 If pts.Length = 1 Then
                     g.FillEllipse(br, pts(0).X - _brushRadius, pts(0).Y - _brushRadius, _brushRadius * 2, _brushRadius * 2)

@@ -12,7 +12,7 @@
 |---|---|
 | `PhotoEdit.Core` | 編輯配方 `EditRecipe`、算圖 `ImagePipeline`、透視校正 `Perspective`、創意特效 `Creative`（局部調整、背景模糊、移軸、文字貼圖、邊框）、繪圖圖層 `DrawLayer`/`DrawGeometry`（形狀、圖說、控制點）與筆刷引擎 `DrawingRenderer`、拼貼 `CollageLayout`/`CollageRenderer`、濾鏡預設集 `Preset`、幾何換算（含畫面座標反算回原圖）與智慧構圖、直方圖、自動調整、復原紀錄、配方存取、讀檔/匯出（依 EXIF 方向轉正）。不依賴 OpenCV |
 | `PhotoEdit.Vision` | 用到 OpenCV（OpenCvSharp4 4.10）的功能：YuNet 人臉偵測 `FaceDetector`（由 iPhoto.Net 的 Quartz.FaceEngine 精簡而來）、原圖處理 `SourceFix`（污點移除、降噪、人像修飾）、自動拉直 `AutoStraighten` |
-| `PhotoEdit` | 主程式 `frmEditor`（Aqua.AquaForm，預設最大化）、右側分頁面板（調整／效果／人像／修補／局部／裝飾／貼圖／文字／去背／繪圖，可拖曳分隔線調整寬度）、繪圖工具列 `DrawToolStrip` 與圖示 `DrawIcons`、拼貼視窗 `frmCollage`、預覽畫布（縮放、放大超出畫布時顯示捲軸、裁切、修補筆刷）、濾鏡列、直方圖 |
+| `PhotoEdit` | 主程式 `frmEditor`（Aqua.AquaForm，預設最大化）、右側分頁面板（調整／效果／人像／修補／局部／裝飾／貼圖／文字／去背／繪圖，可拖曳分隔線調整寬度）、繪圖工具列 `DrawToolStrip` 與圖示 `DrawIcons`、拼貼視窗 `frmCollage`、預覽畫布（縮放、放大超出畫布時顯示捲軸、裁切、修補筆刷）、濾鏡列、直方圖（面板上方，點標題列收起／展開，預設收起） |
 | `PhotoEdit.SelfTest` | 自我測試，不需要任何 NuGet 測試套件 |
 
 算圖順序固定：污點移除 → 降噪 → 人像修飾（以上在已轉正原圖上，由 Vision 處理）→ 旋轉/翻轉 → 透視 → 拉直 → 裁切 → 色調（白平衡、曝光、對比、亮部、暗部、褪色、飽和度、色彩濾鏡）→ 局部調整 → 背景模糊/移軸 → 暗角/顆粒 → 銳利化 → 文字貼圖 → 繪圖圖層 → 裁切形狀 → 邊框。
@@ -23,7 +23,7 @@
 
 ### 去背模型
 
-`PhotoEdit.Vision/Models/isnet-general-use.onnx`（178.6 MB）與 `u2net_human_seg.onnx`（176 MB），來源 [rembg releases v0.0.0](https://github.com/danielgatis/rembg/releases/tag/v0.0.0)，Apache-2.0；用 ONNX Runtime（Microsoft.ML.OnnxRuntime）執行。和人臉模型一樣不放進 git。模型下載中（檔案被占用）時可用 `dotnet build -p:SkipModelCopy=true` 編譯。
+`PhotoEdit.Vision/Models/isnet-general-use.onnx`（178.6 MB）與 `u2net_human_seg.onnx`（176 MB），來源 [rembg releases v0.0.0](https://github.com/danielgatis/rembg/releases/tag/v0.0.0)，Apache-2.0；用 ONNX Runtime（Microsoft.ML.OnnxRuntime）執行。和人臉模型一樣不放進 git。臉部特徵點 `PhotoEdit.Vision/Models/lbfmodel.yaml`（56.4 MB，68 點 LBF，來源 [kurnianggoro/GSOC2017](https://github.com/kurnianggoro/GSOC2017/tree/master/data)）同樣另外下載。模型下載中（檔案被占用）時可用 `dotnet build -p:SkipModelCopy=true` 編譯。
 
 ### 人臉模型
 
@@ -68,7 +68,7 @@ PhotoEdit/bin/Debug/net8.0-windows/PhotoEdit.exe "D:\照片\IMG_0001.jpg"
 | 向左轉 / 向右轉 | Ctrl+L / Ctrl+R |
 | 裁切 | Ctrl+K：拖曳畫出範圍，拖四角或四邊調整大小（固定比例時等比例）、框內拖曳移動，框內顯示輸出像素尺寸；比例有自由、原始、1:1、4:3、3:2、16:9、5:4、IG 4:5 與 1.91:1、A4、證件照 3.5×4.5 cm，「⇄ 直橫」互換；輔助線可選三分線、黃金比例、格線、對角線；形狀可裁成圓形、圓角、愛心、星形（形狀外透明，匯出預設 PNG）；可直接輸入寬×高像素；同一列可拉直（±45°）、左右轉 90°、水平／垂直翻轉。Enter 套用；Esc 取消（裁切時做的拉直、旋轉、翻轉一起還原）；裁切中按 Ctrl+Z 只退回裁切中的步驟 |
 | 智慧構圖 | 裁切列的「智慧構圖」或「影像 → 智慧構圖」：臉群水平置中、眼睛在上方三分線；選比例時也會自動依臉構圖 |
-| 人像 | 磨皮、臉部提亮、亮眼；開檔後自動偵測人臉，沒偵測到臉時滑桿停用 |
+| 人像（美顏） | 開檔後自動偵測人臉（沒偵測到臉時滑桿停用）。**肌膚**：磨皮、勻膚（頻率分離，保留毛孔紋理）、去紅、美白、膚色（白皙↔小麥）、臉部提亮、去油光、自動去痘、黑眼圈；**五官**：亮眼、大眼、牙齒美白、腮紅（可選顏色）、立體修容。**臉型與唇眉**（需要 68 點特徵點模型 `Models\lbfmodel.yaml`，OpenCV FacemarkLBF；缺檔時這幾個滑桿停用）：瘦臉、V 臉、下巴（短↔長）、瘦鼻、唇色（可選顏色，牙齒不上色）、眉毛加深；有 68 點時牙齒美白改用嘴唇內側範圍。**臉型與唇眉**（需要 68 點特徵點模型 `Modelsbfmodel.yaml`，OpenCV FacemarkLBF；缺檔時這幾個滑桿停用）：瘦臉、V 臉、下巴（短↔長）、瘦鼻、唇色（可選顏色，牙齒不上色）、眉毛加深；有 68 點時牙齒美白改用嘴唇內側範圍。臉頰、眼下、牙齒、鼻樑位置由偵測到的 5 個點推估，顏色類效果用依這張臉平均膚色算出的柔和皮膚遮罩。**一鍵美顏**（小圖模式）：19 組——自然、甜美、證件照、男性、清透、好氣色、嬰兒肌、冷白皮、小麥肌、精緻小臉、減齡、自拍補光、清爽男生、韓系淡妝、桃花妝、歐美妝、柔光、林布蘭光、側光；每格小圖是這張照片的臉套上該組的樣子（背景算，含照片色調），點一下套用，「強度」0～100% 整組等比例縮放，「原圖」全部清除。**手動調整…**視窗：左邊臉部放大即時預覽（按住看原圖），右邊肌膚、五官、臉型與唇眉、妝容（眼影＋顏色、眼線、臥蠶）、光影（柔光、林布蘭光、側光，光從左或右）全部滑桿，多張臉可切換；確定才套用（一步復原），改過後小圖變自訂。68 點對齊前先依兩眼把臉轉正，和偵測的五點差太多時不採用。**套用到**：全部的臉或某一張臉（團體照單獨調整，畫面標出臉的編號；「跟隨全部」取消個別設定）。**液化筆刷**（L）：推移、膨脹、縮攏、順／逆時針旋轉，筆刷大小與力道可調，放開滑鼠套用，Ctrl+Z 復原、「清除液化」全部移除；液化在美顏之後算。「按住看未美顏」只拿掉美顏與液化 |
 | 污點／雜物移除 | 「修補」分頁的修補筆刷（H）：在照片上塗抹，放開就補上；[ ] 調整筆刷大小、右鍵拖曳平移、Esc 結束。會從附近找紋理相符的區域複製並校色，找不到時才用 inpaint |
 | 降噪 | 「修補」分頁：明度（顆粒狀雜訊）、色彩（彩色雜點）分開調 |
 | 透視校正 | 「修補」分頁：垂直、水平；四周不會出現空白 |

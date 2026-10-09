@@ -6,6 +6,8 @@ Public Class FaceRegion
     ''' <summary>右眼、左眼、鼻尖、右嘴角、左嘴角（YuNet 順序）。</summary>
     Public Property Landmarks As PointF() = New PointF(4) {}
     Public Property Score As Single
+    ''' <summary>68 點特徵點（0..1，FaceLandmarks 算的）；沒有模型時 Nothing。下顎 0–16、眉 17–26、鼻 27–35、眼 36–47、嘴唇外 48–59、內 60–67。</summary>
+    Public Property Dense As PointF()
 End Class
 
 ''' <summary>

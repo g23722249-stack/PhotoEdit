@@ -11,3 +11,7 @@ Thumbs.db
 
 # Local shortcuts
 *.lnk
+
+# 68 點臉部特徵點模型（56 MB，另外下載）
+lbfmodel.yaml
+*.yaml.part
