@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    宮崎風 AI 重繪的生成程式（Stable Diffusion 1.5 img2img＋ControlNet，ONNX Runtime DirectML 用顯卡）。
+    獨立一個程式：DirectML 版的 onnxruntime.dll 和 PhotoEdit 用的 CPU 版同名，不能放在同一個程序／資料夾。
+    PhotoEdit 建置時會把它建到輸出資料夾的 Redraw\ 子資料夾，再用命令列呼叫（stdout 回報進度）。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>PhotoEdit.Redraw</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.20.1" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

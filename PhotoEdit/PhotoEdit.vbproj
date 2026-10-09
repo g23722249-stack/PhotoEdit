@@ -33,4 +33,16 @@
     <ProjectReference Include="..\..\RunTime\Aqua.Net\Aqua.Net.vbproj" />
   </ItemGroup>
 
+  <!--
+    宮崎風 AI 重繪的生成程式另外建到輸出資料夾的 Redraw\：它用 DirectML 版 ONNX Runtime，
+    onnxruntime.dll 和這裡（CPU 版）同名，不能放在同一個資料夾。
+  -->
+  <Target Name="BuildRedrawHelper" AfterTargets="Build">
+    <PropertyGroup>
+      <RedrawOutDir>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(OutDir)Redraw\'))</RedrawOutDir>
+    </PropertyGroup>
+    <MSBuild Projects="..\PhotoEdit.Redraw\PhotoEdit.Redraw.vbproj" Targets="Restore" Properties="MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" />
+    <MSBuild Projects="..\PhotoEdit.Redraw\PhotoEdit.Redraw.vbproj" Targets="Build" Properties="Configuration=$(Configuration);OutDir=$(RedrawOutDir)" />
+  </Target>
+
 </Project>

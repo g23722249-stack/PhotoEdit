@@ -10,7 +10,7 @@ Imports OpenCvSharp.Extensions
 ''' 每張臉先縮放到固定大小（臉寬 WorkFaceSize）算遮罩與顏色修正量，再放大套回原圖，所以預覽（1600 縮圖）與全尺寸匯出的效果一致。
 ''' 臉的位置只有 YuNet 的 5 個點（兩眼、鼻尖、兩嘴角），臉頰、眼下、鼻樑等位置由這 5 點推估。
 ''' </summary>
-Public NotInheritable Class PortraitRetouch
+Partial Public NotInheritable Class PortraitRetouch
     Private Sub New()
     End Sub
 
@@ -27,17 +27,48 @@ Public NotInheritable Class PortraitRetouch
             Try
                 Dim px(data.Stride * result.Height - 1) As Byte
                 Marshal.Copy(data.Scan0, px, 0, px.Length)
+                ' 曬黑：整張照片的皮膚一起（取曬黑最深的那張臉的膚色當準，只做一次）。
+                ' 要最先做：之後的妝（白眼影、白鼻樑、淡唇）以曬黑後的膚色為準，才不會被曬黑壓暗
+                Dim tanFace = faces.Select(Function(x) (F:=x, T:=recipe.BeautyFor(x.Box).Tan)).OrderByDescending(Function(x) x.T).FirstOrDefault()
+                If tanFace.F IsNot Nothing AndAlso tanFace.T > 0 Then
+                    ApplyTan(px, data.Stride, result.Width, result.Height, tanFace.F, faces, tanFace.T / 100.0)
+                    Dim w = result.Width, h = result.Height
+                    Dim tanned(w * h * 3 - 1) As Byte
+                    For y = 0 To h - 1
+                        For x = 0 To w - 1
+                            Dim i = y * data.Stride + x * 4, j = (y * w + x) * 3
+                            tanned(j) = px(i) : tanned(j + 1) = px(i + 1) : tanned(j + 2) = px(i + 2)
+                        Next
+                    Next
+                    Marshal.Copy(tanned, 0, bgr.Data, tanned.Length)
+                End If
                 For Each f In faces
-                    Dim b = recipe.BeautyFor(f.Box)
+                    Dim b = ForOpera(recipe.BeautyFor(f.Box))
                     If b.IsEmpty Then Continue For
                     RetouchFace(bgr, px, data.Stride, f, b)
                 Next
-                ' 大眼最後做（變形會移動像素，要在顏色修飾之後）
+                ' 原圖解析度直接畫的：戲曲妝、美瞳、睫毛（在變形之前畫，之後跟著眼睛一起變形）
                 For Each f In faces
-                    Dim b = recipe.BeautyFor(f.Box)
+                    Dim b = ForOpera(recipe.BeautyFor(f.Box))
+                    If b.HasOpera Then
+                        ApplyOpera(px, data.Stride, result.Width, result.Height, f, b)
+                        ' 歌仔戲的俊扮有假睫毛（自己沒設睫毛時）
+                        Dim role = OperaRoles.Get(b.OperaRole)
+                        If role IsNot Nothing AndAlso role.Lashes AndAlso b.Lash = 0 Then
+                            ApplyLashes(px, data.Stride, result.Width, result.Height, f,
+                                        New BeautySettings With {.Lash = CInt(80 * b.Opera / 100.0), .LashStyle = LashStyle.Natural, .LashLength = 115, .LashCurl = 55})
+                        End If
+                    End If
+                    If b.Iris > 0 Then ApplyIris(px, data.Stride, result.Width, result.Height, f, b)
+                    If b.Lash > 0 Then ApplyLashes(px, data.Stride, result.Width, result.Height, f, b)
+                    If b.Hair > 0 Then ApplyHair(px, data.Stride, result.Width, result.Height, source, f, b)
+                Next
+                ' 變形最後做（會移動像素，要在顏色修飾之後）：大眼、臉型、嘴角、豐唇、開眼角、眉形
+                For Each f In faces
+                    Dim b = ForOpera(recipe.BeautyFor(f.Box))
                     If b.EyeEnlarge > 0 Then EnlargeEyes(px, data.Stride, result.Width, result.Height, f, b.EyeEnlarge / 100.0)
-                    If f.Dense IsNot Nothing AndAlso (b.FaceSlim <> 0 OrElse b.VFace <> 0 OrElse b.Chin <> 0 OrElse b.NoseSlim <> 0) Then
-                        WarpFaceShape(px, data.Stride, result.Width, result.Height, f.Dense, b)
+                    If f.Dense IsNot Nothing AndAlso NeedsShapeWarp(b) Then
+                        WarpFaceShape(px, data.Stride, result.Width, result.Height, f.Dense, f.Mesh, b)
                     End If
                 Next
                 Marshal.Copy(px, 0, data.Scan0, px.Length)
@@ -67,6 +98,8 @@ Public NotInheritable Class PortraitRetouch
         Dim eyeR = CInt(fw * 0.11 * k)
         Dim lm = f.Landmarks.Select(Function(p) toSmall(p.X * imgW, p.Y * imgH)).ToArray()
         Dim denseSmall = f.Dense?.Select(Function(p) toSmall(p.X * imgW, p.Y * imgH)).ToArray()
+        Dim meshSmall = f.Mesh?.Select(Function(p) toSmall(p.X * imgW, p.Y * imgH)).ToArray()
+        Dim meshZSmall = f.MeshZ?.Select(Function(z) CSng(z * imgW * k)).ToArray() ' 深度換成縮小後的像素
         ' 臉的參考長度：兩眼距離（縮放後）
         Dim eyeDist = Math.Max(8.0, Math.Sqrt((lm(1).X - lm(0).X) ^ 2 + (lm(1).Y - lm(0).Y) ^ 2))
 
@@ -110,7 +143,7 @@ Public NotInheritable Class PortraitRetouch
 
             ' 其他美顏：在縮小的臉上算出每個像素要加減多少（BGR，float），放大後加回原圖。
             Using soft = SoftSkinMask(ycc, skin, shape, center, fw * k, fh * k),
-                  delta = ColorDelta(small, soft, lm, eyeDist, eyeR, mouth, mouthHalf, b, denseSmall, center, fw * k, fh * k), deltaBig As New Mat()
+                  delta = ColorDelta(small, soft, lm, eyeDist, eyeR, mouth, mouthHalf, b, denseSmall, center, fw * k, fh * k, meshSmall, meshZSmall), deltaBig As New Mat()
                 Cv2.Resize(smoothSmall, smoothBig, roiSize, 0, 0, InterpolationFlags.Linear)
                 Cv2.Resize(mask, maskBig, roiSize, 0, 0, InterpolationFlags.Linear)
                 Cv2.Resize(eyeMask, eyeBig, roiSize, 0, 0, InterpolationFlags.Linear)
@@ -207,11 +240,8 @@ Public NotInheritable Class PortraitRetouch
     ''' <summary>回傳 CV_32FC3 的修正量（加到原圖上）；沒有任何顏色類效果時 Nothing。</summary>
     Private Shared Function ColorDelta(small As Mat, mask As Mat, lm As Point2f(), eyeDist As Double, eyeR As Integer,
                                        mouth As Point2f, mouthHalf As Double, b As BeautySettings, dense As Point2f(),
-                                       faceCenter As Point2f, faceW As Double, faceH As Double) As Mat
-        If b.Even = 0 AndAlso b.Redness = 0 AndAlso b.Whiten = 0 AndAlso b.Tone = 0 AndAlso b.Shine = 0 AndAlso b.Blemish = 0 AndAlso
-           b.DarkCircles = 0 AndAlso b.Teeth = 0 AndAlso b.Blush = 0 AndAlso b.Contour = 0 AndAlso
-           (dense Is Nothing OrElse (b.Lips = 0 AndAlso b.Brows = 0 AndAlso b.EyeShadow = 0 AndAlso b.EyeLiner = 0 AndAlso b.EyeBag = 0)) AndAlso
-           Not b.HasLight Then Return Nothing
+                                       faceCenter As Point2f, faceW As Double, faceH As Double, mesh As Point2f(), meshZ As Single()) As Mat
+        If Not NeedsColorDelta(b, dense IsNot Nothing) Then Return Nothing
         Dim w = small.Cols, h = small.Rows, n = w * h
         Dim src = GetBytes(small)                       ' BGR
         Dim m = GetBytes(mask)                          ' 膚色遮罩 0..255
@@ -236,6 +266,17 @@ Public NotInheritable Class PortraitRetouch
         Dim addLab = Sub(i As Integer, dLv As Double, dAv As Double, dBv As Double)
                          dLab(i * 3) += CSng(dLv) : dLab(i * 3 + 1) += CSng(dAv) : dLab(i * 3 + 2) += CSng(dBv)
                      End Sub
+
+        ' 美妝共用的工作資料（和上面同一份陣列）
+        Dim ctx As New MakeupCtx With {.W = w, .H = h, .N = n, .Src = src, .Lab = lab, .Skin = m, .Acc = acc, .DLab = dLab, .EyeDist = eyeDist,
+                                       .Lm = lm, .Dense = dense, .Mesh = mesh, .ML = mL, .MA = mA, .MB = mB}
+        If dense IsNot Nothing Then
+            Dim ux As Double = dense(27).X - dense(8).X, uy As Double = dense(27).Y - dense(8).Y
+            Dim ul = Math.Max(1.0, Math.Sqrt(ux * ux + uy * uy))
+            ctx.UpX = ux / ul : ctx.UpY = uy / ul
+        Else
+            ctx.UpX = 0 : ctx.UpY = -1
+        End If
 
         ' 去痘先做：斑點補成周圍原本的膚色，之後的美白、膚色等再一起套上（後做的話補上的顏色會比旁邊暗）
         If b.Blemish > 0 Then RemoveBlemishes(small, lab, m, acc, w, h, b.Blemish / 100.0, lm, eyeDist)
@@ -359,7 +400,7 @@ Public NotInheritable Class PortraitRetouch
             Dim amt = b.Teeth / 100.0
             Dim region(n - 1) As Single
             If dense IsNot Nothing Then
-                region = PolyMask(w, h, dense.Skip(60).Take(8).ToArray(), Nothing, eyeDist * 0.015) ' 68 點：嘴唇內側＝露出的牙齒
+                region = PolyMask(w, h, LipInner(dense, mesh), Nothing, eyeDist * 0.015) ' 嘴唇內側＝露出的牙齒
             Else
                 FillSoftEllipse(region, w, h, mouth.X, mouth.Y + eyeDist * 0.02, mouthHalf * 0.85, Math.Max(3, eyeDist * 0.16))
             End If
@@ -375,109 +416,8 @@ Public NotInheritable Class PortraitRetouch
             Next
         End If
 
-        ' 唇色（68 點）：嘴唇外框扣掉內側（牙齒、嘴裡不上色），色相換成唇色、保留原本的明暗紋路
-        If dense IsNot Nothing AndAlso b.Lips > 0 Then
-            Dim amt = b.Lips / 100.0
-            Dim region = PolyMask(w, h, dense.Skip(48).Take(12).ToArray(), dense.Skip(60).Take(8).ToArray(), eyeDist * 0.02)
-            Dim t = ColorToLab(b.LipColor)
-            For i = 0 To n - 1
-                Dim r = region(i) * amt
-                If r < 0.002 Then Continue For
-                Dim L = lab(i * 3)
-                addLab(i, (t.L - L) * 0.25 * r, (t.A - lab(i * 3 + 1)) * 0.7 * r, (t.B - lab(i * 3 + 2)) * 0.7 * r)
-            Next
-        End If
-
-        ' 眉毛加深（68 點）：沿兩道眉毛的粗線，變暗並稍微偏深棕（保留毛流紋路）
-        If dense IsNot Nothing AndAlso b.Brows > 0 Then
-            Dim amt = b.Brows / 100.0
-            Dim region(n - 1) As Single
-            For Each start In {17, 22}
-                For j = start To start + 3
-                    DrawSoftLine(region, w, h, dense(j).X, dense(j).Y, dense(j + 1).X, dense(j + 1).Y, eyeDist * 0.045)
-                Next
-            Next
-            region = BlurArray(region, w, h, eyeDist * 0.02)
-            For i = 0 To n - 1
-                Dim r = region(i) * amt
-                If r < 0.002 Then Continue For
-                Dim L = lab(i * 3)
-                addLab(i, -L * 0.3 * r, (134 - lab(i * 3 + 1)) * 0.3 * r, (140 - lab(i * 3 + 2)) * 0.3 * r)
-            Next
-        End If
-
-        ' 妝容（68 點）：眼影、眼線、臥蠶。眼睛點：36 外眼角、37–38 上緣、39 內眼角、40–41 下緣（另一眼 42 內、43–44 上、45 外、46–47 下）
-        If dense IsNot Nothing AndAlso (b.EyeShadow > 0 OrElse b.EyeLiner > 0 OrElse b.EyeBag > 0) Then
-            ' 臉的「上」方向：下巴 → 鼻樑頂
-            Dim ux As Double = dense(27).X - dense(8).X, uy As Double = dense(27).Y - dense(8).Y
-            Dim ul = Math.Max(1.0, Math.Sqrt(ux * ux + uy * uy))
-            ux /= ul : uy /= ul
-            Dim up = Function(p As Point2f, d As Double) New Point2f(CSng(p.X + ux * d), CSng(p.Y + uy * d))
-            Dim eyesPts = {(Upper:={36, 37, 38, 39}, Lower:={39, 40, 41, 36}, Outer:=36, Inner:=39, All:=36),
-                           (Upper:={42, 43, 44, 45}, Lower:={45, 46, 47, 42}, Outer:=45, Inner:=42, All:=42)}
-            If b.EyeShadow > 0 Then
-                Dim amt = b.EyeShadow / 100.0
-                Dim t = ColorToLab(b.EyeShadowColor)
-                Dim region(n - 1) As Single
-                For Each e In eyesPts
-                    ' 上眼皮往上一條帶狀（中間最高、外眼角往外延伸一點），扣掉眼睛本身
-                    Dim lid = e.Upper.Select(Function(i) dense(i)).ToArray()
-                    Dim lift = {0.12, 0.2, 0.2, 0.1}
-                    Dim outerDir = If(dense(e.Outer).X < dense(e.Inner).X, -1, 1)
-                    Dim top = lid.Select(Function(p, j) up(p, eyeDist * lift(j))).ToArray()
-                    If e.Outer = 36 Then top(0) = New Point2f(CSng(top(0).X + outerDir * eyeDist * 0.06), top(0).Y) Else top(3) = New Point2f(CSng(top(3).X + outerDir * eyeDist * 0.06), top(3).Y)
-                    Dim poly = lid.Concat(top.Reverse()).ToArray()
-                    Dim eyeHole = Enumerable.Range(e.All, 6).Select(Function(i) dense(i)).ToArray()
-                    Dim m1 = PolyMask(w, h, poly, eyeHole, eyeDist * 0.05)
-                    For i = 0 To n - 1
-                        If m1(i) > region(i) Then region(i) = m1(i)
-                    Next
-                Next
-                For i = 0 To n - 1
-                    Dim r = region(i) * amt
-                    If r < 0.002 Then Continue For
-                    addLab(i, (t.L - lab(i * 3)) * 0.3 * r, (t.A - lab(i * 3 + 1)) * 0.6 * r, (t.B - lab(i * 3 + 2)) * 0.6 * r)
-                Next
-            End If
-            If b.EyeLiner > 0 Then
-                Dim amt = b.EyeLiner / 100.0
-                Dim region(n - 1) As Single
-                For Each e In eyesPts
-                    Dim lid = e.Upper.Select(Function(i) dense(i)).ToArray()
-                    For j = 0 To lid.Length - 2
-                        DrawSoftLine(region, w, h, lid(j).X, lid(j).Y, lid(j + 1).X, lid(j + 1).Y, eyeDist * 0.018)
-                    Next
-                    ' 眼尾微微上揚
-                    Dim o = dense(e.Outer)
-                    Dim outerDir = If(dense(e.Outer).X < dense(e.Inner).X, -1, 1)
-                    Dim tip = up(New Point2f(CSng(o.X + outerDir * eyeDist * 0.09), o.Y), eyeDist * 0.04)
-                    DrawSoftLine(region, w, h, o.X, o.Y, tip.X, tip.Y, eyeDist * 0.014)
-                Next
-                For i = 0 To n - 1
-                    Dim r = Math.Min(1, region(i) * 1.3) * amt
-                    If r < 0.002 Then Continue For
-                    addLab(i, -lab(i * 3) * 0.75 * r, (128 - lab(i * 3 + 1)) * 0.5 * r, (128 - lab(i * 3 + 2)) * 0.5 * r)
-                Next
-            End If
-            If b.EyeBag > 0 Then
-                Dim amt = b.EyeBag / 100.0
-                Dim hi(n - 1) As Single, lo(n - 1) As Single
-                For Each e In eyesPts
-                    Dim lid = e.Lower.Select(Function(i) dense(i)).ToArray()
-                    For j = 0 To lid.Length - 2
-                        Dim a1 = up(lid(j), -eyeDist * 0.07), a2 = up(lid(j + 1), -eyeDist * 0.07)
-                        DrawSoftLine(hi, w, h, a1.X, a1.Y, a2.X, a2.Y, eyeDist * 0.04)
-                        Dim c1 = up(lid(j), -eyeDist * 0.15), c2 = up(lid(j + 1), -eyeDist * 0.15)
-                        DrawSoftLine(lo, w, h, c1.X, c1.Y, c2.X, c2.Y, eyeDist * 0.025)
-                    Next
-                Next
-                For i = 0 To n - 1
-                    If hi(i) < 0.002 AndAlso lo(i) < 0.002 Then Continue For
-                    Dim L = lab(i * 3)
-                    addLab(i, ((255 - L) * 0.16 * hi(i) - L * 0.08 * lo(i)) * amt, 0, 0)
-                Next
-            End If
-        End If
+        ' 美妝（需要特徵點）：口紅、眉毛、眼影、雙眼皮、眼線、臥蠶、高光
+        ApplyMakeupLab(ctx, b)
 
         If Not IsZero(dLab) Then AddLabDelta(lab, dLab, acc, n)
 
@@ -485,8 +425,13 @@ Public NotInheritable Class PortraitRetouch
         If b.HasLight Then
             Dim amt = b.Light / 100.0
             Dim face(n - 1) As Single
-            FillSoftEllipse(face, w, h, faceCenter.X, faceCenter.Y, faceW * 0.78, faceH * 0.88)
+            FillSoftEllipse(face, w, h, faceCenter.X, faceCenter.Y, faceW * 0.72, faceH * 0.82)
             face = BlurArray(face, w, h, faceW * 0.1)
+            ' 計算範圍（臉框的 1.7 倍）邊緣淡出，不要被截斷成一條直線
+            For i = 0 To n - 1
+                Dim ex = i Mod w, ey = i \ w
+                face(i) *= CSng(Smooth(Math.Min(Math.Min(ex, w - 1 - ex), Math.Min(ey, h - 1 - ey)), 0, w * 0.1))
+            Next
             Dim dir = If(b.LightFromRight, 1, -1)
             Dim blurred As Byte() = Nothing
             If b.LightKind = BeautyLight.Soft Then
@@ -501,11 +446,17 @@ Public NotInheritable Class PortraitRetouch
                 Dim darkEye = If((lm(0).X - lm(1).X) * dir < 0, lm(0), lm(1))
                 FillGaussian(tri, w, h, darkEye.X, darkEye.Y + eyeDist * 0.55, eyeDist * 0.17)
             End If
+            ' 立體光影：有網格深度時，依臉的起伏打光（網格範圍內），範圍外（頭髮）用左右漸層
+            Dim shade3d As (Gain As Single(), Cover As Single()) = Nothing
+            If mesh IsNot Nothing AndAlso meshZ IsNot Nothing AndAlso b.LightKind <> BeautyLight.Soft Then
+                shade3d = MeshShade(mesh, meshZ, w, h, eyeDist, b.LightKind, b.LightFromRight)
+            End If
             For i = 0 To n - 1
                 Dim fm = face(i)
                 If fm < 0.003 Then Continue For
                 Dim x = i Mod w
                 Dim side = Math.Max(-1, Math.Min(1, (x - faceCenter.X) / (faceW * 0.6))) * dir ' 1＝朝光、-1＝背光
+                Dim cover = If(shade3d.Cover IsNot Nothing, shade3d.Cover(i), 0.0F)
                 For ch = 0 To 2
                     Dim j = i * 3 + ch
                     Dim cur = src(j) + acc(j)
@@ -516,36 +467,19 @@ Public NotInheritable Class PortraitRetouch
                         Case BeautyLight.Rembrandt
                             Dim gain = 1 + 0.12 * Math.Max(0, side) - 0.45 * Math.Max(0, -side)
                             gain += (1.05 - gain) * tri(i)
+                            If cover > 0 Then gain = gain * (1 - cover) + shade3d.Gain(i) * cover
                             target = cur * gain
                         Case Else
                             Dim gain = 1 + 0.2 * Math.Max(0, side) - 0.6 * Math.Max(0, -side)
-                            target = cur * gain + If(ch = 2, 5, If(ch = 0, -3, 0)) * Math.Max(0, side) ' 亮側稍暖
+                            If cover > 0 Then gain = gain * (1 - cover) + shade3d.Gain(i) * cover
+                            target = cur * gain + If(ch = 2, 5, If(ch = 0, -3, 0)) * Math.Max(0, gain - 1) * 5 ' 亮的地方稍暖
                     End Select
                     acc(j) += CSng((target - cur) * fm * amt)
                 Next
             Next
         End If
 
-        ' 腮紅：兩眼下方偏外側的臉頰，柔和地混入腮紅色（只在皮膚上）
-        If b.Blush > 0 Then
-            Dim amt = b.Blush / 100.0
-            Dim region(n - 1) As Single
-            Dim midX = (lm(0).X + lm(1).X) / 2
-            For e = 0 To 1
-                Dim outward = Math.Sign(lm(e).X - midX)
-                FillGaussian(region, w, h, lm(e).X + outward * eyeDist * 0.12, lm(e).Y + eyeDist * 0.62, eyeDist * 0.34)
-            Next
-            Dim c = b.BlushColor
-            For i = 0 To n - 1
-                Dim r = region(i) * (m(i) / 255.0) * amt * 0.32
-                If r < 0.002 Then Continue For
-                ' 色彩「乘上」再混：深膚色也自然
-                Dim tb = src(i * 3) * (c.B / 255.0), tg = src(i * 3 + 1) * (c.G / 255.0), tr = src(i * 3 + 2) * (c.R / 255.0)
-                acc(i * 3) += CSng((tb * 0.5 + c.B * 0.5 - src(i * 3)) * r)
-                acc(i * 3 + 1) += CSng((tg * 0.5 + c.G * 0.5 - src(i * 3 + 1)) * r)
-                acc(i * 3 + 2) += CSng((tr * 0.5 + c.R * 0.5 - src(i * 3 + 2)) * r)
-            Next
-        End If
+        If b.Blush > 0 Then ApplyBlush(ctx, b) ' 腮紅（樣式、範圍、顏色；只在皮膚上）
 
         ' 立體修容：鼻樑打亮、顴骨下方與下顎兩側加陰影（只在皮膚上）
         If b.Contour > 0 Then
@@ -675,7 +609,7 @@ Public NotInheritable Class PortraitRetouch
     ' 臉型（68 點）：在控制點放位移，用高斯權重內插成位移場，再反向取樣
     '=====================================================================
 
-    Private Shared Sub WarpFaceShape(px As Byte(), stride As Integer, w As Integer, h As Integer, dense As PointF(), b As BeautySettings)
+    Private Shared Sub WarpFaceShape(px As Byte(), stride As Integer, w As Integer, h As Integer, dense As PointF(), meshN As PointF(), b As BeautySettings)
         Dim p = dense.Select(Function(q) New PointF(q.X * w, q.Y * h)).ToArray()
         Dim faceW = Math.Sqrt((p(16).X - p(0).X) ^ 2 + (p(16).Y - p(0).Y) ^ 2)
         If faceW < 12 Then Return
@@ -716,6 +650,17 @@ Public NotInheritable Class PortraitRetouch
                 ctrls.Add((p(i), New PointF(CSng(ax * s * wgt), CSng(ay * s * wgt)), faceW * 0.14))
             Next
         End If
+        ' 吊眉（戲曲的勒頭）：外眼角、眉尾往太陽穴上方拉
+        If b.HasOpera AndAlso b.OperaLift > 0 Then
+            Dim s = b.OperaLift / 100.0 * faceW * 0.045
+            For Each i In {36, 45, 17, 26}
+                Dim inw = inward(p(i))
+                Dim il = Math.Max(1.0, Math.Sqrt(inw.X * inw.X + inw.Y * inw.Y))
+                Dim dx = -ax * 0.8 - inw.X / il * 0.45, dy = -ay * 0.8 - inw.Y / il * 0.45
+                Dim wgt = If(i = 17 OrElse i = 26, 1.0, 0.75)
+                ctrls.Add((p(i), New PointF(CSng(dx * s * wgt), CSng(dy * s * wgt)), faceW * 0.13))
+            Next
+        End If
         If b.NoseSlim <> 0 Then
             Dim s = b.NoseSlim / 100.0 * 0.3
             Dim noseW = Math.Max(4.0, Math.Sqrt((p(35).X - p(31).X) ^ 2 + (p(35).Y - p(31).Y) ^ 2))
@@ -724,6 +669,84 @@ Public NotInheritable Class PortraitRetouch
                 Dim wgt = If(i = 31 OrElse i = 35, 1.0, 0.5)
                 ctrls.Add((p(i), New PointF(CSng(d.X * s * wgt), CSng(d.Y * s * wgt)), noseW * 0.45))
             Next
+        End If
+        ' 「上」方向（中線反方向）
+        Dim upX = -ax, upY = -ay
+        Dim eyeDist = Math.Sqrt((p(42).X - p(39).X) ^ 2 + (p(42).Y - p(39).Y) ^ 2) + Math.Sqrt((p(39).X - p(36).X) ^ 2 + (p(39).Y - p(36).Y) ^ 2)
+        Dim mouthW = Math.Max(4.0, Math.Sqrt((p(54).X - p(48).X) ^ 2 + (p(54).Y - p(48).Y) ^ 2))
+        Dim add = Sub(q As PointF, dx As Double, dy As Double, r As Double)
+                      ctrls.Add((q, New PointF(CSng(dx), CSng(dy)), r))
+                  End Sub
+        ' 嘴角上揚：兩個嘴角往上、稍微往外
+        If b.Smile <> 0 Then
+            Dim s = b.Smile / 100.0 * mouthW * 0.07
+            For Each i In {48, 54}
+                Dim d = inward(p(i))
+                Dim dl = Math.Max(1.0, Math.Sqrt(d.X * d.X + d.Y * d.Y))
+                add(p(i), upX * s - d.X / dl * s * 0.3, upY * s - d.Y / dl * s * 0.3, mouthW * 0.22)
+            Next
+        End If
+        ' 豐唇：上唇往上、下唇往下（負值往內收）
+        If b.LipFull <> 0 Then
+            ' 只推嘴唇外緣：以上下唇各自的厚度為準（張嘴時嘴裡的空隙不算），半徑小，內緣與牙齒幾乎不動
+            Dim dist = Function(i As Integer, j As Integer) Math.Sqrt((p(i).X - p(j).X) ^ 2 + (p(i).Y - p(j).Y) ^ 2)
+            Dim upperT = Math.Max(2.0, dist(51, 62)), lowerT = Math.Max(2.0, dist(57, 66))
+            Dim f = b.LipFull / 100.0
+            For Each i In {50, 51, 52}
+                add(p(i), upX * upperT * 0.35 * f, upY * upperT * 0.35 * f, upperT * 0.55)
+            Next
+            For Each i In {56, 57, 58}
+                add(p(i), -upX * lowerT * 0.35 * f, -upY * lowerT * 0.35 * f, lowerT * 0.55)
+            Next
+        End If
+        ' 開眼角：內眼角往鼻樑、外眼角往外
+        If b.EyeCorner <> 0 Then
+            Dim s = b.EyeCorner / 100.0 * eyeDist * 0.05
+            For Each pair In {(39, 1.0), (42, 1.0), (36, -0.6), (45, -0.6)}
+                Dim d = inward(p(pair.Item1))
+                Dim dl = Math.Max(1.0, Math.Sqrt(d.X * d.X + d.Y * d.Y))
+                add(p(pair.Item1), d.X / dl * s * pair.Item2, d.Y / dl * s * pair.Item2, eyeDist * 0.16)
+            Next
+        End If
+        ' 眉形（眉毛有開時）：挑眉＝眉峰拉高、平眉＝眉峰壓平、柳葉＝眉尾下彎、自然＝眉峰稍微提；粗細＝上緣往上、下緣往下
+        If b.Brows > 0 Then
+            Dim k = b.Brows / 100.0
+            Dim peak = (0.4 + b.BrowPeak / 100.0) * eyeDist * 0.06 * k
+            For Each brow In {(Outer:=17, Peak1:=18, Peak2:=19, Inner:=21), (Outer:=26, Peak1:=25, Peak2:=24, Inner:=22)}
+                If b.BrowStyle = BrowStyle.Darken Then Exit For ' 原眉加深：形狀不變
+                Select Case b.BrowStyle
+                    Case BrowStyle.Arch
+                        add(p(brow.Peak1), upX * peak, upY * peak, eyeDist * 0.12)
+                        add(p(brow.Peak2), upX * peak * 0.7, upY * peak * 0.7, eyeDist * 0.12)
+                        add(p(brow.Outer), -upX * peak * 0.4, -upY * peak * 0.4, eyeDist * 0.1)
+                    Case BrowStyle.Flat
+                        ' 眉峰往眉頭與眉尾的連線靠
+                        For Each i In {brow.Peak1, brow.Peak2}
+                            Dim a = p(brow.Inner), c = p(brow.Outer)
+                            Dim t = ((p(i).X - a.X) * (c.X - a.X) + (p(i).Y - a.Y) * (c.Y - a.Y)) / Math.Max(1.0, (c.X - a.X) ^ 2 + (c.Y - a.Y) ^ 2)
+                            Dim fx = a.X + (c.X - a.X) * t, fy = a.Y + (c.Y - a.Y) * t
+                            add(p(i), (fx - p(i).X) * 0.8 * k, (fy - p(i).Y) * 0.8 * k, eyeDist * 0.12)
+                        Next
+                    Case BrowStyle.Willow
+                        add(p(brow.Outer), -upX * peak, -upY * peak, eyeDist * 0.1)
+                        add(p(brow.Peak1), upX * peak * 0.3, upY * peak * 0.3, eyeDist * 0.1)
+                    Case Else ' 自然
+                        add(p(brow.Peak2), upX * peak * 0.35, upY * peak * 0.35, eyeDist * 0.12)
+                End Select
+            Next
+            ' 粗細（需要網格的眉毛上下緣）
+            If meshN IsNot Nothing AndAlso b.BrowThick <> 50 Then
+                Dim t = (b.BrowThick - 50) / 50.0 * eyeDist * 0.03 * k * If(b.BrowStyle = BrowStyle.Willow, 0.6, 1.0)
+                Dim mp = Function(i As Integer) New PointF(meshN(i).X * w, meshN(i).Y * h)
+                For s = 0 To 1
+                    For Each i In MeshBrowUpper(s)
+                        add(mp(i), upX * t, upY * t, eyeDist * 0.06)
+                    Next
+                    For Each i In MeshBrowLower(s)
+                        add(mp(i), -upX * t, -upY * t, eyeDist * 0.06)
+                    Next
+                Next
+            End If
         End If
         If ctrls.Count > 0 Then WarpByControls(px, stride, w, h, ctrls)
     End Sub
@@ -823,6 +846,39 @@ Public NotInheritable Class PortraitRetouch
             Next
         End Using
     End Sub
+
+    '---------------------------------------------------------------------
+    ' 五官輪廓：有 478 點網格用網格（較細），否則用 68 點
+    '---------------------------------------------------------------------
+
+    Private Shared ReadOnly MeshLipOuter As Integer() = {61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0, 37, 39, 40, 185}
+    Private Shared ReadOnly MeshLipInner As Integer() = {78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13, 82, 81, 80, 191}
+    ' 第一隻眼（68 點的 36–41，畫面左邊那隻）：上眼皮外→內、下眼皮內→外；第二隻眼：上眼皮內→外、下眼皮外→內（和 68 點的順序一致）
+    Private Shared ReadOnly MeshUpper1 As Integer() = {33, 246, 161, 160, 159, 158, 157, 173, 133}
+    Private Shared ReadOnly MeshLower1 As Integer() = {133, 155, 154, 153, 145, 144, 163, 7, 33}
+    Private Shared ReadOnly MeshUpper2 As Integer() = {362, 398, 384, 385, 386, 387, 388, 466, 263}
+    Private Shared ReadOnly MeshLower2 As Integer() = {263, 249, 390, 373, 374, 380, 381, 382, 362}
+
+    Private Shared Function LipOuter(dense As Point2f(), mesh As Point2f()) As Point2f()
+        Return If(mesh IsNot Nothing, MeshLipOuter.Select(Function(i) mesh(i)).ToArray(), dense.Skip(48).Take(12).ToArray())
+    End Function
+
+    Private Shared Function LipInner(dense As Point2f(), mesh As Point2f()) As Point2f()
+        Return If(mesh IsNot Nothing, MeshLipInner.Select(Function(i) mesh(i)).ToArray(), dense.Skip(60).Take(8).ToArray())
+    End Function
+
+    ''' <summary>兩隻眼睛：上眼皮、下眼皮、外眼角、內眼角、眼睛輪廓多邊形；OuterFirst＝上眼皮的第一點是外眼角。</summary>
+    Private Shared Function EyeShapes(dense As Point2f(), mesh As Point2f()) As (Upper As Point2f(), Lower As Point2f(), Outer As Point2f, Inner As Point2f, Poly As Point2f(), OuterFirst As Boolean)()
+        Dim pick = Function(idx As Integer()) idx.Select(Function(i) mesh(i)).ToArray()
+        If mesh IsNot Nothing Then
+            Dim u1 = pick(MeshUpper1), l1 = pick(MeshLower1), u2 = pick(MeshUpper2), l2 = pick(MeshLower2)
+            Return {(u1, l1, mesh(33), mesh(133), u1.Concat(l1.Skip(1).Take(l1.Length - 2)).ToArray(), True),
+                    (u2, l2, mesh(263), mesh(362), u2.Concat(l2.Skip(1).Take(l2.Length - 2)).ToArray(), False)}
+        End If
+        Dim d = Function(idx As Integer()) idx.Select(Function(i) dense(i)).ToArray()
+        Return {(d({36, 37, 38, 39}), d({39, 40, 41, 36}), dense(36), dense(39), d({36, 37, 38, 39, 40, 41}), True),
+                (d({42, 43, 44, 45}), d({45, 46, 47, 42}), dense(45), dense(42), d({42, 43, 44, 45, 46, 47}), False)}
+    End Function
 
     ''' <summary>多邊形遮罩（0..1）：outer 填滿、hole 挖掉，邊緣羽化 feather。</summary>
     Private Shared Function PolyMask(w As Integer, h As Integer, outer As Point2f(), hole As Point2f(), feather As Double) As Single()

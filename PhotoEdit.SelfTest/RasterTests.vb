@@ -85,6 +85,24 @@ Module RasterTests
               rb.ToString())
         Check("點選：範圍內點得到、範圍外點不到", DrawGeometry.HitTest(moved, New PointF(1.0F, 0.7F), 0) AndAlso Not DrawGeometry.HitTest(moved, New PointF(1.0F, 0.3F), 0))
         Check("點陣圖層沒有方框控制點", Not DrawGeometry.IsBox(DrawShape.Raster))
+        ' 實際畫過的範圍（點選與選取框用）：照片寬高比 2
+        Dim twoLines = New DrawLayer With {.Shape = DrawShape.Raster, .Ops = New List(Of DrawLayer) From {
+            StrokeOp(0.2F, 0.6F, 0.2F, Color.Red, width:=0.04), StrokeOp(1.2F, 2.6F, 0.8F, Color.Blue, width:=0.04)}}
+        Check("點選看實際筆跡：點在線上點得到、兩條線中間的空白點不到",
+              DrawingRenderer.RasterHit(twoLines, 2, New PointF(0.4F, 0.2F), 0.01) AndAlso DrawingRenderer.RasterHit(twoLines, 2, New PointF(1.5F, 0.8F), 0.01) AndAlso
+              Not DrawingRenderer.RasterHit(twoLines, 2, New PointF(0.9F, 0.5F), 0.01) AndAlso DrawGeometry.HitTest(twoLines, New PointF(0.9F, 0.5F), 0))
+        Dim vb = DrawingRenderer.RasterVisibleBounds(twoLines, 2)
+        Check("看得到的範圍：貼著線條、畫到畫布外的部分不算（右邊裁在 2）",
+              Math.Abs(vb.Left - 0.18) < 0.02 AndAlso Math.Abs(vb.Top - 0.18) < 0.02 AndAlso Math.Abs(vb.Bottom - 0.82) < 0.02 AndAlso vb.Right <= 2.0001 AndAlso
+              DrawGeometry.RasterBounds(twoLines).Right > 2.5, vb.ToString())
+        Dim erased = twoLines.Clone()
+        erased.Ops.Add(StrokeOp(1.0F, 2.8F, 0.8F, Color.White, eraser:=True, width:=0.1))
+        Dim eb = DrawingRenderer.RasterVisibleBounds(erased, 2)
+        Check("擦掉的地方不算：下面那條擦光後範圍只剩上面那條",
+              Math.Abs(eb.Bottom - 0.22) < 0.02 AndAlso Math.Abs(eb.Right - 0.62) < 0.02 AndAlso Not DrawingRenderer.RasterHit(erased, 2, New PointF(1.5F, 0.8F), 0.01), eb.ToString())
+        Dim shifted = twoLines.Clone()
+        DrawGeometry.Offset(shifted, 0.1, 0.1)
+        Check("移動後點選跟著走", DrawingRenderer.RasterHit(shifted, 2, New PointF(0.5F, 0.3F), 0.01) AndAlso Not DrawingRenderer.RasterHit(shifted, 2, New PointF(0.4F, 0.2F), 0.005))
         Dim empty As New DrawLayer With {.Shape = DrawShape.Raster, .Ops = New List(Of DrawLayer)()}
         Check("空白點陣圖層：範圍為空、點不到", DrawGeometry.RasterBounds(empty).IsEmpty AndAlso Not DrawGeometry.HitTest(empty, New PointF(0.5F, 0.5F), 0.1))
         Using bmp = RenderOn(New List(Of DrawLayer) From {empty})

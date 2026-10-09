@@ -37,6 +37,8 @@ Friend Class AppSettings
     Public Property EraseMode As Integer
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
+    ''' <summary>我的妝容（美顏手動調整「存成我的妝容」）：名稱＋整組設定，出現在一鍵美顏小圖的最後面。</summary>
+    Public Property MyLooks As List(Of NamedLook)
     ''' <summary>右側面板上方的直方圖展開（預設收起，只剩標題列）。</summary>
     Public Property HistogramExpanded As Boolean
     ''' <summary>最近開啟的檔案（照片與專案，新的在前，最多 10 個）。</summary>
@@ -67,4 +69,10 @@ Friend Class AppSettings
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
         End Try
     End Sub
+End Class
+
+''' <summary>我的妝容：一組有名字的美顏設定。</summary>
+Friend Class NamedLook
+    Public Property Name As String
+    Public Property Look As PhotoEdit.BeautySettings
 End Class

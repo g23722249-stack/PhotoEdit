@@ -218,11 +218,70 @@ Module BeautyTests
         End Using
 
         ' 一鍵美顏
-        Check("一鍵美顏：19 組預設都有效果", BeautySettings.PresetNames.Length = 19 AndAlso Enumerable.Range(0, 19).All(Function(i) Not BeautySettings.Preset(i).IsEmpty))
+        Check("一鍵美顏：27 組預設都有效果", BeautySettings.PresetNames.Length = 27 AndAlso Enumerable.Range(0, 27).All(Function(i) Not BeautySettings.Preset(i).IsEmpty))
+        OperaTests()
 
         DenseTests()
         LightTests()
+        MakeupDetailTests()
         LiquifyTests()
+    End Sub
+
+    Private Sub OperaTests()
+        Console.WriteLine("戲曲妝")
+        Dim face = DenseFace()
+        Using src = Skin()
+            Dim changed = Function(out As Bitmap) As Integer
+                              Dim n = 0
+                              For y = 40 To 170 Step 2
+                                  For x = 60 To 160 Step 2
+                                      If out.GetPixel(x, y) <> src.GetPixel(x, y) Then n += 1
+                                  Next
+                              Next
+                              Return n
+                          End Function
+            Dim failed As New List(Of String)()
+            For id = 1 To OperaRoles.All.Count
+                Dim b As New BeautySettings()
+                b.SetOperaRole(id)
+                Try
+                    Using out = Run(src, b, {face})
+                        If changed(out) < 30 Then failed.Add(OperaRoles.All(id - 1).Name)
+                    End Using
+                Catch ex As Exception
+                    failed.Add(OperaRoles.All(id - 1).Name & "（" & ex.GetType().Name & "）")
+                End Try
+            Next
+            Check($"戲曲：{OperaRoles.All.Count} 個角色都畫得出來、不出錯", failed.Count = 0 AndAlso OperaRoles.All.Count >= 25, String.Join("、", failed))
+            Dim guan As New BeautySettings()
+            guan.SetOperaRole(OperaRoles.IdOf("關公"))
+            Using out = Run(src, guan, {face})
+                Dim c = out.GetPixel(86, 100)
+                Check("關公：臉頰塗成紅色", CInt(c.R) - c.G > 70, $"{c}")
+            End Using
+            Dim bao As New BeautySettings()
+            bao.SetOperaRole(OperaRoles.IdOf("包公"))
+            Using out = Run(src, bao, {face})
+                Check("包公：臉頰塗黑、眼睛本身不塗", Mean(out, 86, 100, 2, AddressOf Luma) < 70 AndAlso Mean(out, 88, 76, 1, AddressOf Luma) > 120,
+                      $"臉頰 {Mean(out, 86, 100, 2, AddressOf Luma):0}，眼睛 {Mean(out, 88, 76, 1, AddressOf Luma):0}")
+            End Using
+            bao.Opera = 0
+            Using out = Run(src, bao, {face})
+                Check("戲曲濃度 0：不畫", changed(out) = 0)
+            End Using
+            bao.Opera = 100
+            Using out = Run(src, bao)
+                Check("戲曲：沒有特徵點時不畫", Mean(out, 86, 100, 2, AddressOf Luma) > 150)
+            End Using
+        End Using
+        Dim p = BeautySettings.Preset(Array.IndexOf(BeautySettings.PresetNames, "戲曲・關公"))
+        Check("一鍵美顏「戲曲・關公」＝關公、濃度 100、有髯口", p.OperaRole = OperaRoles.IdOf("關公") AndAlso p.Opera = 100 AndAlso p.OperaBeard)
+        Dim s As New BeautySettings()
+        s.SetOperaRole(OperaRoles.IdOf("京劇青衣"))
+        s.OperaShade = 40
+        Dim back = System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)(System.Text.Json.JsonSerializer.Serialize(s))
+        Check("戲曲設定存得回來", back.OperaRole = s.OperaRole AndAlso back.OperaPian AndAlso back.OperaShade = 40 AndAlso back.Opera = 100)
+        Check("戲曲：預設的保留明暗不算有設定", New BeautySettings().IsBlank)
     End Sub
 
     ''' <summary>合成的 68 點（同 MakeFace 的臉）：下顎半圓、眉、鼻、眼、嘴唇。</summary>
@@ -339,6 +398,84 @@ Module BeautyTests
                 Check("妝容：沒有 68 點時不作用", Mean(out, 88, 70, 2, AddressOf Luma) = Mean(src, 88, 70, 2, AddressOf Luma))
             End Using
         End Using
+    End Sub
+
+    ''' <summary>新美妝細項：用合成的 68 點，每項都要改到畫面、而且不出錯；美瞳沒有網格時不作用。</summary>
+    Private Sub MakeupDetailTests()
+        Console.WriteLine("美妝細項")
+        Dim face = DenseFace()
+        Dim items As New List(Of (Name As String, B As BeautySettings)) From {
+            ("口紅咬唇", New BeautySettings With {.Lips = 90, .LipStyle = LipStyle.Bitten}),
+            ("口紅水潤", New BeautySettings With {.Lips = 90, .LipStyle = LipStyle.Glossy, .LipGloss = 80}),
+            ("眼影煙燻", New BeautySettings With {.EyeShadow = 90, .ShadowStyle = ShadowStyle.Smoky}),
+            ("眼影亮片", New BeautySettings With {.EyeShadow = 90, .ShadowStyle = ShadowStyle.Glitter}),
+            ("貓眼線", New BeautySettings With {.EyeLiner = 90, .LinerStyle = LinerStyle.Cat}),
+            ("下眼線", New BeautySettings With {.EyeLiner = 90, .LinerStyle = LinerStyle.Lower}),
+            ("睫毛", New BeautySettings With {.Lash = 90, .LashStyle = LashStyle.Thick}),
+            ("雙眼皮", New BeautySettings With {.Fold = 90, .FoldStyle = FoldStyle.Euro}),
+            ("眉色", New BeautySettings With {.Brows = 90, .BrowColorArgb = Color.FromArgb(80, 60, 50).ToArgb()}),
+            ("挑眉", New BeautySettings With {.Brows = 90, .BrowStyle = BrowStyle.Arch, .BrowPeak = 90}),
+            ("高光", New BeautySettings With {.Highlight = 90, .HighlightStyle = HighlightStyle.All}),
+            ("腮紅曬傷", New BeautySettings With {.Blush = 90, .BlushStyle = BlushStyle.Sunburn}),
+            ("嘴角上揚", New BeautySettings With {.Smile = 100}),
+            ("開眼角", New BeautySettings With {.EyeCorner = 100}),
+            ("曬黑", New BeautySettings With {.Tan = 100}),
+            ("眼下提亮", New BeautySettings With {.UnderEye = 100}),
+            ("熊貓白眼影", New BeautySettings With {.EyeShadow = 90, .ShadowStyle = ShadowStyle.Panda}),
+            ("白鼻樑", New BeautySettings With {.WhiteNose = 90}),
+            ("淡唇", New BeautySettings With {.Lips = 90, .LipColorArgb = Color.FromArgb(236, 196, 186).ToArgb()}),
+            ("109 白辣妹", BeautySettings.Preset(19)),
+            ("109 黑辣妹", BeautySettings.Preset(20)),
+            ("Y2K 辣妹", BeautySettings.Preset(21))}
+        Using src = Skin(Sub(g)
+                             Using p As New Pen(Color.FromArgb(110, 80, 70), 3)
+                                 g.DrawLine(p, 76, 64, 100, 64)
+                                 g.DrawLine(p, 120, 64, 144, 64)
+                             End Using
+                             g.FillEllipse(Brushes.Black, 84, 73, 8, 6)
+                             g.FillEllipse(Brushes.Black, 128, 73, 8, 6)
+                             Using b As New SolidBrush(Color.FromArgb(200, 120, 120))
+                                 g.FillEllipse(b, 92, 124, 36, 16)
+                             End Using
+                         End Sub, noise:=6)
+            Dim changed = Function(out As Bitmap) As Integer
+                              Dim n = 0
+                              For y = 40 To 160 Step 2
+                                  For x = 60 To 160 Step 2
+                                      If out.GetPixel(x, y) <> src.GetPixel(x, y) Then n += 1
+                                  Next
+                              Next
+                              Return n
+                          End Function
+            Dim failed As New List(Of String)()
+            For Each it In items
+                Try
+                    Using out = Run(src, it.B, {face})
+                        If changed(out) < 10 Then failed.Add(it.Name)
+                    End Using
+                Catch ex As Exception
+                    failed.Add(it.Name & "（" & ex.GetType().Name & "）")
+                End Try
+            Next
+            Check($"美妝細項 {items.Count} 項都有作用、不出錯", failed.Count = 0, String.Join("、", failed))
+            Using out = Run(src, New BeautySettings With {.Tan = 100}, {face})
+                Check("曬黑：臉頰變暗、偏暖", Mean(out, 80, 105, 4, AddressOf Luma) < Mean(src, 80, 105, 4, AddressOf Luma) - 15 AndAlso
+                      CInt(out.GetPixel(80, 105).R) - out.GetPixel(80, 105).B >= CInt(src.GetPixel(80, 105).R) - src.GetPixel(80, 105).B,
+                      $"{Mean(src, 80, 105, 4, AddressOf Luma):0} → {Mean(out, 80, 105, 4, AddressOf Luma):0}")
+            End Using
+            Using out = Run(src, New BeautySettings With {.Tan = 100, .EyeShadow = 100, .ShadowStyle = ShadowStyle.Panda, .EyeLiner = 100}, {face})
+                Check("熊貓白：曬黑後眼皮上方仍變白、眼線仍是黑的", Mean(out, 88, 68, 1, AddressOf Luma) > Mean(src, 88, 68, 1, AddressOf Luma) + 10 AndAlso
+                      Mean(out, 88, 73, 0, AddressOf Luma) < Mean(out, 88, 68, 1, AddressOf Luma) - 60,
+                      $"眼皮 {Mean(src, 88, 68, 1, AddressOf Luma):0} → {Mean(out, 88, 68, 1, AddressOf Luma):0}，眼線 {Mean(out, 88, 73, 0, AddressOf Luma):0}")
+            End Using
+            Using out = Run(src, New BeautySettings With {.Iris = 100, .Whiten = 1}, {face})
+                Check("美瞳：沒有網格（虹膜點）時不作用", Math.Abs(Mean(out, 88, 76, 1, AddressOf Luma) - Mean(src, 88, 76, 1, AddressOf Luma)) < 3)
+            End Using
+        End Using
+        Dim bs As New BeautySettings With {.Lips = 40, .LipStyle = LipStyle.Liner, .Lash = 30, .HairColorArgb = 5}
+        Dim back = System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)(System.Text.Json.JsonSerializer.Serialize(bs))
+        Check("美妝細項存得回來", back.LipStyle = LipStyle.Liner AndAlso back.Lash = 30 AndAlso back.HairColorArgb = 5)
+        Check("全部歸零＝沒有要記的", New BeautySettings().IsBlank AndAlso Not bs.IsBlank)
     End Sub
 
     Private Sub LightTests()

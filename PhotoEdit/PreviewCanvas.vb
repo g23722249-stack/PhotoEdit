@@ -728,6 +728,8 @@ Partial Friend Class PreviewCanvas
     Protected Overrides Sub OnMouseWheel(e As MouseEventArgs)
         MyBase.OnMouseWheel(e)
         If _image Is Nothing OrElse _cropMode Then Return
+        ' 正在畫（筆或滑鼠按著）時不縮放：有些繪圖板驅動會把筆的拖曳送成滾輪
+        If _drag = DragMode.Draw OrElse _drag = DragMode.Paint OrElse _drag = DragMode.Gradient OrElse _penDown Then Return
         ' 文字/貼圖工具：Ctrl+滾輪縮放、Shift+滾輪旋轉選取中的物件。
         If _tool = CanvasTool.Overlay AndAlso _selectedOverlay >= 0 AndAlso
            (ModifierKeys = Keys.Control OrElse ModifierKeys = Keys.Shift) Then
@@ -1050,18 +1052,89 @@ Partial Friend Class PreviewCanvas
         End Get
     End Property
 
+    ' 筆的系統手勢（輕觸回饋、長按＝右鍵、快速滑動＝翻頁／捲動、平滑捲動）：畫布上全部關掉
+    Private Const WM_TABLET_QUERYSYSTEMGESTURESTATUS As Integer = &H2CC
+    Private Const TABLET_DISABLE_PRESSANDHOLD As Integer = &H1
+    Private Const TABLET_DISABLE_PENTAPFEEDBACK As Integer = &H8
+    Private Const TABLET_DISABLE_PENBARRELFEEDBACK As Integer = &H10
+    Private Const TABLET_DISABLE_FLICKS As Integer = &H10000
+    Private Const TABLET_DISABLE_SMOOTHSCROLLING As Integer = &H80000
+    Private Const TABLET_DISABLE_FLICKFALLBACKKEYS As Integer = &H100000
+    Private Const POINTER_FLAG_INCONTACT As Integer = &H4
+    Private Const POINTER_FLAG_SECONDBUTTON As Integer = &H20
+
+    ' 自己處理筆的按下／移動／放開（不交給系統）時的狀態
+    Private _penDown As Boolean
+    Private _penButton As MouseButtons
+    Private _penLastDown As Integer
+    Private _penLastDownAt As Point
+
+    ''' <summary>
+    ''' 用工具（繪圖、筆刷、漸層…）時，筆的輸入由畫布自己轉成滑鼠事件，不交給系統：
+    ''' Windows 10/11 預設把筆在「可捲動」的視窗上拖曳當成捲動／平移手勢（畫面出現捲軸後，畫一筆就變成捲動或縮放）。
+    ''' 只是看照片（沒有工具）時照舊交給系統，筆可以拖曳平移。
+    ''' </summary>
+    Private ReadOnly Property TakesPenDirectly As Boolean
+        Get
+            Return _image IsNot Nothing AndAlso _tool <> CanvasTool.None AndAlso Not _cropMode
+        End Get
+    End Property
+
     Protected Overrides Sub WndProc(ByRef m As Message)
-        If m.Msg = WM_POINTERDOWN OrElse m.Msg = WM_POINTERUPDATE OrElse m.Msg = WM_POINTERUP Then ReadPen(m)
+        If m.Msg = WM_TABLET_QUERYSYSTEMGESTURESTATUS Then
+            m.Result = New IntPtr(TABLET_DISABLE_PRESSANDHOLD Or TABLET_DISABLE_PENTAPFEEDBACK Or TABLET_DISABLE_PENBARRELFEEDBACK Or
+                                  TABLET_DISABLE_FLICKS Or TABLET_DISABLE_SMOOTHSCROLLING Or TABLET_DISABLE_FLICKFALLBACKKEYS)
+            Return
+        End If
+        If m.Msg = WM_POINTERDOWN OrElse m.Msg = WM_POINTERUPDATE OrElse m.Msg = WM_POINTERUP Then
+            Dim pen = ReadPen(m)
+            If pen.HasValue AndAlso TakesPenDirectly AndAlso HandlePen(m.Msg, pen.Value) Then
+                m.Result = IntPtr.Zero
+                Return
+            End If
+        End If
         MyBase.WndProc(m) ' 交給系統轉成滑鼠訊息
     End Sub
 
-    Private Sub ReadPen(m As Message)
+    ''' <summary>筆的訊息自己轉成滑鼠事件：筆尖＝左鍵、筆身按鈕＝右鍵（暫時橡皮擦），快速點兩下＝按兩下。</summary>
+    Private Function HandlePen(msg As Integer, info As POINTER_INFO) As Boolean
+        Dim p = PointToClient(New Point(info.ptPixelLocation.X, info.ptPixelLocation.Y))
+        Select Case msg
+            Case WM_POINTERDOWN
+                _penButton = If((info.pointerFlags And POINTER_FLAG_SECONDBUTTON) <> 0, MouseButtons.Right, MouseButtons.Left)
+                _penDown = True
+                Capture = True
+                Dim now = Environment.TickCount
+                Dim isDouble = now - _penLastDown <= SystemInformation.DoubleClickTime AndAlso
+                               Math.Abs(p.X - _penLastDownAt.X) <= SystemInformation.DoubleClickSize.Width AndAlso
+                               Math.Abs(p.Y - _penLastDownAt.Y) <= SystemInformation.DoubleClickSize.Height
+                _penLastDown = If(isDouble, 0, now)
+                _penLastDownAt = p
+                OnMouseDown(New MouseEventArgs(_penButton, If(isDouble, 2, 1), p.X, p.Y, 0))
+                If isDouble Then OnMouseDoubleClick(New MouseEventArgs(_penButton, 2, p.X, p.Y, 0))
+            Case WM_POINTERUPDATE
+                If _penDown AndAlso (info.pointerFlags And POINTER_FLAG_INCONTACT) <> 0 Then
+                    OnMouseMove(New MouseEventArgs(_penButton, 0, p.X, p.Y, 0))
+                Else
+                    OnMouseMove(New MouseEventArgs(MouseButtons.None, 0, p.X, p.Y, 0)) ' 筆懸在畫布上：更新游標
+                End If
+            Case WM_POINTERUP
+                If Not _penDown Then Return True
+                _penDown = False
+                OnMouseUp(New MouseEventArgs(_penButton, 1, p.X, p.Y, 0))
+                Capture = False
+        End Select
+        Return True
+    End Function
+
+    ''' <summary>讀出筆壓、傾斜、橡皮擦端；是繪圖筆時回傳指標資訊，不是筆（滑鼠、觸控）時回傳 Nothing。</summary>
+    Private Function ReadPen(m As Message) As POINTER_INFO?
         Try
             Dim id = CUInt(m.WParam.ToInt64() And &HFFFFL)
             Dim type As Integer
-            If Not GetPointerType(id, type) OrElse type <> PT_PEN Then Return
+            If Not GetPointerType(id, type) OrElse type <> PT_PEN Then Return Nothing
             Dim info As POINTER_PEN_INFO
-            If Not GetPointerPenInfo(id, info) Then Return
+            If Not GetPointerPenInfo(id, info) Then Return Nothing
             ' 傾斜（度，−90..90）與筆身旋轉（度，0..359）；筆不回報時為 0。
             _penTiltX = If((info.penMask And PEN_MASK_TILT_X) <> 0, CSng(info.tiltX), 0)
             _penTiltY = If((info.penMask And PEN_MASK_TILT_Y) <> 0, CSng(info.tiltY), 0)
@@ -1075,8 +1148,10 @@ Partial Friend Class PreviewCanvas
                 _penPressure = CSng(Math.Max(0.02, Math.Min(1, info.pressure / 1024.0)))
             End If
             _penTime = Environment.TickCount
+            Return info.pointerInfo
         Catch ex As EntryPointNotFoundException
             ' Windows 7 沒有這些函式：當作滑鼠。
+            Return Nothing
         End Try
-    End Sub
+    End Function
 End Class

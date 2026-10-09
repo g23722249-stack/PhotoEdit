@@ -8,6 +8,10 @@ Public Class FaceRegion
     Public Property Score As Single
     ''' <summary>68 點特徵點（0..1，FaceLandmarks 算的）；沒有模型時 Nothing。下顎 0–16、眉 17–26、鼻 27–35、眼 36–47、嘴唇外 48–59、內 60–67。</summary>
     Public Property Dense As PointF()
+    ''' <summary>478 點臉部網格（0..1，FaceMesh 算的；468 個臉部點＋468–472、473–477 兩眼虹膜）；沒有模型或失敗時 Nothing。</summary>
+    Public Property Mesh As PointF()
+    ''' <summary>網格每點的深度（和 Mesh 同順序；以影像寬為 1，越小越靠近鏡頭）。</summary>
+    Public Property MeshZ As Single()
 End Class
 
 ''' <summary>

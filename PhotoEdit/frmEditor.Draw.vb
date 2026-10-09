@@ -765,7 +765,7 @@ Partial Friend Class frmEditor
         Dim tol = HitTolerance()
         For i = _recipe.Drawings.Count - 1 To 0 Step -1
             Dim d = _recipe.Drawings(i)
-            If d.Visible AndAlso Not d.Locked AndAlso DrawGeometry.HitTest(d, u, tol) Then Return i
+            If d.Visible AndAlso Not d.Locked AndAlso LayerHit(d, u, tol) Then Return i
         Next
         Return -1
     End Function
@@ -795,6 +795,12 @@ Partial Friend Class frmEditor
     Private _ddHandle As Integer
     Private _ddBounds As RectangleF
     Private _ddSerial As Integer
+    ' 移動的拖曳門檻：按下的位置、是否已經開始移動、是不是繪圖筆（筆的門檻放寬）
+    Private _ddDownScreen As Point
+    Private _ddArmed As Boolean
+    Private _ddPen As Boolean
+    ' 畫面上最後一次依 Ctrl 狀態畫的選取框（Ctrl 一按一放要重畫）
+    Private _ctrlShown As Boolean
     Private _freePoints As List(Of DrawPoint)
     Private _freePressure As Single = 1
     Private _freeLastScreen As Point
@@ -833,6 +839,11 @@ Partial Friend Class frmEditor
             _canvas.Invalidate()
             Return
         End If
+        ' 「選取」工具，或按住 Ctrl 暫時切成選取：點選、拖曳移動圖層。其他繪圖工具點下去一律是畫（不會誤拖圖層）。
+        If _drawStrip.SelectedTool = DrawIcons.SelectTool OrElse (e.Button = MouseButtons.Left AndAlso ModifierKeys.HasFlag(Keys.Control)) Then
+            PickOrMove(e, u)
+            Return
+        End If
         ' 對稱繪圖以照片中心為準（照片裁切後中心會變，每一筆都重新設定）。
         If _drawStyle.Symmetry <> SymmetryKind.None Then
             _drawStyle.SymX = Math.Round(PhotoAspect() / 2, 5) : _drawStyle.SymY = 0.5
@@ -865,30 +876,7 @@ Partial Friend Class frmEditor
             Return
         End If
 
-        Dim sel = SelDraw(_recipe)
-        If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
-            Dim h = HitHandle(sel, e.Location)
-            If h.HasValue Then
-                StartHandleDrag(sel, h.Value, u)
-                Return
-            End If
-        End If
-
         Dim tool = _drawStrip.SelectedTool
-        Dim onSelected = sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked AndAlso DrawGeometry.HitTest(sel, u, HitTolerance()) AndAlso
-                         tool <> CInt(DrawShape.Freehand)
-        If tool = DrawIcons.SelectTool OrElse onSelected Then
-            Dim index = If(onSelected, _drawIndex, HitLayer(u))
-            SelectDrawLayer(index)
-            If index >= 0 Then
-                _dd = DrawDrag.Move
-                _ddStart = u
-                _ddLayer = SelDraw(_recipe).Clone()
-                _ddSerial += 1
-            End If
-            Return
-        End If
-
         Select Case CType(tool, DrawShape)
             Case DrawShape.Freehand
                 _dd = DrawDrag.Freehand
@@ -905,6 +893,46 @@ Partial Friend Class frmEditor
         End Select
         _canvas.Invalidate()
     End Sub
+
+    ''' <summary>
+    ''' 選取工具（或按住 Ctrl）：先看選取圖層的控制點，再看有沒有點到圖層（點陣圖層要點在畫過的地方），
+    ''' 點到就準備拖曳移動；拖曳要超過一點距離才真的開始移動（繪圖筆輕點會滑動幾個像素）。
+    ''' </summary>
+    Private Sub PickOrMove(e As MouseEventArgs, u As PointF)
+        If e.Button <> MouseButtons.Left Then Return
+        Dim sel = SelDraw(_recipe)
+        If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
+            Dim h = HitHandle(sel, e.Location)
+            If h.HasValue Then
+                StartHandleDrag(sel, h.Value, u)
+                Return
+            End If
+        End If
+        Dim onSelected = sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked AndAlso LayerHit(sel, u, HitTolerance())
+        Dim index = If(onSelected, _drawIndex, HitLayer(u))
+        SelectDrawLayer(index)
+        If index >= 0 Then
+            _dd = DrawDrag.Move
+            _ddStart = u
+            _ddLayer = SelDraw(_recipe).Clone()
+            _ddSerial += 1
+            _ddDownScreen = e.Location
+            _ddArmed = False
+            _ddPen = _canvas.PenPressure.HasValue
+        End If
+        _canvas.Invalidate()
+    End Sub
+
+    ''' <summary>點到圖層了嗎：點陣圖層看實際畫過的像素（框內空白不算），其他看外形。</summary>
+    Private Function LayerHit(d As DrawLayer, u As PointF, tol As Double) As Boolean
+        If d.Shape = DrawShape.Raster Then Return DrawingRenderer.RasterHit(d, PhotoAspect(), u, tol)
+        Return DrawGeometry.HitTest(d, u, tol)
+    End Function
+
+    ''' <summary>現在是「點選／移動」狀態嗎：選取工具，或按住 Ctrl。</summary>
+    Private Function PickingNow() As Boolean
+        Return _drawStrip.SelectedTool = DrawIcons.SelectTool OrElse ModifierKeys.HasFlag(Keys.Control)
+    End Function
 
     Private Sub StartHandleDrag(sel As DrawLayer, h As DrawHandle, u As PointF)
         _ddLayer = sel.Clone()
@@ -955,6 +983,7 @@ Partial Friend Class frmEditor
                     _polyHover = u
                     _canvas.Invalidate()
                 End If
+                SyncCtrlBox()
                 UpdateDrawCursor(e.Location, u)
             Case DrawDrag.Create
                 _ddCur = u
@@ -962,6 +991,11 @@ Partial Friend Class frmEditor
             Case DrawDrag.Freehand
                 FreehandMove(e.Location)
             Case DrawDrag.Move
+                ' 拖曳門檻：滑鼠 5 像素、繪圖筆 8 像素以內不算移動（輕點只是選取）
+                If Not _ddArmed Then
+                    If ScreenDist(e.Location, _ddDownScreen) < If(_ddPen, 8, 5) Then Return
+                    _ddArmed = True
+                End If
                 Dim dx = u.X - _ddStart.X, dy = u.Y - _ddStart.Y
                 ReplaceDragLayer(Sub(d) DrawGeometry.Offset(d, dx, dy))
             Case DrawDrag.Resize
@@ -983,6 +1017,14 @@ Partial Friend Class frmEditor
         End Select
     End Sub
 
+    ''' <summary>Ctrl 按下或放開：點陣圖層的選取框要跟著出現或消失。</summary>
+    Private Sub SyncCtrlBox()
+        Dim ctrl = ModifierKeys.HasFlag(Keys.Control)
+        If ctrl = _ctrlShown Then Return
+        _ctrlShown = ctrl
+        _canvas.Invalidate()
+    End Sub
+
     ''' <summary>拖曳中：以按下時的圖層為準套用變化（整段拖曳在復原紀錄裡算一步）。</summary>
     Private Sub ReplaceDragLayer(change As Action(Of DrawLayer))
         Dim index = _drawIndex
@@ -999,27 +1041,29 @@ Partial Friend Class frmEditor
             If _canvas.Cursor IsNot DropperCursor() Then _canvas.Cursor = DropperCursor()
             Return
         End If
-        If _drawStrip.SelectedTool = CInt(DrawShape.Bucket) Then
-            If _canvas.Cursor IsNot BucketCursor() Then _canvas.Cursor = BucketCursor()
-            Return
-        End If
-        If _drawStrip.SelectedTool = CInt(DrawShape.Gradient) Then
-            If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
-            Return
-        End If
-        Dim c = If(_drawStrip.SelectedTool = DrawIcons.SelectTool, Cursors.Default, Cursors.Cross)
-        If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) Then
-            Dim h = HitHandle(sel, p)
-            If h.HasValue Then
-                Select Case h.Value.Kind
-                    Case HandleKind.Rotate : c = Cursors.Hand
-                    Case HandleKind.Param, HandleKind.Vertex : c = Cursors.Hand
-                    Case Else : c = If(h.Value.Index Mod 4 = 1, Cursors.SizeNS, If(h.Value.Index Mod 4 = 3, Cursors.SizeWE,
-                                       If(h.Value.Index Mod 4 = 0, Cursors.SizeNWSE, Cursors.SizeNESW)))
-                End Select
-            ElseIf _drawStrip.SelectedTool <> CInt(DrawShape.Freehand) AndAlso DrawGeometry.HitTest(sel, u, HitTolerance()) Then
-                c = Cursors.SizeAll
+        Dim c As Cursor
+        If PickingNow() Then
+            ' 選取工具或按住 Ctrl：控制點、點到圖層（可移動）時換游標
+            c = Cursors.Default
+            If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
+                Dim h = HitHandle(sel, p)
+                If h.HasValue Then
+                    Select Case h.Value.Kind
+                        Case HandleKind.Rotate : c = Cursors.Hand
+                        Case HandleKind.Param, HandleKind.Vertex : c = Cursors.Hand
+                        Case Else : c = If(h.Value.Index Mod 4 = 1, Cursors.SizeNS, If(h.Value.Index Mod 4 = 3, Cursors.SizeWE,
+                                           If(h.Value.Index Mod 4 = 0, Cursors.SizeNWSE, Cursors.SizeNESW)))
+                    End Select
+                ElseIf LayerHit(sel, u, HitTolerance()) Then
+                    c = Cursors.SizeAll
+                End If
             End If
+            If c Is Cursors.Default AndAlso HitLayer(u) >= 0 Then c = Cursors.SizeAll
+        ElseIf _drawStrip.SelectedTool = CInt(DrawShape.Bucket) Then
+            c = BucketCursor()
+        Else
+            ' 繪圖工具一律是畫：不顯示移動游標
+            c = Cursors.Cross
         End If
         If _canvas.Cursor IsNot c Then _canvas.Cursor = c
     End Sub
@@ -1291,8 +1335,10 @@ Partial Friend Class frmEditor
                     End If
                 Next
                 If sel.Shape = DrawShape.Raster Then
-                    ' 點陣圖層：畫過範圍的虛線框。
-                    Dim rb = DrawGeometry.RasterBounds(sel)
+                    ' 點陣圖層：看得到的內容範圍（貼著線條、不含畫布外與擦掉的地方）。
+                    ' 只在選取工具、按住 Ctrl 或正在移動時顯示；用筆刷、形狀工具畫圖時不顯示，畫面乾淨。
+                    Dim showBox = (PickingNow() OrElse _dd = DrawDrag.Move) AndAlso _dd <> DrawDrag.Freehand
+                    Dim rb = If(showBox, DrawingRenderer.RasterVisibleBounds(sel, PhotoAspect()), RectangleF.Empty)
                     If Not rb.IsEmpty Then
                         Dim a = UnitToScreen(rb.Location), b = UnitToScreen(New PointF(rb.Right, rb.Bottom))
                         Dim box = RectangleF.FromLTRB(a.X, a.Y, b.X, b.Y)

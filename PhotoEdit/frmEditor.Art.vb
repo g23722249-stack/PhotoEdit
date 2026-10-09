@@ -35,6 +35,12 @@ Partial Friend Class frmEditor
         AddRow(L, MakeRow("artstrength", "強度", 0, 100, AddressOf Plain, Function(r) r.ArtStrength, Sub(r, v) r.ArtStrength = v))
         AddRow(L, MakeRow("artline", "線條", 0, 100, AddressOf Plain, Function(r) r.ArtLine, Sub(r, v) r.ArtLine = v))
         AddRow(L, MakeRow("artdetail", "筆觸大小", 0, 100, AddressOf Plain, Function(r) r.ArtDetail, Sub(r, v) r.ArtDetail = v))
+        ' 宮崎風 AI 重繪：結果開成新影像（不是即時套用的風格）
+        Dim redraw = MakeButton("宮崎風 AI 重繪…", "btn.airedraw")
+        redraw.SetBounds(8, L.Y + 2, L.Width - 16, 30)
+        AddHandler redraw.Click, Sub() RunCommand("airedraw")
+        L.Add(redraw)
+        L.Y += 40
         AddHint(L, "強度：和原圖混合的比例。線條：輪廓線粗細。筆觸大小：筆觸、網點、色塊的大小（越大越粗獷）。" & vbCrLf &
                    "風格會畫在色調之後，文字、貼圖與繪圖不會被風格化。")
     End Sub

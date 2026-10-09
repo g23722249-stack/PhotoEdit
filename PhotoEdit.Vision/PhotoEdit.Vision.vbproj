@@ -31,6 +31,10 @@
     <!-- -p:SkipModelCopy=true：模型下載中（檔案被占用）時仍可編譯測試。 -->
     <None Include="Models\*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="Models" Condition="'$(SkipModelCopy)' != 'true'" />
     <None Include="Models\*.yaml" CopyToOutputDirectory="PreserveNewest" LinkBase="Models" Condition="'$(SkipModelCopy)' != 'true'" />
+    <!-- 宮崎風 AI 重繪的生成模型（約 2.6 GB）：原本的 unet\ 用不到（用加過 ControlNet 輸入的 unet_controlnet\），不複製。 -->
+    <None Include="Models\GhibliDiffusion\**\*" Exclude="Models\GhibliDiffusion\unet\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\GhibliDiffusion" Condition="'$(SkipModelCopy)' != 'true'" />
+    <None Include="Models\AnimeAnything\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\AnimeAnything" Condition="'$(SkipModelCopy)' != 'true'" />
+    <None Include="AnimeRedrawPresets.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

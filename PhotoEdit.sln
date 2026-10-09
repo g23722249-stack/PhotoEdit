@@ -13,6 +13,8 @@ Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "PhotoEdit.SelfTest", "Photo
 EndProject
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "PhotoEdit.Vision", "PhotoEdit.Vision\PhotoEdit.Vision.vbproj", "{9C2F646A-A5D8-46D9-919D-E1BB07F32615}"
 EndProject
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "PhotoEdit.Redraw", "PhotoEdit.Redraw\PhotoEdit.Redraw.vbproj", "{7B03D118-1DE9-48B2-A365-3244E48830B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{9C2F646A-A5D8-46D9-919D-E1BB07F32615}.Release|x64.Build.0 = Release|Any CPU
 		{9C2F646A-A5D8-46D9-919D-E1BB07F32615}.Release|x86.ActiveCfg = Release|Any CPU
 		{9C2F646A-A5D8-46D9-919D-E1BB07F32615}.Release|x86.Build.0 = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|x64.Build.0 = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Debug|x86.Build.0 = Debug|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|x64.ActiveCfg = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|x64.Build.0 = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|x86.ActiveCfg = Release|Any CPU
+		{7B03D118-1DE9-48B2-A365-3244E48830B0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

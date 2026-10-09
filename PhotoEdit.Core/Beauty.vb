@@ -29,6 +29,8 @@ Public Class BeautySettings
     Public Property Whiten As Integer
     ''' <summary>膚色：負值白皙偏冷（粉嫩），正值健康小麥色。</summary>
     Public Property Tone As Integer
+    ''' <summary>曬黑 0..100：臉和露出的皮膚一起變成深色（比膚色的小麥更深）。</summary>
+    Public Property Tan As Integer
     ''' <summary>去油光：壓低額頭、鼻頭的反光亮點。</summary>
     Public Property Shine As Integer
     ''' <summary>自動去痘：數值越高找到的小斑點越多。</summary>
@@ -72,6 +74,100 @@ Public Class BeautySettings
     Public Property EyeLiner As Integer
     ''' <summary>臥蠶：下眼皮下方一條提亮、再下面淡淡的陰影。</summary>
     Public Property EyeBag As Integer
+    ' ---- 美妝細項（樣式、顏色、參數）----
+    ''' <summary>口紅樣式；濃度用 Lips、顏色用 LipColorArgb。</summary>
+    Public Property LipStyle As LipStyle
+    ''' <summary>口紅光澤 0..100（下唇中間的亮光）。</summary>
+    Public Property LipGloss As Integer
+    Public Property ShadowStyle As ShadowStyle
+    ''' <summary>眼影範圍 0..100（往上延伸多高）。</summary>
+    Public Property ShadowSpread As Integer = 50
+    ''' <summary>眼影閃粉 0..100。</summary>
+    Public Property ShadowGlitter As Integer
+    Public Property LinerStyle As LinerStyle
+    ''' <summary>眼線粗細 0..100。</summary>
+    Public Property LinerWidth As Integer = 35
+    ''' <summary>眼尾上揚的長度 0..100。</summary>
+    Public Property LinerWing As Integer = 40
+    ''' <summary>眼線顏色；0 為近黑。</summary>
+    Public Property LinerColorArgb As Integer
+    ''' <summary>睫毛濃度 0..100。</summary>
+    Public Property Lash As Integer
+    Public Property LashStyle As LashStyle
+    Public Property LashLength As Integer = 50
+    Public Property LashCurl As Integer = 45
+    Public Property LashColorArgb As Integer
+    ''' <summary>美瞳濃度 0..100（需要 478 點網格的虹膜點）。</summary>
+    Public Property Iris As Integer
+    Public Property IrisStyle As IrisStyle
+    Public Property IrisColorArgb As Integer
+    ''' <summary>美瞳放大 0..100。</summary>
+    Public Property IrisEnlarge As Integer = 30
+    ''' <summary>美瞳外圈（深色邊）0..100。</summary>
+    Public Property IrisRing As Integer = 40
+    ''' <summary>雙眼皮濃度 0..100。</summary>
+    Public Property Fold As Integer
+    Public Property FoldStyle As FoldStyle
+    ''' <summary>雙眼皮寬度 0..100。</summary>
+    Public Property FoldWidth As Integer = 40
+    ''' <summary>眉形（濃度用 Brows）。</summary>
+    Public Property BrowStyle As BrowStyle
+    Public Property BrowColorArgb As Integer
+    ''' <summary>眉毛粗細 0..100（50 不變）。</summary>
+    Public Property BrowThick As Integer = 50
+    ''' <summary>眉峰高低 0..100。</summary>
+    Public Property BrowPeak As Integer = 30
+    Public Property BlushStyle As BlushStyle
+    ''' <summary>腮紅範圍 0..100。</summary>
+    Public Property BlushSpread As Integer = 50
+    ''' <summary>高光濃度 0..100。</summary>
+    Public Property Highlight As Integer
+    Public Property HighlightStyle As HighlightStyle
+    Public Property HighlightColorArgb As Integer
+    ''' <summary>眼下打亮 0..100：下眼皮下方一大片往白色提亮（辣妹妝的眼下白）。</summary>
+    Public Property UnderEye As Integer
+    ''' <summary>白鼻樑 0..100：兩眼中間一筆白色畫到鼻尖（黑辣妹的誇張立體鼻）。</summary>
+    Public Property WhiteNose As Integer
+    ''' <summary>戲曲角色（OperaRoles 的索引＋1，0＝沒有）。</summary>
+    Public Property OperaRole As Integer
+    ''' <summary>戲曲妝濃度 0..100。</summary>
+    Public Property Opera As Integer
+    ''' <summary>吊眉 0..100：眼尾、眉尾往太陽穴上拉（勒頭的效果）。</summary>
+    Public Property OperaLift As Integer
+    ''' <summary>保留明暗 0..100：0＝平塗（像貼紙），越高越像畫在臉上（鼻樑、顴骨的立體感還在）。</summary>
+    Public Property OperaShade As Integer = 70
+    ''' <summary>貼片子（旦角額頭與兩頰的黑色髮片）。</summary>
+    Public Property OperaPian As Boolean
+    ''' <summary>戴髯口（假鬍子）。</summary>
+    Public Property OperaBeard As Boolean
+
+    ''' <summary>選了戲曲角色而且有濃度。</summary>
+    Public ReadOnly Property HasOpera As Boolean
+        Get
+            Return OperaRole > 0 AndAlso Opera > 0
+        End Get
+    End Property
+
+    ''' <summary>換成某個戲曲角色：套用該角色預設的吊眉、片子、髯口；濃度是 0 時設成 100。</summary>
+    Public Sub SetOperaRole(roleId As Integer)
+        OperaRole = roleId
+        Dim r = PhotoEdit.OperaRoles.Get(roleId)
+        If r Is Nothing Then Return
+        OperaLift = r.Lift
+        OperaPian = r.Pian
+        OperaBeard = r.BeardArgb <> 0
+        If Opera = 0 Then Opera = 100
+    End Sub
+    ''' <summary>髮色濃度 0..100（用人像去背模型找出頭髮）。</summary>
+    Public Property Hair As Integer
+    Public Property HairColorArgb As Integer
+    ' ---- 臉型（變形）----
+    ''' <summary>嘴角上揚 0..100。</summary>
+    Public Property Smile As Integer
+    ''' <summary>豐唇 -100..100（負值變薄）。</summary>
+    Public Property LipFull As Integer
+    ''' <summary>開眼角 0..100。</summary>
+    Public Property EyeCorner As Integer
     ' ---- 光影 ----
     Public Property LightKind As BeautyLight
     ''' <summary>光影強度 0..100。</summary>
@@ -110,11 +206,66 @@ Public Class BeautySettings
         End Get
     End Property
 
-    ''' <summary>有用到 68 點特徵點的效果（臉型、唇色、眉毛、妝容）。</summary>
+    Public Shared ReadOnly DefaultLiner As Color = Color.FromArgb(28, 24, 24)
+    Public Shared ReadOnly DefaultLash As Color = Color.FromArgb(20, 16, 16)
+    Public Shared ReadOnly DefaultIris As Color = Color.FromArgb(120, 82, 52)
+    Public Shared ReadOnly DefaultBrow As Color = Color.FromArgb(92, 64, 48)
+    Public Shared ReadOnly DefaultHighlight As Color = Color.FromArgb(255, 246, 234)
+    Public Shared ReadOnly DefaultHair As Color = Color.FromArgb(120, 70, 40)
+
+    Private Shared Function Pick(argb As Integer, fallback As Color) As Color
+        Return If(argb = 0, fallback, Color.FromArgb(255, Color.FromArgb(argb)))
+    End Function
+
+    Public ReadOnly Property LinerColor As Color
+        Get
+            Return Pick(LinerColorArgb, DefaultLiner)
+        End Get
+    End Property
+    Public ReadOnly Property LashColor As Color
+        Get
+            Return Pick(LashColorArgb, DefaultLash)
+        End Get
+    End Property
+    Public ReadOnly Property IrisColor As Color
+        Get
+            Return Pick(IrisColorArgb, DefaultIris)
+        End Get
+    End Property
+    Public ReadOnly Property BrowColor As Color
+        Get
+            Return Pick(BrowColorArgb, DefaultBrow)
+        End Get
+    End Property
+    Public ReadOnly Property HighlightColor As Color
+        Get
+            Return Pick(HighlightColorArgb, DefaultHighlight)
+        End Get
+    End Property
+    Public ReadOnly Property HairColor As Color
+        Get
+            Return Pick(HairColorArgb, DefaultHair)
+        End Get
+    End Property
+
+    ''' <summary>效果強度類的欄位（0 表示不套用；強度縮放、IsEmpty 用）。樣式、顏色、形狀參數不在這裡。</summary>
+    Private Shared ReadOnly AmountNames As String() = {
+        "Smoothing", "Brighten", "Even", "Redness", "Whiten", "Tone", "Shine", "Blemish", "DarkCircles",
+        "Eyes", "EyeEnlarge", "Teeth", "Blush", "Contour", "FaceSlim", "VFace", "Chin", "NoseSlim", "Lips", "Brows",
+        "EyeShadow", "EyeLiner", "EyeBag", "Light", "LipGloss", "ShadowGlitter", "Lash", "Iris", "Fold", "Highlight", "Hair",
+        "Smile", "LipFull", "EyeCorner", "Tan", "UnderEye", "WhiteNose", "Opera", "OperaLift"}
+    Private Shared ReadOnly AmountProps As Reflection.PropertyInfo() =
+        AmountNames.Select(Function(n) GetType(BeautySettings).GetProperty(n)).ToArray()
+    ''' <summary>可以寫入的欄位（複製用；臉的位置除外）。</summary>
+    Private Shared ReadOnly CopyProps As Reflection.PropertyInfo() =
+        GetType(BeautySettings).GetProperties().Where(Function(p) p.CanWrite AndAlso p.Name <> "FaceX" AndAlso p.Name <> "FaceY").ToArray()
+
+    ''' <summary>有用到臉部特徵點（68 點或網格）的效果。</summary>
     Public ReadOnly Property NeedsDense As Boolean
         Get
             Return FaceSlim <> 0 OrElse VFace <> 0 OrElse Chin <> 0 OrElse NoseSlim <> 0 OrElse Lips <> 0 OrElse Brows <> 0 OrElse
-                   EyeShadow <> 0 OrElse EyeLiner <> 0 OrElse EyeBag <> 0
+                   EyeShadow <> 0 OrElse EyeLiner <> 0 OrElse EyeBag <> 0 OrElse Lash <> 0 OrElse Fold <> 0 OrElse Highlight <> 0 OrElse
+                   Smile <> 0 OrElse LipFull <> 0 OrElse EyeCorner <> 0 OrElse Iris <> 0 OrElse UnderEye <> 0 OrElse WhiteNose <> 0 OrElse Opera <> 0
         End Get
     End Property
 
@@ -124,22 +275,18 @@ Public Class BeautySettings
         End Get
     End Property
 
-    ''' <summary>所有效果都是 0（不含顏色、光影方向、一鍵美顏記錄與臉的位置）。</summary>
+    ''' <summary>所有效果強度都是 0（不含顏色、樣式、形狀參數、一鍵美顏記錄與臉的位置）。</summary>
     Public ReadOnly Property IsEmpty As Boolean
         Get
-            Return Smoothing = 0 AndAlso Brighten = 0 AndAlso Even = 0 AndAlso Redness = 0 AndAlso Whiten = 0 AndAlso Tone = 0 AndAlso
-                   Shine = 0 AndAlso Blemish = 0 AndAlso DarkCircles = 0 AndAlso Eyes = 0 AndAlso EyeEnlarge = 0 AndAlso Teeth = 0 AndAlso
-                   Blush = 0 AndAlso Contour = 0 AndAlso
-                   FaceSlim = 0 AndAlso VFace = 0 AndAlso Chin = 0 AndAlso NoseSlim = 0 AndAlso Lips = 0 AndAlso Brows = 0 AndAlso
-                   EyeShadow = 0 AndAlso EyeLiner = 0 AndAlso EyeBag = 0 AndAlso Not HasLight
+            Return AmountProps.All(Function(p) CInt(p.GetValue(Me)) = 0)
         End Get
     End Property
 
-    ''' <summary>除了數值之外沒有任何要記的東西（顏色、光影種類、一鍵美顏記錄都是預設）。</summary>
+    ''' <summary>和預設完全一樣（除了臉的位置）：沒有任何要記的東西。</summary>
     Public ReadOnly Property IsBlank As Boolean
         Get
-            Return IsEmpty AndAlso BlushColorArgb = 0 AndAlso LipColorArgb = 0 AndAlso EyeShadowColorArgb = 0 AndAlso
-                   LightKind = BeautyLight.None AndAlso Not LightFromRight AndAlso Not PresetIndex.HasValue AndAlso PresetStrength = 100
+            Dim fresh As New BeautySettings()
+            Return CopyProps.All(Function(p) Equals(p.GetValue(Me), p.GetValue(fresh)))
         End Get
     End Property
 
@@ -147,42 +294,65 @@ Public Class BeautySettings
         Return DirectCast(MemberwiseClone(), BeautySettings)
     End Function
 
-    ''' <summary>複製效果數值、顏色、光影與一鍵美顏記錄（不動臉的位置）。</summary>
+    ''' <summary>複製全部設定（效果、樣式、顏色、參數、一鍵美顏記錄），不動臉的位置。</summary>
     Public Sub CopyValuesFrom(o As BeautySettings)
-        Smoothing = o.Smoothing : Brighten = o.Brighten : Even = o.Even : Redness = o.Redness : Whiten = o.Whiten : Tone = o.Tone
-        Shine = o.Shine : Blemish = o.Blemish : DarkCircles = o.DarkCircles : Eyes = o.Eyes : EyeEnlarge = o.EyeEnlarge
-        Teeth = o.Teeth : Blush = o.Blush : BlushColorArgb = o.BlushColorArgb : Contour = o.Contour
-        FaceSlim = o.FaceSlim : VFace = o.VFace : Chin = o.Chin : NoseSlim = o.NoseSlim : Lips = o.Lips : LipColorArgb = o.LipColorArgb : Brows = o.Brows
-        EyeShadow = o.EyeShadow : EyeShadowColorArgb = o.EyeShadowColorArgb : EyeLiner = o.EyeLiner : EyeBag = o.EyeBag
-        LightKind = o.LightKind : Light = o.Light : LightFromRight = o.LightFromRight
-        PresetIndex = o.PresetIndex : PresetStrength = o.PresetStrength
+        For Each p In CopyProps
+            p.SetValue(Me, p.GetValue(o))
+        Next
     End Sub
 
-    ''' <summary>全部數值乘上 percent%（顏色、光影種類與方向不變）。</summary>
+    ''' <summary>全部效果強度乘上 percent%（樣式、顏色、形狀參數不變）。</summary>
     Public Function Scaled(percent As Integer) As BeautySettings
         Dim k = Math.Max(0, Math.Min(100, percent)) / 100.0
-        Dim s = Function(v As Integer) CInt(Math.Round(v * k))
         Dim r = Clone()
-        r.Smoothing = s(Smoothing) : r.Brighten = s(Brighten) : r.Even = s(Even) : r.Redness = s(Redness) : r.Whiten = s(Whiten) : r.Tone = s(Tone)
-        r.Shine = s(Shine) : r.Blemish = s(Blemish) : r.DarkCircles = s(DarkCircles) : r.Eyes = s(Eyes) : r.EyeEnlarge = s(EyeEnlarge)
-        r.Teeth = s(Teeth) : r.Blush = s(Blush) : r.Contour = s(Contour)
-        r.FaceSlim = s(FaceSlim) : r.VFace = s(VFace) : r.Chin = s(Chin) : r.NoseSlim = s(NoseSlim) : r.Lips = s(Lips) : r.Brows = s(Brows)
-        r.EyeShadow = s(EyeShadow) : r.EyeLiner = s(EyeLiner) : r.EyeBag = s(EyeBag) : r.Light = s(Light)
+        For Each p In AmountProps
+            p.SetValue(r, CInt(Math.Round(CInt(p.GetValue(Me)) * k)))
+        Next
         Return r
     End Function
+
 
     ' ---- 一鍵美顏 ----
     Public Shared ReadOnly PresetNames As String() = {
         "自然", "甜美", "證件照", "男性",
         "清透", "好氣色", "嬰兒肌", "冷白皮", "小麥肌", "精緻小臉", "減齡", "自拍補光", "清爽男生",
-        "韓系淡妝", "桃花妝", "歐美妝", "柔光", "林布蘭光", "側光"}
+        "韓系淡妝", "桃花妝", "歐美妝", "柔光", "林布蘭光", "側光",
+        "109 白辣妹", "109 黑辣妹", "Y2K 辣妹",
+        "戲曲・京劇青衣", "戲曲・京劇小生", "戲曲・關公", "戲曲・包公", "戲曲・京劇文丑"}
 
     Private Shared Function Argb(r As Integer, g As Integer, b As Integer) As Integer
         Return Color.FromArgb(r, g, b).ToArgb()
     End Function
 
-    ''' <summary>第 index 組一鍵美顏（強度 100%），PresetIndex 已填好。</summary>
+    ''' <summary>
+    ''' 我的妝容：使用者存的組合（名稱＋設定），由程式啟動時從設定檔載入。
+    ''' 一鍵美顏的索引接在內建的後面（PresetNames.Length 起）。
+    ''' </summary>
+    Public Shared Property CustomLooks As New List(Of (Name As String, Look As BeautySettings))()
+
+    ''' <summary>內建＋我的妝容的總數。</summary>
+    Public Shared ReadOnly Property PresetCount As Integer
+        Get
+            Return PresetNames.Length + CustomLooks.Count
+        End Get
+    End Property
+
+    Public Shared Function PresetName(index As Integer) As String
+        If index < PresetNames.Length Then Return PresetNames(Math.Max(0, index))
+        Dim c = index - PresetNames.Length
+        Return If(c < CustomLooks.Count, CustomLooks(c).Name, "（已刪除）")
+    End Function
+
+    ''' <summary>第 index 組一鍵美顏（強度 100%），PresetIndex 已填好；我的妝容被刪掉時回傳空的。</summary>
     Public Shared Function Preset(index As Integer) As BeautySettings
+        If index >= PresetNames.Length Then
+            Dim c = index - PresetNames.Length
+            Dim look = If(c < CustomLooks.Count, CustomLooks(c).Look.Clone(), New BeautySettings())
+            look.FaceX = Nothing : look.FaceY = Nothing
+            look.PresetIndex = If(c < CustomLooks.Count, index, CType(Nothing, Integer?))
+            look.PresetStrength = 100
+            Return look
+        End If
         Dim b As BeautySettings
         Select Case index
             Case 0 ' 自然：輕微，看不出修過
@@ -215,20 +385,63 @@ Public Class BeautySettings
             Case 12 ' 清爽男生：乾淨、去油光、眉毛清楚
                 b = New BeautySettings With {.Blemish = 50, .Shine = 50, .Even = 20, .Brows = 30, .Contour = 20, .Redness = 15}
             Case 13 ' 韓系淡妝：淡眼影、臥蠶、水潤珊瑚唇
-                b = New BeautySettings With {.EyeShadow = 25, .EyeShadowColorArgb = Argb(225, 150, 130), .EyeBag = 40, .Lips = 30,
-                                             .LipColorArgb = Argb(230, 100, 110), .Even = 25, .Whiten = 15, .Blush = 15, .Blemish = 40}
+                b = New BeautySettings With {.EyeShadow = 25, .EyeShadowColorArgb = Argb(225, 150, 130), .ShadowStyle = ShadowStyle.Gradient, .EyeBag = 40,
+                                             .Lips = 30, .LipColorArgb = Argb(230, 100, 110), .LipStyle = LipStyle.Gradient, .LipGloss = 45,
+                                             .Lash = 30, .LashStyle = LashStyle.Natural, .Fold = 25, .FoldStyle = FoldStyle.Fan, .Highlight = 25, .HighlightStyle = HighlightStyle.Nose,
+                                             .Even = 25, .Whiten = 15, .Blush = 15, .Blemish = 40}
             Case 14 ' 桃花妝：粉色眼影、大範圍腮紅
-                b = New BeautySettings With {.EyeShadow = 40, .EyeShadowColorArgb = Argb(232, 120, 150), .Blush = 45, .BlushColorArgb = Argb(240, 130, 150),
-                                             .Lips = 30, .LipColorArgb = Argb(225, 90, 120), .Even = 20, .Whiten = 15, .Blemish = 40}
+                b = New BeautySettings With {.EyeShadow = 40, .EyeShadowColorArgb = Argb(232, 120, 150), .ShadowStyle = ShadowStyle.Peach, .ShadowGlitter = 20,
+                                             .Blush = 45, .BlushColorArgb = Argb(240, 130, 150), .BlushStyle = BlushStyle.Tipsy,
+                                             .Lips = 30, .LipColorArgb = Argb(225, 90, 120), .LipStyle = LipStyle.Bitten, .LipGloss = 30,
+                                             .Lash = 35, .LashStyle = LashStyle.Curl, .Even = 20, .Whiten = 15, .Blemish = 40}
             Case 15 ' 歐美妝：深色眼影、眼線、修容、正紅唇
-                b = New BeautySettings With {.EyeShadow = 45, .EyeShadowColorArgb = Argb(115, 72, 60), .EyeLiner = 60, .Contour = 45, .Lips = 35,
-                                             .LipColorArgb = Argb(165, 30, 50), .Brows = 30, .Even = 25, .Blemish = 50}
+                b = New BeautySettings With {.EyeShadow = 45, .EyeShadowColorArgb = Argb(115, 72, 60), .ShadowStyle = ShadowStyle.Smoky,
+                                             .EyeLiner = 60, .LinerStyle = LinerStyle.Cat, .Lash = 55, .LashStyle = LashStyle.Thick, .Fold = 35, .FoldStyle = FoldStyle.Euro,
+                                             .Contour = 45, .Highlight = 35, .HighlightStyle = HighlightStyle.All,
+                                             .Lips = 35, .LipColorArgb = Argb(165, 30, 50), .LipStyle = LipStyle.Matte, .Brows = 30, .BrowStyle = BrowStyle.Arch,
+                                             .Even = 25, .Blemish = 50}
             Case 16 ' 柔光
                 b = New BeautySettings With {.LightKind = BeautyLight.Soft, .Light = 60, .Even = 20, .Smoothing = 15}
             Case 17 ' 林布蘭光
                 b = New BeautySettings With {.LightKind = BeautyLight.Rembrandt, .Light = 70, .Even = 15}
-            Case Else ' 側光
+            Case 18 ' 側光
                 b = New BeautySettings With {.LightKind = BeautyLight.Side, .Light = 70}
+            Case 19 ' 109 白辣妹：白皙粉嫩、粗黑貓眼線、長假睫毛、淺色放大片、誇張臥蠶、橫過鼻樑的粉色腮紅、水潤淡粉唇、亞麻金髮
+                b = New BeautySettings With {.Whiten = 25, .Tone = -10, .Even = 35, .Smoothing = 25, .Blemish = 50, .EyeEnlarge = 30, .EyeCorner = 40,
+                                             .EyeLiner = 85, .LinerStyle = LinerStyle.Cat, .LinerWidth = 60, .LinerWing = 70,
+                                             .Lash = 85, .LashStyle = LashStyle.Thick, .LashLength = 130, .LashCurl = 60,
+                                             .Iris = 70, .IrisStyle = IrisStyle.Enlarge, .IrisColorArgb = Argb(154, 122, 90), .IrisEnlarge = 60, .IrisRing = 60,
+                                             .EyeBag = 70, .UnderEye = 45, .EyeShadow = 45, .ShadowStyle = ShadowStyle.Gradient, .EyeShadowColorArgb = Argb(192, 138, 128),
+                                             .ShadowGlitter = 30, .Blush = 50, .BlushStyle = BlushStyle.Sunburn, .BlushColorArgb = Argb(240, 138, 160),
+                                             .Lips = 55, .LipStyle = LipStyle.Glossy, .LipColorArgb = Argb(232, 160, 160), .LipGloss = 70,
+                                             .Highlight = 40, .HighlightStyle = HighlightStyle.All, .Contour = 35,
+                                             .Brows = 50, .BrowStyle = BrowStyle.Arch, .BrowThick = 35, .BrowColorArgb = Argb(160, 122, 90),
+                                             .Hair = 70, .HairColorArgb = Argb(200, 160, 112)}
+            Case 20 ' 109 黑辣妹：深色曬黑、眼周與唇用白色打亮、極粗眼線、上下長睫毛、混血放大片、金髮
+                b = New BeautySettings With {.Tan = 85, .Even = 30, .Blemish = 40, .EyeEnlarge = 35, .EyeCorner = 45,
+                                             .EyeLiner = 95, .LinerStyle = LinerStyle.Cat, .LinerWidth = 75, .LinerWing = 80,
+                                             .Lash = 95, .LashStyle = LashStyle.Lower, .LashLength = 145, .LashCurl = 60,
+                                             .Iris = 80, .IrisStyle = IrisStyle.Mixed, .IrisColorArgb = Argb(176, 154, 128), .IrisEnlarge = 70, .IrisRing = 70,
+                                             .EyeShadow = 90, .ShadowStyle = ShadowStyle.Panda, .ShadowSpread = 60, .EyeShadowColorArgb = Argb(250, 250, 248),
+                                             .ShadowGlitter = 25, .Lips = 75, .LipStyle = LipStyle.Glossy, .LipColorArgb = Argb(244, 226, 220), .LipGloss = 80,
+                                             .WhiteNose = 85, .Highlight = 45, .HighlightStyle = HighlightStyle.All, .HighlightColorArgb = Argb(255, 255, 255), .Contour = 30,
+                                             .Blush = 40, .BlushStyle = BlushStyle.Slant, .BlushColorArgb = Argb(240, 144, 112),
+                                             .Brows = 45, .BrowStyle = BrowStyle.Arch, .BrowThick = 30, .BrowColorArgb = Argb(176, 136, 96),
+                                             .Hair = 80, .HairColorArgb = Argb(224, 192, 144)}
+            Case 21 ' Y2K 辣妹：微曬、上揚眼線、一簇一簇的睫毛、自然放大片、亮片眼影、水潤唇、微醺腮紅
+                b = New BeautySettings With {.Tone = 20, .Even = 30, .Smoothing = 20, .Blemish = 50, .EyeEnlarge = 20,
+                                             .EyeLiner = 70, .LinerStyle = LinerStyle.Winged, .LinerWidth = 45, .LinerWing = 60,
+                                             .Lash = 70, .LashStyle = LashStyle.Separated, .LashLength = 115,
+                                             .Iris = 55, .IrisStyle = IrisStyle.Natural, .IrisColorArgb = Argb(138, 106, 80), .IrisEnlarge = 40,
+                                             .EyeBag = 55, .UnderEye = 25, .EyeShadow = 45, .ShadowStyle = ShadowStyle.Glitter, .EyeShadowColorArgb = Argb(216, 168, 144),
+                                             .ShadowGlitter = 45, .Lips = 50, .LipStyle = LipStyle.Glossy, .LipColorArgb = Argb(216, 128, 128), .LipGloss = 70,
+                                             .Highlight = 40, .HighlightStyle = HighlightStyle.All, .Blush = 40, .BlushStyle = BlushStyle.Tipsy, .BlushColorArgb = Argb(240, 160, 160),
+                                             .Brows = 40, .BrowStyle = BrowStyle.Arch, .BrowThick = 40, .BrowColorArgb = Argb(138, 106, 80),
+                                             .Hair = 50, .HairColorArgb = Argb(168, 120, 80)}
+            Case Else ' 戲曲：名稱「戲曲・角色」對應 OperaRoles
+                b = New BeautySettings()
+                Dim roleName = PresetNames(Math.Max(0, Math.Min(PresetNames.Length - 1, index))).Replace("戲曲・", "")
+                b.SetOperaRole(OperaRoles.IdOf(roleName))
         End Select
         b.PresetIndex = Math.Max(0, Math.Min(PresetNames.Length - 1, index))
         Return b
@@ -268,3 +481,118 @@ Public Class LiquifyStroke
         Return New LiquifyStroke With {.Radius = Radius, .Path = New List(Of Double)(Path), .Mode = Mode, .Strength = Strength}
     End Function
 End Class
+
+''' <summary>口紅樣式。</summary>
+Public Enum LipStyle
+    ''' <summary>霧面：均勻、不反光。</summary>
+    Matte = 0
+    ''' <summary>水潤：下唇中間有亮光。</summary>
+    Glossy = 1
+    ''' <summary>咬唇：中間深、往外淡。</summary>
+    Bitten = 2
+    ''' <summary>漸層：內側深、外緣淡。</summary>
+    Gradient = 3
+    ''' <summary>唇線：外緣一圈較深。</summary>
+    Liner = 4
+End Enum
+
+Public Enum ShadowStyle
+    ''' <summary>單色。</summary>
+    [Single] = 0
+    ''' <summary>大地漸層：貼眼皮深、往上淡。</summary>
+    Gradient = 1
+    ''' <summary>煙燻：深色、範圍大，下眼皮也暈開。</summary>
+    Smoky = 2
+    ''' <summary>桃花：粉色，延伸到下眼尾。</summary>
+    Peach = 3
+    ''' <summary>亮片：加閃粉。</summary>
+    Glitter = 4
+    ''' <summary>熊貓白：白色大面積塗滿眼窩與眼周（上到眉下、下到眼袋），黑辣妹的黑白對比。</summary>
+    Panda = 5
+End Enum
+
+Public Enum LinerStyle
+    ''' <summary>自然：沿上眼皮，眼尾不拉長。</summary>
+    Natural = 0
+    ''' <summary>上揚：眼尾微微上揚。</summary>
+    Winged = 1
+    ''' <summary>貓眼：粗、眼尾拉長上揚。</summary>
+    Cat = 2
+    ''' <summary>內眼線：細、貼睫毛根部。</summary>
+    Inner = 3
+    ''' <summary>下眼線：沿下眼皮。</summary>
+    Lower = 4
+End Enum
+
+Public Enum LashStyle
+    Natural = 0
+    ''' <summary>濃密：根數多、粗。</summary>
+    Thick = 1
+    ''' <summary>捲翹：比較彎。</summary>
+    Curl = 2
+    ''' <summary>根根分明：一簇一簇。</summary>
+    Separated = 3
+    ''' <summary>下睫毛：上下都有。</summary>
+    Lower = 4
+End Enum
+
+Public Enum IrisStyle
+    ''' <summary>自然：只換顏色。</summary>
+    Natural = 0
+    ''' <summary>放大：黑眼球變大。</summary>
+    Enlarge = 1
+    ''' <summary>外圈：深色邊框。</summary>
+    Ring = 2
+    ''' <summary>混血：內淺外深。</summary>
+    Mixed = 3
+    ''' <summary>亮眼：加眼神光。</summary>
+    Bright = 4
+End Enum
+
+Public Enum FoldStyle
+    ''' <summary>平行：整條摺痕和眼皮平行。</summary>
+    Parallel = 0
+    ''' <summary>開扇：內眼角窄、往眼尾變寬。</summary>
+    Fan = 1
+    ''' <summary>內雙：很窄、很淡。</summary>
+    Inner = 2
+    ''' <summary>歐式：寬、深。</summary>
+    Euro = 3
+End Enum
+
+Public Enum BrowStyle
+    ''' <summary>原眉加深：形狀不變。</summary>
+    Darken = 0
+    ''' <summary>自然：稍微修順。</summary>
+    Natural = 1
+    ''' <summary>平眉：眉峰壓平。</summary>
+    Flat = 2
+    ''' <summary>挑眉：眉峰拉高。</summary>
+    Arch = 3
+    ''' <summary>柳葉眉：細、眉尾下彎。</summary>
+    Willow = 4
+End Enum
+
+Public Enum BlushStyle
+    ''' <summary>蘋果肌：圓形在笑肌。</summary>
+    Apple = 0
+    ''' <summary>斜刷：從顴骨往太陽穴斜上。</summary>
+    Slant = 1
+    ''' <summary>曬傷妝：橫過鼻樑與兩頰。</summary>
+    Sunburn = 2
+    ''' <summary>微醺：眼下、範圍大、偏粉。</summary>
+    Tipsy = 3
+End Enum
+
+Public Enum HighlightStyle
+    ''' <summary>鼻樑。</summary>
+    Nose = 0
+    ''' <summary>顴骨。</summary>
+    Cheek = 1
+    ''' <summary>眉骨。</summary>
+    BrowBone = 2
+    ''' <summary>唇峰。</summary>
+    LipPeak = 3
+    ''' <summary>全臉（以上都有）。</summary>
+    All = 4
+End Enum

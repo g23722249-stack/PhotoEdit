@@ -66,8 +66,20 @@ Public NotInheritable Class FaceDetector
                 End If
                 Dim w As Single = small.Cols, h As Single = small.Rows
                 SyncLock _lock
-                    Return DetectPixels(small).
-                        Select(Function(f) ToFraction(f, w, h)).
+                    Dim found = DetectPixels(small)
+                    ' 大特寫（自拍、證件照）臉太大時 YuNet 會漏抓：縮小再找一次
+                    For Each side In {640, 400}
+                        If found.Count > 0 OrElse Math.Max(small.Cols, small.Rows) <= side Then Exit For
+                        Dim s = side / CDbl(Math.Max(small.Cols, small.Rows))
+                        Using tiny As New Mat()
+                            Cv2.Resize(small, tiny, New OpenCvSharp.Size(Math.Max(1, CInt(small.Cols * s)), Math.Max(1, CInt(small.Rows * s))), 0, 0, InterpolationFlags.Area)
+                            w = tiny.Cols : h = tiny.Rows
+                            found = DetectPixels(tiny)
+                        End Using
+                    Next
+                    Dim fw = w, fh = h
+                    Return found.
+                        Select(Function(f) ToFraction(f, fw, fh)).
                         OrderByDescending(Function(f) f.Box.Width * f.Box.Height).
                         ToList()
                 End SyncLock

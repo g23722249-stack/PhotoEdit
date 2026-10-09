@@ -203,6 +203,8 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(New Aqua.MenuItem("-"))
         imageMenu.AddItem(Item("auto", "自動增強"))
         imageMenu.AddItem(Item("autowb", "自動白平衡"))
+        imageMenu.AddItem(New Aqua.MenuItem("-"))
+        imageMenu.AddItem(Item("airedraw", "宮崎風 AI 重繪…"))
 
         Dim selectMenu = root.AddItem(New Aqua.MenuItem("選取"))
         selectMenu.AddItem(Item("selectall", "全選 (Ctrl+A)"))
@@ -255,6 +257,7 @@ Partial Friend Class frmEditor
             Case "pasteimage" : PasteAsNewImage()
             Case "reference" : ShowReference()
             Case "fullscreen" : ToggleFullScreen()
+            Case "airedraw" : ShowAnimeRedraw()
             Case "exit" : Close()
             Case "togglehelp"
                 _appSettings.ShowHelp = Not _appSettings.ShowHelp
@@ -381,6 +384,12 @@ Partial Friend Class frmEditor
 
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
         If HandleImeShortcut(msg, keyData) Then Return True
+        ' 按下 Ctrl：繪圖時暫時切成選取，點陣圖層的選取框與游標馬上跟著變（放開在下一次移動滑鼠時恢復）
+        If keyData = (Keys.ControlKey Or Keys.Control) AndAlso _photo IsNot Nothing AndAlso _dd = DrawDrag.None Then
+            SyncCtrlBox()
+            Dim pt = _canvas.PointToClient(Cursor.Position)
+            If _canvas.ClientRectangle.Contains(pt) AndAlso _tabs.SelectedIndex <> TabSelect Then UpdateDrawCursor(pt, ScreenToUnit(pt))
+        End If
         ' 在文字框打字時，H、[、]、Enter、Delete 等單鍵要留給文字框，不當快捷鍵。
         If (keyData And (Keys.Control Or Keys.Alt)) = Keys.None AndAlso keyData <> Keys.Escape AndAlso
            TypeOf ActiveControl Is TextBoxBase Then
@@ -691,7 +700,9 @@ Partial Friend Class frmEditor
         UpdatePortraitControls()
         Task.Run(Function()
                      Dim found = Detector.Value.Detect(copy)
-                     FaceLandmarks.Fit(copy, found) ' 68 點（有模型時）：臉型、唇色、眉毛用
+                     ' 臉部特徵點：優先用 478 點網格（較準、有虹膜），網格失敗的臉改用 68 點（LBF）
+                     FaceMesh.Fit(copy, found)
+                     FaceLandmarks.Fit(copy, found.Where(Function(x) x.Dense Is Nothing).ToList())
                      Return found
                  End Function).ContinueWith(
             Sub(t)
@@ -702,7 +713,7 @@ Partial Friend Class frmEditor
                              If generation <> _faceGeneration Then Return
                              _faces = If(faces, New List(Of FaceRegion)())
                              _faceState = If(err IsNot Nothing, "人臉偵測失敗：" & err,
-                                          If(_faces.Count = 0, "沒有偵測到臉", $"找到 {_faces.Count} 張臉"))
+                                          If(_faces.Count = 0, "沒有偵測到臉", $"找到 {_faces.Count} 張臉" & LandmarkNote()))
                              UpdatePortraitControls()
                              If _recipe.HasPortrait OrElse _cropMode Then RequestRender()
                              ' 有人臉的照片，去背預設用人像模型（一般模型容易把旁邊顯眼的物體也當主體）。

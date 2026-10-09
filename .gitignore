@@ -15,3 +15,7 @@ Thumbs.db
 # 68 點臉部特徵點模型（56 MB，另外下載）
 lbfmodel.yaml
 *.yaml.part
+
+# 生成模型（Ghibli-Diffusion，約 2 GB，另外下載）
+PhotoEdit.Vision/Models/GhibliDiffusion/
+PhotoEdit.Vision/Models/AnimeAnything/

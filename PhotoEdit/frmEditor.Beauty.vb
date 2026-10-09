@@ -52,7 +52,8 @@ Partial Friend Class frmEditor
 
         ' 一鍵美顏：小圖（第一張是原圖）
         AddHeading(L, "一鍵美顏")
-        _beautyGrid.SetItems({"原圖"}.Concat(BeautySettings.PresetNames).ToArray())
+        LoadMyLooks()
+        _beautyGrid.SetItems(BeautyGridNames())
         Dim gw = L.Width - 8
         _beautyGrid.SetBounds(6, L.Y, gw, _beautyGrid.PreferredHeightFor(gw))
         _help.SetHelp("beauty.preset", _beautyGrid)
@@ -124,6 +125,39 @@ Partial Friend Class frmEditor
         L.Add(smart)
         RefreshBeautyTargets()
     End Sub
+
+    ''' <summary>從設定檔載入我的妝容（一鍵美顏小圖的最後面）。</summary>
+    Private Sub LoadMyLooks()
+        BeautySettings.CustomLooks.Clear()
+        If _appSettings.MyLooks Is Nothing Then Return
+        For Each l In _appSettings.MyLooks
+            If l?.Look IsNot Nothing AndAlso Not String.IsNullOrWhiteSpace(l.Name) Then BeautySettings.CustomLooks.Add((l.Name, l.Look))
+        Next
+    End Sub
+
+    ''' <summary>小圖名稱：原圖＋內建＋我的妝容。</summary>
+    Private Shared Function BeautyGridNames() As String()
+        Return {"原圖"}.Concat(Enumerable.Range(0, BeautySettings.PresetCount).Select(Function(i) BeautySettings.PresetName(i))).ToArray()
+    End Function
+
+    ''' <summary>手動調整視窗新增或刪除了我的妝容：存設定、重建小圖。</summary>
+    Private Sub OnMyLooksChanged()
+        _appSettings.MyLooks = BeautySettings.CustomLooks.Select(Function(l) New NamedLook With {.Name = l.Name, .Look = l.Look}).ToList()
+        _appSettings.Save()
+        _beautyGrid.SetItems(BeautyGridNames())
+        _beautyThumbKey = Nothing
+        RefreshBeautyThumbs()
+    End Sub
+
+    ''' <summary>人像標題後面的特徵點說明：用了 478 點網格、68 點，或都沒有（臉型與妝容停用）。</summary>
+    Private Function LandmarkNote() As String
+        If _faces Is Nothing OrElse _faces.Count = 0 Then Return ""
+        Dim mesh = _faces.Where(Function(f) f.Mesh IsNot Nothing).Count()
+        Dim dense = _faces.Where(Function(f) f.Mesh Is Nothing AndAlso f.Dense IsNot Nothing).Count()
+        If mesh = _faces.Count Then Return "・478 點"
+        If mesh + dense = _faces.Count Then Return If(mesh = 0, "・68 點", "・478／68 點")
+        Return "・部分臉沒有特徵點"
+    End Function
 
     ''' <summary>臉由左到右排序（「臉 1」是最左邊那張）。</summary>
     Private Function SortedFaces() As List(Of FaceRegion)
@@ -221,7 +255,7 @@ Partial Friend Class frmEditor
         Dim strength = If(CurrentBeauty(_recipe).PresetIndex.HasValue, _presetStrength.Value, 100)
         Dim preset = If(index >= 0, BeautySettings.Preset(index, strength), New BeautySettings())
         ApplyChange(Sub(r) EditBeauty(r, Sub(b) b.CopyValuesFrom(preset)))
-        SetStatusMessage(If(index >= 0, $"一鍵美顏：{BeautySettings.PresetNames(index)}（強度 {strength}%）", "已清除美顏") &
+        SetStatusMessage(If(index >= 0, $"一鍵美顏：{BeautySettings.PresetName(index)}（強度 {strength}%）", "已清除美顏") &
                          If(TargetFace() Is Nothing, "", $"（臉 {_beautyFace + 1}）") & "。")
     End Sub
 
@@ -268,7 +302,7 @@ Partial Friend Class frmEditor
         _beautyGrid.ClearImages()
         Dim size = _beautyGrid.ThumbPixels
         Dim crop = BeautyPreviewRenderer.Crop(_previewBase, face, size)
-        Dim count = BeautySettings.PresetNames.Length
+        Dim count = BeautySettings.PresetCount
         Task.Run(Sub()
                      Try
                          For i = -1 To count - 1
@@ -313,8 +347,9 @@ Partial Friend Class frmEditor
         Dim look As New EditRecipe()
         look.CopyLookFrom(_recipe)
         Dim hasDense = _faces.Any(Function(f) f.Dense IsNot Nothing)
+        Dim hasMesh = _faces.Any(Function(f) f.Mesh IsNot Nothing)
         Try
-            Using dlg As New frmBeautyAdjust(targets, _beautyFace + 1, look, hasDense, _help)
+            Using dlg As New frmBeautyAdjust(targets, _beautyFace + 1, look, hasDense, hasMesh, _help, AddressOf OnMyLooksChanged)
                 If dlg.ShowDialog(Me) <> DialogResult.OK OrElse Not targets.Any(Function(t) t.Modified) Then Return
             End Using
             ApplyChange(Sub(r)
