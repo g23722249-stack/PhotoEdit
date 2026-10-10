@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.IO
 Imports System.Text.Json
 Imports System.Threading
@@ -141,6 +141,13 @@ Public NotInheritable Class AnimeRedraw
             Cv2.CvtColor(mat, gray, If(mat.Channels() = 4, ColorConversionCodes.BGRA2GRAY, ColorConversionCodes.BGR2GRAY))
             Cv2.GaussianBlur(gray, gray, New OpenCvSharp.Size(0, 0), 1.2)
             Cv2.Canny(gray, edges, 70, 160)
+            ' 再疊一層柔邊 Canny：頭髮、墨鏡這類低對比的大輪廓（不然會被重畫成別的東西）
+            Using soft As New Mat(), softEdges As New Mat()
+                Cv2.CvtColor(mat, soft, If(mat.Channels() = 4, ColorConversionCodes.BGRA2GRAY, ColorConversionCodes.BGR2GRAY))
+                Cv2.GaussianBlur(soft, soft, New OpenCvSharp.Size(0, 0), 2.5)
+                Cv2.Canny(soft, softEdges, 20, 50)
+                Cv2.BitwiseOr(edges, softEdges, edges)
+            End Using
             For Each f In faces
                 Dim m = f.Mesh
                 If m Is Nothing OrElse m.Length < 468 Then Continue For
@@ -158,11 +165,11 @@ Public NotInheritable Class AnimeRedraw
                                 Dim pts = idx.Select(Function(i) New OpenCvSharp.Point(CInt(ccx + (m(i).X * w - ccx) * sx), CInt(ccy + (m(i).Y * h - ccy) * sy))).ToArray()
                                 Cv2.Polylines(edges, {pts}, False, Scalar.All(255), th, LineTypes.AntiAlias)
                             End Sub
-                ' 下顎：越靠下巴越往中間收 8%
+                ' 下顎：照原本臉型、腮邊往外擴 4%；兩端（顴骨旁）不畫，否則臉頰上會多一條直線
                 Dim jawPts = Jaw.Select(Function(i, j)
                                             Dim k = 1 - Math.Abs(j - 10) / 10.0
-                                            Return New OpenCvSharp.Point(CInt(cx + (m(i).X * w - cx) * (1 - 0.08 * k)), CInt(m(i).Y * h))
-                                        End Function).ToArray()
+                                            Return New OpenCvSharp.Point(CInt(cx + (m(i).X * w - cx) * (1 + 0.04 * Math.Sin(k * Math.PI))), CInt(m(i).Y * h))
+                                        End Function).Skip(3).Take(Jaw.Length - 6).ToArray()
                 Cv2.Polylines(edges, {jawPts}, False, Scalar.All(255), t, LineTypes.AntiAlias)
                 ' 眉：上下緣的中線
                 For k = 0 To 1
@@ -171,16 +178,16 @@ Public NotInheritable Class AnimeRedraw
                                                                                             CInt((m(BrowUp(kk)(j)).Y + m(BrowLo(kk)(j)).Y) / 2 * h))).ToArray()
                     Cv2.Polylines(edges, {mid}, False, Scalar.All(255), t, LineTypes.AntiAlias)
                 Next
-                ' 眼：以眼睛中心橫 ×1.08、縱 ×1.25；上眼皮粗、下眼皮中段細
+                ' 眼：以眼睛中心橫 ×1.18、縱 ×1.40；上眼皮粗、下眼皮中段細
                 For Each pair In {(U:=UpperR, Lo:=LowerR), (U:=UpperL, Lo:=LowerL)}
                     Dim ecx = pair.U.Concat(pair.Lo).Average(Function(i) m(i).X) * w, ecy = pair.U.Concat(pair.Lo).Average(Function(i) m(i).Y) * h
-                    lineS(pair.U, t * 2, ecx, ecy, 1.08, 1.25)
-                    lineS(pair.Lo.Skip(2).Take(5).ToArray(), Math.Max(1, t \ 2), ecx, ecy, 1.08, 1.25)
+                    lineS(pair.U, t * 2, ecx, ecy, 1.18, 1.4)
+                    lineS(pair.Lo.Skip(2).Take(5).ToArray(), Math.Max(1, t \ 2), ecx, ecy, 1.18, 1.4)
                 Next
-                ' 虹膜：半徑 ×1.18 的圓，瞳孔實心
+                ' 虹膜：半徑 ×1.35 的圓，瞳孔實心
                 If m.Length >= 478 Then
                     For Each c In {468, 473}
-                        Dim rr = Math.Sqrt(((m(c + 1).X - m(c + 3).X) * w) ^ 2 + ((m(c + 1).Y - m(c + 3).Y) * h) ^ 2) / 2 * 1.18
+                        Dim rr = Math.Sqrt(((m(c + 1).X - m(c + 3).X) * w) ^ 2 + ((m(c + 1).Y - m(c + 3).Y) * h) ^ 2) / 2 * 1.35
                         Cv2.Circle(edges, P(c), CInt(rr), Scalar.All(255), t, LineTypes.AntiAlias)
                         Cv2.Circle(edges, P(c), Math.Max(1, CInt(rr * 0.45)), Scalar.All(255), -1, LineTypes.AntiAlias)
                     Next
@@ -196,13 +203,40 @@ Public NotInheritable Class AnimeRedraw
         End Using
     End Function
 
-    ''' <summary>重畫完的修正：虹膜改深棕、膚色略白皙（用打底照的網格，位置相同）。</summary>
-    Public Shared Function PostFix(img As Bitmap, faces As IReadOnlyList(Of FaceRegion)) As Bitmap
+    ''' <summary>重畫完的修正：虹膜改深棕（外圈樣式，模型常畫成金黃色）、膚色略白皙（用打底照的網格，位置相同）。</summary>
+    ''' warm＝暖金色調（0..1，設定檔的 warm）。
+    Public Shared Function PostFix(img As Bitmap, faces As IReadOnlyList(Of FaceRegion), Optional warm As Double = 0) As Bitmap
+        If warm > 0 Then
+            Using warmed = WarmGrade(img, warm)
+                Return PostFix(warmed, faces)
+            End Using
+        End If
         If faces Is Nothing OrElse faces.Count = 0 Then Return CType(img.Clone(), Bitmap)
-        Dim b As New BeautySettings With {.Iris = 85, .IrisStyle = IrisStyle.Natural, .IrisColorArgb = Color.FromArgb(78, 50, 34).ToArgb(), .Tone = -18, .Whiten = 12}
+        Dim b As New BeautySettings With {.Iris = 100, .IrisStyle = IrisStyle.Ring, .IrisColorArgb = Color.FromArgb(40, 25, 17).ToArgb(), .IrisRing = 85, .Tone = -18, .Whiten = 12}
         Dim r As New EditRecipe()
         r.SetGlobalBeauty(b)
         Return If(PortraitRetouch.Apply(img, faces, r), CType(img.Clone(), Bitmap))
+    End Function
+
+    ''' <summary>暖金色調：Lab 的 a、b 往暖色推（暗部、中間調多一點）、彩度略提高、整體略亮。</summary>
+    Private Shared Function WarmGrade(img As Bitmap, amount As Double) As Bitmap
+        Using src = BitmapConverter.ToMat(img), bgr As New Mat(), lab As New Mat()
+            If src.Channels() = 4 Then Cv2.CvtColor(src, bgr, ColorConversionCodes.BGRA2BGR) Else src.CopyTo(bgr)
+            Cv2.CvtColor(bgr, lab, ColorConversionCodes.BGR2Lab)
+            Dim px(lab.Rows * lab.Cols * 3 - 1) As Byte
+            Runtime.InteropServices.Marshal.Copy(lab.Data, px, 0, px.Length)
+            For i = 0 To px.Length - 1 Step 3
+                Dim l = px(i) / 255.0
+                Dim a = (px(i + 1) - 128.0) * (1 + 0.12 * amount) + 3 * amount
+                Dim bb = (px(i + 2) - 128.0) * (1 + 0.15 * amount) + (14 - 6 * l) * amount
+                px(i) = CByte(Math.Clamp(255 * Math.Pow(l, 1 - 0.06 * amount), 0, 255))
+                px(i + 1) = CByte(Math.Clamp(a + 128, 0, 255))
+                px(i + 2) = CByte(Math.Clamp(bb + 128, 0, 255))
+            Next
+            Runtime.InteropServices.Marshal.Copy(px, 0, lab.Data, px.Length)
+            Cv2.CvtColor(lab, bgr, ColorConversionCodes.Lab2BGR)
+            Return BitmapConverter.ToBitmap(bgr)
+        End Using
     End Function
 
     '---------------------------------------------------------------------
@@ -282,7 +316,7 @@ Public NotInheritable Class AnimeRedraw
         End Using
         Try
             Using gen As New Bitmap(outFile)
-                Using fixedImg = PostFix(gen, prepFaces)
+                Using fixedImg = PostFix(gen, prepFaces, Setting(preset, "warm").GetDouble())
                     ' 放大回原本的比例尺寸（生成時取 64 的倍數，比例可能差一點點）
                     Dim result As New Bitmap(source.Width, source.Height, Imaging.PixelFormat.Format32bppArgb)
                     Using g = Graphics.FromImage(result)

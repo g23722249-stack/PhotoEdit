@@ -1,5 +1,5 @@
 {
-  "_說明": "AI 重繪（本機顯卡、Stable Diffusion 1.5 img2img＋ControlNet Canny）的模型與風格。模型在 Models\\（不在 git）。prep＝重繪前的美顏打底與自己畫的線稿（478 點網格）；同一組種子換到別張照片時畫風相近但不會一模一樣。風格可覆寫 common 的任何欄位（controlnet、steps、cfg、prompt、negative、defaultSubject）。",
+  "_說明": "AI 重繪（本機顯卡、Stable Diffusion 1.5 img2img＋ControlNet Canny）的模型與風格。模型在 Models\\（不在 git）。prep＝重繪前的美顏打底與自己畫的線稿（478 點網格）；同一組種子換到別張照片時畫風相近但不會一模一樣。風格可覆寫 common 的任何欄位（controlnet、steps、cfg、prompt、negative、defaultSubject、warm）。warm＝重畫後的暖金色調強度 0..1。",
   "models": [
     {
       "id": "ghibli",
@@ -11,7 +11,7 @@
     {
       "id": "anything",
       "name": "動畫插畫風",
-      "note": "AnimeAnything v10：臉較圓、腮紅明顯、乾淨可愛的動畫插畫。VAE 共用 GhibliDiffusion 的（它自帶的 VAE 在 DirectML 上會整張變灰）。",
+      "note": "AnimeAnything v10：臉較圓、乾淨可愛的動畫插畫。VAE 共用 GhibliDiffusion 的（它自帶的 VAE 在 DirectML 上會整張變灰）。",
       "dir": "AnimeAnything",
       "vaeDir": "GhibliDiffusion"
     }
@@ -21,22 +21,23 @@
     "controlnet": "GhibliDiffusion/controlnet_canny/model.onnx",
     "useControlNet": true,
     "scheduler": "DDIM",
-    "steps": 26,
-    "cfg": 6.0,
-    "controlnetScale": 0.78,
+    "steps": 28,
+    "cfg": 6.5,
+    "controlnetScale": 0.70,
     "controlnetEnd": 1.0,
     "shortSide": 512,
+    "warm": 1.0,
     "defaultSubject": "warm soft background",
-    "prompt": "ghibli style, masterpiece, best quality, hand-painted anime portrait of a woman, recognizable face, large expressive dark brown eyes, subtle iris highlights, simplified delicate nose, small natural closed-mouth smile, soft oval face, gentle cheeks, smooth luminous fair skin, warm peach undertones, subtle blush, soft cel shading, clean line art, warm ambient light, {subject}",
-    "negative": "worst quality, low quality, blurry face, photorealistic skin texture, harsh shadows, oversaturated, plastic skin, excessive makeup, chibi, enormous eyes, deformed eyes, uneven pupils, different person, pointed chin, overly detailed nose, exaggerated lips, open mouth, teeth, bad anatomy, text, watermark",
+    "prompt": "ghibli style, hand-painted anime portrait of a young woman, youthful soft round face, large dark brown eyes, iris highlights, small nose, gentle smile, fair skin, warm peach tones, soft cel shading, vivid colors, detailed painted background, {subject}",
+    "negative": "blush, man, masculine, old, gaunt, hollow cheeks, wrinkles, red cheeks, shadow on face, bow, ribbon, photorealistic, pores, harsh contrast, chibi, different person, blue eyes, yellow eyes, asymmetrical eyes, deformed pupils, distorted mouth, big nose, washed out, dull colors, blurry, low quality, text, watermark",
     "prep": {
       "beauty": { "Smoothing": 55, "Even": 45, "Blemish": 60, "DarkCircles": 55, "Shine": 50, "Brighten": 15, "Tone": 12, "EyeEnlarge": 25, "Redness": 20 },
       "hint": {
-        "outsideFace": "Canny 70/160（高斯 1.2），臉的輪廓往內縮 8% 的範圍清空",
-        "jaw": "網格下顎線，越近下巴往中間收 8%",
+        "outsideFace": "Canny 70/160（高斯 1.2）再疊一層柔邊 Canny 20/50（高斯 2.5，保住頭髮、墨鏡這類低對比輪廓），臉的輪廓往內縮 8% 的範圍清空",
+        "jaw": "網格下顎線照原本臉型（不收窄），腮邊（中段）往外擴 4%，兩端各去 3 點（避免臉頰上多一條直線）",
         "brows": "上下緣中線一條",
-        "eyes": "以眼睛中心橫向 ×1.08、縱向 ×1.25；上眼皮 2 倍線寬、下眼皮中段細線",
-        "iris": "網格虹膜半徑 ×1.18 的圓，瞳孔實心（半徑 0.45）",
+        "eyes": "以眼睛中心橫向 ×1.18、縱向 ×1.40；上眼皮 2 倍線寬、下眼皮中段細線",
+        "iris": "網格虹膜半徑 ×1.35 的圓，瞳孔實心（半徑 0.45）",
         "nose": "鼻底 97-2-326 以 2 為中心橫向 ×0.75",
         "mouth": "內唇上緣 78…308 以 13 為中心橫向 ×0.95",
         "lineWidth": "眼距 × 0.012"
@@ -48,10 +49,10 @@
     { "model": "ghibli", "name": "柔和", "strength": 0.42, "seed": 11, "note": "最像本人：眼睛大而清澈、臉部明暗最少" },
     { "model": "ghibli", "name": "電影", "strength": 0.50, "seed": 23, "note": "電影畫面感：側光、髮絲落在臉上的陰影" },
     { "model": "ghibli", "name": "沉穩", "strength": 0.50, "seed": 555, "note": "色調較深、表情沉穩成熟" },
-    { "model": "anything", "name": "柔和", "strength": 0.42, "seed": 11, "note": "圓臉、大眼、淡淡腮紅，最符合吉卜力五官原則" },
-    { "model": "anything", "name": "電影", "strength": 0.50, "seed": 23, "note": "腮紅較明顯、線條清楚" },
-    { "model": "anything", "name": "沉穩", "strength": 0.50, "seed": 555, "note": "髮絲較多、表情沉穩" },
-    { "model": "anything", "name": "快速動畫", "strength": 0.50, "seed": 11, "useControlNet": false, "steps": 8,
+    { "model": "anything", "name": "柔和", "strength": 0.52, "seed": 23, "note": "圓臉、深色大眼、淡淡腮紅，最符合吉卜力五官原則" },
+    { "model": "anything", "name": "電影", "strength": 0.52, "seed": 11, "note": "背景色彩較鮮明、線條清楚" },
+    { "model": "anything", "name": "沉穩", "strength": 0.52, "seed": 42, "note": "側光較明顯、表情沉穩" },
+    { "model": "anything", "name": "快速動畫", "strength": 0.50, "seed": 11, "useControlNet": false, "steps": 8, "warm": 0,
       "prompt": "anime portrait of a person, {subject}", "defaultSubject": "", "negative": "lowres, bad anatomy, deformed face, ugly, blurry, photo, photorealistic, 3d render, extra fingers, text, watermark",
       "note": "不用線稿控制、只算 4 步（約 10 秒）：畫風自由一點、輪廓柔和的動畫插畫" }
   ]
