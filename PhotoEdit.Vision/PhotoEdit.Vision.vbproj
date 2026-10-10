@@ -35,6 +35,8 @@
     <None Include="Models\GhibliDiffusion\**\*" Exclude="Models\GhibliDiffusion\unet\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\GhibliDiffusion" Condition="'$(SkipModelCopy)' != 'true'" />
     <None Include="Models\AnimeAnything\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\AnimeAnything" Condition="'$(SkipModelCopy)' != 'true'" />
     <None Include="AnimeRedrawPresets.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- OpenH264（Cisco，另外下載、不放進 git）：有的話 MP4 用它壓縮（檔案小很多），放在程式資料夾 -->
+    <None Include="Native\openh264-*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -56,7 +56,8 @@ Friend Class frmBeautyAdjust
     ''' <param name="look">照片的色調（只用 CopyLookFrom 的部分），預覽跟主畫面顏色一致。</param>
     ''' <param name="onLooksChanged">我的妝容新增或刪除後呼叫（存設定、更新一鍵美顏小圖）。</param>
     Public Sub New(targets As List(Of BeautyTarget), startIndex As Integer, look As EditRecipe, hasDense As Boolean, hasMesh As Boolean,
-                   help As HelpTip, onLooksChanged As Action)
+                   help As HelpTip, onLooksChanged As Action, Optional onFaceChange As Action(Of Form) = Nothing)
+        FaceChangeRequested = onFaceChange
         _targets = targets
         _look = look
         _hasDense = hasDense
@@ -752,7 +753,11 @@ Friend Class frmBeautyAdjust
     Private ReadOnly _operaPian As New CheckBox With {.Text = "貼片子", .AutoSize = True, .BackColor = Color.Transparent}
     Private ReadOnly _operaBeard As New CheckBox With {.Text = "髯口", .AutoSize = True, .BackColor = Color.Transparent}
     Private _operaGroup As Integer
+    ''' <summary>小圖格目前放的是哪一組的角色（-1＝還沒放）。不能用 _operaGrid.Tag 記：它固定是佈景主題的「略過」標記。</summary>
+    Private _operaItemsGroup As Integer = -1
     Private _operaGeneration As Integer
+    ''' <summary>戲曲頁「變臉影片…」：交給主畫面開變臉視窗（參數＝這個視窗，當擁有者）。</summary>
+    Private ReadOnly FaceChangeRequested As Action(Of Form)
 
     ''' <summary>某一組的角色編號（OperaRoles 索引＋1）。</summary>
     Private Shared Function OperaIds(group As Integer) As Integer()
@@ -760,11 +765,11 @@ Friend Class frmBeautyAdjust
     End Function
 
     Private Sub BuildOperaPage(p As Panel)
-        Dim groups = {"俊扮（生、旦）", "臉譜（淨）", "丑角"}
+        Dim groups = {"俊扮", "臉譜（淨）", "丑角", "川劇"}
         For i = 0 To groups.Length - 1
             Dim index = i
             Dim btn As New Button With {.Text = groups(i), .FlatStyle = FlatStyle.Flat, .Tag = ThemeManager.SkipTag, .Font = _small}
-            btn.SetBounds(4 + i * 122, 0, 118, 30)
+            btn.SetBounds(4 + i * 90, 0, 86, 30)
             AddHandler btn.Click, Sub() SelectOperaGroup(index)
             _help?.SetHelp("opera.group", btn)
             _operaGroupButtons.Add(btn)
@@ -815,13 +820,18 @@ Friend Class frmBeautyAdjust
         _help?.SetHelp("opera.pian", _operaPian)
         _help?.SetHelp("opera.beard", _operaBeard)
         p.Controls.AddRange({_operaPian, _operaBeard})
+        Dim faceChange As New Button With {.Text = "變臉影片…", .Font = _small, .Enabled = FaceChangeRequested IsNot Nothing}
+        faceChange.SetBounds(RightW - 158, y - 4, 130, 28)
+        AddHandler faceChange.Click, Sub() FaceChangeRequested?.Invoke(Me)
+        _help?.SetHelp("opera.facechange", faceChange)
+        p.Controls.Add(faceChange)
         SelectOperaGroup(0)
     End Sub
 
     Private Sub SelectOperaGroup(index As Integer)
-        Dim changedGroup = index <> _operaGroup OrElse _operaGrid.Tag Is Nothing
+        Dim changedGroup = index <> _operaItemsGroup
         _operaGroup = index
-        _operaGrid.Tag = index
+        _operaItemsGroup = index
         For i = 0 To _operaGroupButtons.Count - 1
             Dim isOn = i = index
             _operaGroupButtons(i).BackColor = If(isOn, Color.FromArgb(47, 128, 237), If(ThemeManager.Dark, ThemeManager.ButtonBack, Color.White))

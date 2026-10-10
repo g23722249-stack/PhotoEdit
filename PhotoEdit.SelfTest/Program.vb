@@ -40,6 +40,8 @@ Module Program
             SelectionFillTestsRun()
             EraserTestsRun()
             BeautyTestsRun()
+            MorphTestsRun(tempDir)
+            FaceChangeTestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

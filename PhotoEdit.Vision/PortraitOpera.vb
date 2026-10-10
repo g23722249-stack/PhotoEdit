@@ -27,7 +27,8 @@ Partial Public NotInheritable Class PortraitRetouch
         Return New Point2f(a.Average(Function(q) q.X), a.Average(Function(q) q.Y))
     End Function
 
-    Private Shared Sub ApplyOpera(px As Byte(), stride As Integer, w As Integer, h As Integer, f As FaceRegion, b As BeautySettings)
+    ''' <param name="occ">臉上的遮擋物（原圖大小，可為 Nothing）：臉譜的顏料不畫在上面；片子、髯口照畫（畫在頭髮上、垂到臉外）。</param>
+    Private Shared Sub ApplyOpera(px As Byte(), stride As Integer, w As Integer, h As Integer, f As FaceRegion, b As BeautySettings, Optional occ As Single() = Nothing)
         Dim role = OperaRoles.Get(b.OperaRole)
         If role Is Nothing OrElse b.Opera <= 0 OrElse f.Dense Is Nothing Then Return
         Dim amt = b.Opera / 100.0
@@ -78,7 +79,7 @@ Partial Public NotInheritable Class PortraitRetouch
             Next
         Next
         ' 皮膚的參考亮度：兩頰
-        Dim sumL = 0.0, cntL = 0
+        Dim sumL = 0.0, cntL = 0, sumRB = 0.0
         For Each side In {-1.0, 1.0}
             Dim c = toPx(side * 0.62, 0.45)
             Dim rad = Math.Max(2, CInt(d * 0.08))
@@ -87,10 +88,12 @@ Partial Public NotInheritable Class PortraitRetouch
                     Dim lx = xx - rx0, ly = yy - ry0
                     If lx < 0 OrElse ly < 0 OrElse lx >= rw OrElse ly >= rh Then Continue For
                     sumL += lum(ly * rw + lx) : cntL += 1
+                    sumRB += cR(ly * rw + lx) - cB(ly * rw + lx)
                 Next
             Next
         Next
         Dim lref = If(cntL > 0, sumL / cntL, 160.0)
+        Dim refRB = If(cntL > 0, sumRB / cntL, 30.0) ' 膚色的紅減藍（暖的程度）
         Dim shadeK = b.OperaShade / 100.0
 
         ' ---- 畫遮罩的小工具 ----
@@ -163,20 +166,38 @@ Partial Public NotInheritable Class PortraitRetouch
         End If
         ' 額頭往上拉（網格只到額頭中段）
         Dim ovalPx = ovalCan.Select(Function(q) toPx(q.X * 1.02, If(q.Y < -0.2, q.Y * 1.3 - 0.05, q.Y))).ToArray()
-        ' 頭髮：額頭上方、比皮膚暗很多的像素
+        ' 網格的輪廓在下顎、腮邊、太陽穴常比實際的臉內縮一點：往外擴（柔邊落在輪廓上，臉的邊緣才塗得滿）
+        Dim ocx = ovalPx.Average(Function(q) q.X), ocy = ovalPx.Average(Function(q) q.Y)
+        Dim grow = d * 0.08
+        Dim expand = Function(pts As Point2f(), by As Double) pts.Select(Function(q)
+                                                                            Dim dx = q.X - ocx, dy = q.Y - ocy
+                                                                            Dim len = Math.Max(1.0, Math.Sqrt(dx * dx + dy * dy))
+                                                                            Return New Point2f(CSng(q.X + dx / len * by), CSng(q.Y + dy / len * by))
+                                                                        End Function).ToArray()
+        Dim ovalOuter = expand(ovalPx, grow)
+        Dim inner(n - 1) As Single
+        Using m = newMask()
+            fillPoly(m, ovalPx, 255)
+            inner = toFloat(m, 0)
+        End Using
+        ' 頭髮：額頭上方、比皮膚暗很多的像素；往外擴的那一圈裡，暗的（兩側垂下的頭髮）也不塗
         Dim hair(n - 1) As Single
         For y = 0 To rh - 1
             For x = 0 To rw - 1
-                Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
-                If cq.Y > -0.45 Then Continue For
                 Dim i = y * rw + x
-                hair(i) = CSng(Smooth(lref * 0.62 - lum(i), 0, 25) * Smooth(-0.45 - cq.Y, 0, 0.12))
+                Dim dark = Smooth(lref * 0.62 - lum(i), 0, 25)
+                Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
+                Dim top = If(cq.Y > -0.45, 0.0, Smooth(-0.45 - cq.Y, 0, 0.12))
+                Dim rim = 1 - inner(i)
+                ' 外擴的那圈：顏色要像皮膚（比臉頰冷很多的是背景、牆）；臉色本身不暖（冷光）時分不出來，只排除頭髮
+                Dim notSkin = If(refRB < 10, 0.0, 1 - Smooth(cR(i) - cB(i), refRB * 0.3, refRB * 0.65))
+                hair(i) = CSng(Math.Max(dark * Math.Max(top, rim), rim * notSkin))
             Next
         Next
         Dim faceMask As Single()
         Using m = newMask()
-            fillPoly(m, ovalPx, 255)
-            faceMask = toFloat(m, d * 0.03)
+            fillPoly(m, ovalOuter, 255)
+            faceMask = toFloat(m, d * 0.025)
         End Using
         For i = 0 To n - 1
             faceMask(i) *= 1 - hair(i)
@@ -194,13 +215,20 @@ Partial Public NotInheritable Class PortraitRetouch
         End Using
 
         ' 塗上一層
-        Dim paint = Sub(mask As Single(), col As Color, op As Double, shade As Boolean)
+        Dim paint = Sub(mask As Single(), col As Color, op As Double, shade As Boolean, metal As Boolean)
                         Dim k0 = op * amt
                         For i = 0 To n - 1
                             Dim mv = mask(i) * k0
                             If mv < 0.002 Then Continue For
                             Dim tr As Double = col.R, tg As Double = col.G, tb As Double = col.B
-                            If shade AndAlso shadeK > 0 Then
+                            If metal Then
+                                ' 金屬：明暗對比加強，亮的地方往白色反光（臉的高光變成金屬的反光）
+                                Dim rel = Math.Max(1.0, lum(i)) / lref
+                                Dim s = Math.Max(0.35, Math.Min(1.6, Math.Pow(rel, 2.2)))
+                                Dim spec = Math.Max(0.0, Math.Min(0.75, (rel - 1.0) * 2.5))
+                                tr = Math.Min(255, tr * s) : tg = Math.Min(255, tg * s) : tb = Math.Min(255, tb * s)
+                                tr += (255 - tr) * spec : tg += (250 - tg) * spec : tb += (235 - tb) * spec
+                            ElseIf shade AndAlso shadeK > 0 Then
                                 Dim s = Math.Max(0.55, Math.Min(1.35, Math.Pow(Math.Max(1.0, lum(i)) / lref, shadeK)))
                                 tr = Math.Min(255, tr * s) : tg = Math.Min(255, tg * s) : tb = Math.Min(255, tb * s)
                             End If
@@ -215,7 +243,8 @@ Partial Public NotInheritable Class PortraitRetouch
                 Dim sides = If(L.Mirror, {False, True}, {False})
                 Select Case L.Kind
                     Case OperaLayerKind.FaceFill
-                        fillPoly(m, ovalPx, 255)
+                        ' 底色：再往外擴一個柔邊的寬度，柔邊落在臉的外面，最後由 faceMask 決定邊緣
+                        fillPoly(m, expand(ovalOuter, L.Blur * d * 1.5), 255)
                     Case OperaLayerKind.Poly
                         For Each mir In sides
                             fillPoly(m, L.Pts.Select(Function(q) can(q.X, q.Y, mir)), 255)
@@ -292,9 +321,10 @@ Partial Public NotInheritable Class PortraitRetouch
                 If L.ClipFace Then v *= faceMask(i)
                 If keepEyes Then v *= 1 - eyeHole(i)
                 If L.KeepMouth Then v *= 1 - mouthHole(i)
+                If occ IsNot Nothing Then v *= 1 - occ((ry0 + i \ rw) * w + rx0 + i Mod rw)
                 mask(i) = v
             Next
-            paint(mask, L.Color, L.Opacity, L.Shade)
+            paint(mask, L.Color, L.Opacity, L.Shade, L.Metal)
         Next
 
         ' ---- 片子：沿髮際一排小彎、臉的兩側各一條上寬下尖的長髮片（貼著臉的輪廓，把臉修成瓜子臉）----
@@ -350,7 +380,7 @@ Partial Public NotInheritable Class PortraitRetouch
                     fillPoly(m, outerSide.Concat(innerSide), 255)
                 Next
                 Dim pm = toFloat(m, d * 0.01)
-                paint(pm, Color.FromArgb(18, 16, 18), 0.95, False)
+                paint(pm, Color.FromArgb(18, 16, 18), 0.95, False, False)
             End Using
         End If
 
@@ -407,7 +437,7 @@ Partial Public NotInheritable Class PortraitRetouch
                         bm(i) *= CSng(1 - 0.65 * Smooth(cq.Y, 1.5, 2.8))
                     Next
                 Next
-                paint(bm, col, 0.92, False)
+                paint(bm, col, 0.92, False, False)
             End Using
         End If
 

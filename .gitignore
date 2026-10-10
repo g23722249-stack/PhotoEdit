@@ -1,4 +1,4 @@
-﻿# Build output
+# Build output
 bin/
 obj/
 .vs/
@@ -19,3 +19,5 @@ lbfmodel.yaml
 # 生成模型（Ghibli-Diffusion，約 2 GB，另外下載）
 PhotoEdit.Vision/Models/GhibliDiffusion/
 PhotoEdit.Vision/Models/AnimeAnything/
+# OpenH264 binary must be obtained from Cisco (license), not redistributed here
+PhotoEdit.Vision/Native/

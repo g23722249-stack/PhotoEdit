@@ -205,6 +205,8 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(Item("autowb", "自動白平衡"))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
         imageMenu.AddItem(Item("airedraw", "宮崎風 AI 重繪…"))
+        imageMenu.AddItem(Item("morph", "變形動畫…"))
+        imageMenu.AddItem(Item("facechange", "川劇變臉…"))
 
         Dim selectMenu = root.AddItem(New Aqua.MenuItem("選取"))
         selectMenu.AddItem(Item("selectall", "全選 (Ctrl+A)"))
@@ -258,6 +260,8 @@ Partial Friend Class frmEditor
             Case "reference" : ShowReference()
             Case "fullscreen" : ToggleFullScreen()
             Case "airedraw" : ShowAnimeRedraw()
+            Case "morph" : ShowMorph()
+            Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
             Case "togglehelp"
                 _appSettings.ShowHelp = Not _appSettings.ShowHelp

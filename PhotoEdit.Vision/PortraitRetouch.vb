@@ -27,11 +27,14 @@ Partial Public NotInheritable Class PortraitRetouch
             Try
                 Dim px(data.Stride * result.Height - 1) As Byte
                 Marshal.Copy(data.Scan0, px, 0, px.Length)
+                ' 臉上的遮擋物（劍、手……）：用原圖判斷，妝畫完後把那些地方還原
+                Dim occ = FaceOcclusion(bgr, faces)
+                Dim original = If(occ Is Nothing, Nothing, CType(px.Clone(), Byte()))
                 ' 曬黑：整張照片的皮膚一起（取曬黑最深的那張臉的膚色當準，只做一次）。
                 ' 要最先做：之後的妝（白眼影、白鼻樑、淡唇）以曬黑後的膚色為準，才不會被曬黑壓暗
                 Dim tanFace = faces.Select(Function(x) (F:=x, T:=recipe.BeautyFor(x.Box).Tan)).OrderByDescending(Function(x) x.T).FirstOrDefault()
                 If tanFace.F IsNot Nothing AndAlso tanFace.T > 0 Then
-                    ApplyTan(px, data.Stride, result.Width, result.Height, tanFace.F, faces, tanFace.T / 100.0)
+                    ApplyTan(px, data.Stride, result.Width, result.Height, source, tanFace.F, faces, tanFace.T / 100.0)
                     Dim w = result.Width, h = result.Height
                     Dim tanned(w * h * 3 - 1) As Byte
                     For y = 0 To h - 1
@@ -47,11 +50,24 @@ Partial Public NotInheritable Class PortraitRetouch
                     If b.IsEmpty Then Continue For
                     RetouchFace(bgr, px, data.Stride, f, b)
                 Next
+                ' 遮擋物上的妝還原（戲曲臉譜另外在畫的時候避開，片子、髯口照畫）
+                If occ IsNot Nothing Then
+                    For y = 0 To result.Height - 1
+                        For x = 0 To result.Width - 1
+                            Dim o = occ(y * result.Width + x)
+                            If o < 0.004F Then Continue For
+                            Dim i = y * data.Stride + x * 4
+                            For c = 0 To 2
+                                px(i + c) = CByte(px(i + c) + (CInt(original(i + c)) - px(i + c)) * o)
+                            Next
+                        Next
+                    Next
+                End If
                 ' 原圖解析度直接畫的：戲曲妝、美瞳、睫毛（在變形之前畫，之後跟著眼睛一起變形）
                 For Each f In faces
                     Dim b = ForOpera(recipe.BeautyFor(f.Box))
                     If b.HasOpera Then
-                        ApplyOpera(px, data.Stride, result.Width, result.Height, f, b)
+                        ApplyOpera(px, data.Stride, result.Width, result.Height, f, b, occ)
                         ' 歌仔戲的俊扮有假睫毛（自己沒設睫毛時）
                         Dim role = OperaRoles.Get(b.OperaRole)
                         If role IsNot Nothing AndAlso role.Lashes AndAlso b.Lash = 0 Then

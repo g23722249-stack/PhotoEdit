@@ -349,7 +349,7 @@ Partial Friend Class frmEditor
         Dim hasDense = _faces.Any(Function(f) f.Dense IsNot Nothing)
         Dim hasMesh = _faces.Any(Function(f) f.Mesh IsNot Nothing)
         Try
-            Using dlg As New frmBeautyAdjust(targets, _beautyFace + 1, look, hasDense, hasMesh, _help, AddressOf OnMyLooksChanged)
+            Using dlg As New frmBeautyAdjust(targets, _beautyFace + 1, look, hasDense, hasMesh, _help, AddressOf OnMyLooksChanged, Sub(owner) ShowFaceChange(owner))
                 If dlg.ShowDialog(Me) <> DialogResult.OK OrElse Not targets.Any(Function(t) t.Modified) Then Return
             End Using
             ApplyChange(Sub(r)

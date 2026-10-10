@@ -8,6 +8,8 @@ Public Enum OperaGroup
     Lianpu = 1
     ''' <summary>丑角。</summary>
     Chou = 2
+    ''' <summary>川劇：臉上畫具象圖形（蝴蝶、蝙蝠、火焰、雲紋…）、金銀色、粗黑勾邊、陰陽臉。</summary>
+    Chuan = 3
 End Enum
 
 Public Enum OperaLayerKind
@@ -58,6 +60,8 @@ Public NotInheritable Class OperaLayer
     Public KeepEyes As Boolean = True
     ''' <summary>嘴巴裡面（牙齒）不塗。</summary>
     Public KeepMouth As Boolean = True
+    ''' <summary>金屬光澤（金、銀）：依原圖明暗加強對比，亮的地方反白光。</summary>
+    Public Metal As Boolean
 
     Public ReadOnly Property Color As Color
         Get
@@ -83,10 +87,10 @@ Public NotInheritable Class OperaRole
 End Class
 
 ''' <summary>
-''' 京劇、歌仔戲的角色妝（俊扮、臉譜、丑角）。圖樣是依傳統臉譜的構圖重新畫的簡化版。
+''' 京劇、歌仔戲、川劇的角色妝（俊扮、臉譜、丑角、川劇）。圖樣是依傳統臉譜的構圖重新畫的簡化版。
 ''' BeautySettings.OperaRole 是這裡的索引＋1（0＝沒有）。
 ''' </summary>
-Public NotInheritable Class OperaRoles
+Partial Public NotInheritable Class OperaRoles
     Private Sub New()
     End Sub
 
@@ -497,6 +501,7 @@ Public NotInheritable Class OperaRoles
         r.Layers.Add(Lips(&HD8182E, 1.1, 1.1, 0.95))
         list.Add(r)
 
+        BuildChuan(list)
         Return list
     End Function
 End Class

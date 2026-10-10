@@ -673,123 +673,199 @@ Partial Public NotInheritable Class PortraitRetouch
     ' 髮色：人像去背模型找出人 → 扣掉臉、皮膚、下巴以下 → 換色
     '=====================================================================
 
-    Private Shared ReadOnly _hairLock As New Object()
-    Private Shared _hairKey As String
-    Private Shared _hairMask As Bitmap
+    Private Shared ReadOnly _personLock As New Object()
+    Private Shared _personKey As String
+    Private Shared _person As (Data As Byte(), W As Integer, H As Integer, Stride As Integer)
 
-    ''' <summary>把頭髮換成 HairColor（保留明暗與髮絲紋理）；沒有人像去背模型時不做事。</summary>
+    ''' <summary>
+    ''' 人的範圍（人像去背模型，灰階、取紅色通道）：用整張照片算（只給臉附近一小塊時，模型看不到全身，會把背景也當成人）；
+    ''' 同一張圖只算一次。沒有模型時 Data 是 Nothing。
+    ''' </summary>
+    Private Shared Function PersonMask(source As Bitmap, w As Integer, h As Integer) As (Data As Byte(), W As Integer, H As Integer, Stride As Integer)
+        If source Is Nothing OrElse Not BackgroundRemover.ModelAvailable(CutoutModel.Human) Then Return (Nothing, 0, 0, 0)
+        SyncLock _personLock
+            Dim key = $"{source.GetHashCode()}|{w}x{h}"
+            If key <> _personKey OrElse _person.Data Is Nothing Then
+                Using mask = BackgroundRemover.ComputeMask(source, CutoutModel.Human)
+                    Dim md = mask.LockBits(New Rectangle(0, 0, mask.Width, mask.Height), Imaging.ImageLockMode.ReadOnly, Imaging.PixelFormat.Format32bppArgb)
+                    Dim bytes(md.Stride * mask.Height - 1) As Byte
+                    Marshal.Copy(md.Scan0, bytes, 0, bytes.Length)
+                    _person = (bytes, mask.Width, mask.Height, md.Stride)
+                    mask.UnlockBits(md)
+                End Using
+                _personKey = key
+            End If
+            Return _person
+        End SyncLock
+    End Function
+
+    ''' <summary>人像遮罩在照片座標 (x, y) 的值 0..1。</summary>
+    Private Shared Function PersonAt(m As (Data As Byte(), W As Integer, H As Integer, Stride As Integer), x As Double, y As Double, w As Integer, h As Integer) As Double
+        Dim mx = Math.Max(0, Math.Min(m.W - 1, CInt(x * m.W / w))), my = Math.Max(0, Math.Min(m.H - 1, CInt(y * m.H / h)))
+        Return m.Data(my * m.Stride + mx * 4 + 2) / 255.0
+    End Function
+
+    ''' <summary>
+    ''' 把頭髮換成 HairColor（保留明暗與髮絲紋理）；沒有人像去背模型時不做事。
+    ''' 頭髮＝人像遮罩裡、臉外、下巴以上，而且顏色接近額頭上方取樣到的髮色（兜帽、衣領、圍巾不算）；
+    ''' 範圍邊緣淡出（不會看到方框）；提亮按比例放大（逐點補到同一亮度會把髮絲明暗壓平、看起來糊掉）。
+    ''' </summary>
     Private Shared Sub ApplyHair(px As Byte(), stride As Integer, w As Integer, h As Integer, source As Bitmap, f As FaceRegion, b As BeautySettings)
-        If b.Hair <= 0 OrElse Not BackgroundRemover.ModelAvailable(CutoutModel.Human) Then Return
+        If b.Hair <= 0 Then Return
+        Dim person = PersonMask(source, w, h)
+        If person.Data Is Nothing Then Return
         Dim amt = b.Hair / 100.0
         Dim fw = f.Box.Width * w, fh = f.Box.Height * h
         Dim cx = f.Box.X * w + fw / 2
         Dim rect = Rectangle.Intersect(New Rectangle(CInt(cx - fw * 1.6), CInt(f.Box.Y * h - fh * 0.9), CInt(fw * 3.2), CInt(fh * 2.6)), New Rectangle(0, 0, w, h))
         If rect.Width < 16 OrElse rect.Height < 16 Then Return
-        ' 人的範圍：用整張照片算（只給臉附近一小塊時，模型看不到全身，會把背景也當成人）；同一張圖只算一次
-        Dim mask As Bitmap
-        SyncLock _hairLock
-            Dim key = $"{source.GetHashCode()}|{w}x{h}"
-            If key <> _hairKey OrElse _hairMask Is Nothing Then
-                _hairMask?.Dispose()
-                _hairMask = BackgroundRemover.ComputeMask(source, CutoutModel.Human)
-                _hairKey = key
-            End If
-            mask = CType(_hairMask.Clone(), Bitmap)
-        End SyncLock
-        Using mask
-            Dim mw = mask.Width, mh = mask.Height
-            Dim mdata = mask.LockBits(New Rectangle(0, 0, mw, mh), Imaging.ImageLockMode.ReadOnly, Imaging.PixelFormat.Format32bppArgb)
-            Dim mbytes(mdata.Stride * mh - 1) As Byte
-            Marshal.Copy(mdata.Scan0, mbytes, 0, mbytes.Length)
-            Dim mstride = mdata.Stride
-            mask.UnlockBits(mdata)
-            ' 臉（網格或 68 點的外輪廓，往外一點點）不算頭髮；下巴以下也不算（衣服、脖子）
-            Dim chinY As Double = If(f.Dense IsNot Nothing, f.Dense(8).Y * h, f.Box.Bottom * h)
-            Dim facePoly As Point2f()
-            If f.Mesh IsNot Nothing Then
-                Dim oval = {10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109}
-                facePoly = oval.Select(Function(i) New Point2f(f.Mesh(i).X * w - rect.X, f.Mesh(i).Y * h - rect.Y)).ToArray()
-            Else
-                facePoly = Enumerable.Range(0, 24).Select(Function(k) New Point2f(CSng(cx - rect.X + Math.Cos(k * Math.PI / 12) * fw * 0.48),
-                                                                                  CSng(f.Box.Y * h + fh * 0.55 - rect.Y + Math.Sin(k * Math.PI / 12) * fh * 0.55))).ToArray()
-            End If
-            Dim faceMask As Single()
-            Using fmMat As New Mat(rect.Height, rect.Width, MatType.CV_8UC1, Scalar.All(0)), ff As New Mat()
-                Cv2.FillPoly(fmMat, {facePoly.Select(Function(q) New OpenCvSharp.Point(CInt(q.X), CInt(q.Y))).ToArray()}, Scalar.All(255), LineTypes.AntiAlias)
-                fmMat.ConvertTo(ff, MatType.CV_32FC1, 1 / 255.0)
-                Cv2.GaussianBlur(ff, ff, New OpenCvSharp.Size(0, 0), Math.Max(1.0, fw * 0.02))
-                faceMask = GetFloats(ff)
+        ' 臉（網格或 68 點的外輪廓，往外一點點）不算頭髮；下巴以下也不算（衣服、脖子）
+        Dim chinY As Double = If(f.Dense IsNot Nothing, f.Dense(8).Y * h, f.Box.Bottom * h)
+        Dim facePoly As Point2f()
+        If f.Mesh IsNot Nothing Then
+            Dim oval = {10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109}
+            facePoly = oval.Select(Function(i) New Point2f(f.Mesh(i).X * w - rect.X, f.Mesh(i).Y * h - rect.Y)).ToArray()
+        Else
+            facePoly = Enumerable.Range(0, 24).Select(Function(k) New Point2f(CSng(cx - rect.X + Math.Cos(k * Math.PI / 12) * fw * 0.48),
+                                                                              CSng(f.Box.Y * h + fh * 0.55 - rect.Y + Math.Sin(k * Math.PI / 12) * fh * 0.55))).ToArray()
+        End If
+        Dim faceMask As Single(), faceDist As Single()
+        Using fmMat As New Mat(rect.Height, rect.Width, MatType.CV_8UC1, Scalar.All(0)), ff As New Mat()
+            Cv2.FillPoly(fmMat, {facePoly.Select(Function(q) New OpenCvSharp.Point(CInt(q.X), CInt(q.Y))).ToArray()}, Scalar.All(255), LineTypes.AntiAlias)
+            fmMat.ConvertTo(ff, MatType.CV_32FC1, 1 / 255.0)
+            Cv2.GaussianBlur(ff, ff, New OpenCvSharp.Size(0, 0), Math.Max(1.0, fw * 0.02))
+            faceMask = GetFloats(ff)
+            ' 離臉的距離（眼睛以下只認臉旁邊的頭髮：兜帽、衣領常常在臉旁邊、顏色又跟頭髮很像）
+            Using inv As New Mat(), dist As New Mat()
+                Cv2.Threshold(fmMat, inv, 127, 255, ThresholdTypes.BinaryInv)
+                Cv2.DistanceTransform(inv, dist, DistanceTypes.L2, DistanceTransformMasks.Mask5)
+                faceDist = GetFloats(dist)
             End Using
-            Dim t = ColorToLab(b.HairColor)
-            Dim rw = rect.Width, rh = rect.Height, rn = rw * rh
-            ' 整塊轉成 Lab
-            Dim region(rn * 3 - 1) As Byte
-            For y = 0 To rh - 1
-                For x = 0 To rw - 1
-                    Dim di = (rect.Y + y) * stride + (rect.X + x) * 4
-                    region((y * rw + x) * 3) = px(di) : region((y * rw + x) * 3 + 1) = px(di + 1) : region((y * rw + x) * 3 + 2) = px(di + 2)
-                Next
-            Next
-            Dim lab(rn * 3 - 1) As Byte
-            Using rm As New Mat(rh, rw, MatType.CV_8UC3), lm As New Mat()
-                Marshal.Copy(region, 0, rm.Data, region.Length)
-                Cv2.CvtColor(rm, lm, ColorConversionCodes.BGR2Lab)
-                Marshal.Copy(lm.Data, lab, 0, lab.Length)
-            End Using
-            ' 這張臉的平均膚色（臉的內部）：顏色接近它的不算頭髮（脖子、耳朵、髮際線之間的額頭）
-            Dim sL = 0.0, sA = 0.0, sB = 0.0, cnt = 0
-            For i = 0 To rn - 1
-                If faceMask(i) < 0.9 Then Continue For
-                sL += lab(i * 3) : sA += lab(i * 3 + 1) : sB += lab(i * 3 + 2) : cnt += 1
-            Next
-            Dim mL = If(cnt > 0, sL / cnt, 170.0), mA = If(cnt > 0, sA / cnt, 140.0), mB = If(cnt > 0, sB / cnt, 145.0)
-            Dim changed = False
-            For y = 0 To rh - 1
-                Dim iy = rect.Y + y
-                Dim below = Smooth(iy - chinY, -fh * 0.05, fh * 0.15) ' 下巴以下淡出
-                For x = 0 To rw - 1
-                    Dim i = y * rw + x
-                    Dim mx = Math.Min(mw - 1, CInt((rect.X + x) * CDbl(mw) / w)), my = Math.Min(mh - 1, CInt(iy * CDbl(mh) / h)) ' 遮罩是整張照片的
-                    Dim person = mbytes(my * mstride + mx * 4 + 2) / 255.0 ' 遮罩是灰階，取紅色通道
-                    Dim k = person * (1 - faceMask(i)) * (1 - below) * amt
-                    If k < 0.01 Then Continue For
-                    Dim L As Double = lab(i * 3), a As Double = lab(i * 3 + 1), bb As Double = lab(i * 3 + 2)
-                    ' 不是頭髮：顏色接近膚色、或接近白色而且沒什麼顏色（衣服、背景）
-                    Dim skinDist = Math.Sqrt((a - mA) ^ 2 + (bb - mB) ^ 2 + ((L - mL) * 0.35) ^ 2)
-                    Dim chroma = Math.Sqrt((a - 128) ^ 2 + (bb - 128) ^ 2)
-                    k *= Smooth(skinDist, 12, 30) * (1 - Smooth(L, 150, 200) * (1 - Smooth(chroma, 8, 22)))
-                    If k < 0.01 Then Continue For
-                    Dim lift = Math.Max(0, Math.Min(t.L, 130) - L) * 0.4
-                    Dim newL = L + lift * k
-                    ' 暗的地方彩度也要跟著小（黑髮直接套金色的 a/b 會變橄欖綠、灰綠）
-                    Dim cs = Math.Min(1.0, Math.Max(0.25, newL / Math.Max(1.0, t.L)))
-                    Dim ta = 128 + (t.A - 128) * cs, tb = 128 + (t.B - 128) * cs
-                    lab(i * 3) = ImagePipeline.ClampByte(newL)
-                    lab(i * 3 + 1) = ImagePipeline.ClampByte(a + (ta - a) * 0.75 * k)
-                    lab(i * 3 + 2) = ImagePipeline.ClampByte(bb + (tb - bb) * 0.75 * k)
-                    changed = True
-                Next
-            Next
-            If Not changed Then Return
-            Using lm As New Mat(rh, rw, MatType.CV_8UC3), rm As New Mat()
-                Marshal.Copy(lab, 0, lm.Data, lab.Length)
-                Cv2.CvtColor(lm, rm, ColorConversionCodes.Lab2BGR)
-                Marshal.Copy(rm.Data, region, 0, region.Length)
-            End Using
-            For y = 0 To rh - 1
-                For x = 0 To rw - 1
-                    Dim di = (rect.Y + y) * stride + (rect.X + x) * 4
-                    px(di) = region((y * rw + x) * 3) : px(di + 1) = region((y * rw + x) * 3 + 1) : px(di + 2) = region((y * rw + x) * 3 + 2)
-                Next
-            Next
         End Using
+        Dim t = ColorToLab(b.HairColor)
+        Dim rw = rect.Width, rh = rect.Height, rn = rw * rh
+        ' 整塊轉成 Lab
+        Dim region(rn * 3 - 1) As Byte
+        For y = 0 To rh - 1
+            For x = 0 To rw - 1
+                Dim di = (rect.Y + y) * stride + (rect.X + x) * 4
+                region((y * rw + x) * 3) = px(di) : region((y * rw + x) * 3 + 1) = px(di + 1) : region((y * rw + x) * 3 + 2) = px(di + 2)
+            Next
+        Next
+        Dim lab(rn * 3 - 1) As Byte
+        Using rm As New Mat(rh, rw, MatType.CV_8UC3), lm As New Mat()
+            Marshal.Copy(region, 0, rm.Data, region.Length)
+            Cv2.CvtColor(rm, lm, ColorConversionCodes.BGR2Lab)
+            Marshal.Copy(lm.Data, lab, 0, lab.Length)
+        End Using
+        ' 這張臉的平均膚色（臉的內部）：顏色接近它的不算頭髮（脖子、耳朵、髮際線之間的額頭）
+        Dim sL = 0.0, sA = 0.0, sB = 0.0, cnt = 0
+        For i = 0 To rn - 1
+            If faceMask(i) < 0.9 Then Continue For
+            sL += lab(i * 3) : sA += lab(i * 3 + 1) : sB += lab(i * 3 + 2) : cnt += 1
+        Next
+        Dim mL = If(cnt > 0, sL / cnt, 170.0), mA = If(cnt > 0, sA / cnt, 140.0), mB = If(cnt > 0, sB / cnt, 145.0)
+        ' 髮色取樣：先取臉兩側（眼睛以下到嘴巴的高度、臉外 0.02–0.2 臉寬，帽子遮不到），不夠再取額頭上方（臉頂往上 0.05–0.3 臉高）；
+        ' 人像遮罩裡、臉外、不像皮膚的點，取亮度中位附近的平均
+        Dim topY = facePoly.Min(Function(q) q.Y)
+        Dim eyeY As Double = If(f.Mesh IsNot Nothing, (f.Mesh(33).Y + f.Mesh(263).Y) / 2 * h, (f.Box.Y + f.Box.Height * 0.4) * h)
+        Dim samples As New List(Of (L As Double, A As Double, B As Double))
+        Dim take = Sub(x As Integer, y As Integer)
+                       Dim i = y * rw + x
+                       If faceMask(i) > 0.1 OrElse PersonAt(person, rect.X + x, rect.Y + y, w, h) < 0.6 Then Return
+                       Dim L As Double = lab(i * 3), a As Double = lab(i * 3 + 1), bb As Double = lab(i * 3 + 2)
+                       If Math.Sqrt((a - mA) ^ 2 + (bb - mB) ^ 2 + ((L - mL) * 0.6) ^ 2) < 14 Then Return
+                       samples.Add((L, a, bb))
+                   End Sub
+        For y = Math.Max(0, CInt(eyeY - rect.Y + fh * 0.08)) To Math.Min(rh - 1, CInt(eyeY - rect.Y + fh * 0.45))
+            For x = 0 To rw - 1
+                Dim dd = faceDist(y * rw + x)
+                If dd > fw * 0.02 AndAlso dd < fw * 0.2 Then take(x, y)
+            Next
+        Next
+        If samples.Count < 30 Then
+            samples.Clear()
+            For y = Math.Max(0, CInt(topY - fh * 0.3)) To Math.Min(rh - 1, CInt(topY - fh * 0.05))
+                For x = Math.Max(0, CInt(cx - rect.X - fw * 0.35)) To Math.Min(rw - 1, CInt(cx - rect.X + fw * 0.35))
+                    take(x, y)
+                Next
+            Next
+        End If
+        Dim hasHair = samples.Count >= 30
+        Dim hL = 0.0, hA = 128.0, hB = 128.0, hSpread = 30.0
+        If hasHair Then
+            Dim sorted = samples.OrderBy(Function(s) s.L).ToList()
+            Dim mid = sorted.Skip(sorted.Count \ 5).Take(Math.Max(1, sorted.Count * 3 \ 5)).ToList() ' 去掉最亮與最暗的各 20%
+            hL = mid.Average(Function(s) s.L) : hA = mid.Average(Function(s) s.A) : hB = mid.Average(Function(s) s.B)
+            hSpread = Math.Max(12, (sorted(sorted.Count * 4 \ 5).L - sorted(sorted.Count \ 5).L) / 2) ' 髮絲本身的明暗範圍
+        End If
+        ' 每點的頭髮程度
+        Dim weight(rn - 1) As Single
+        Dim edge = Math.Max(4.0, Math.Min(rw, rh) * 0.12)
+        Dim wSum = 0.0, wL = 0.0
+        For y = 0 To rh - 1
+            Dim iy = rect.Y + y
+            Dim below = Smooth(iy - chinY, -fh * 0.05, fh * 0.15) ' 下巴以下淡出
+            ' 範圍邊緣淡出（貼著照片邊緣的那側不用）
+            Dim ey = Math.Min(If(rect.Y = 0, Double.MaxValue, y), If(rect.Bottom = h, Double.MaxValue, rh - 1 - y))
+            For x = 0 To rw - 1
+                Dim i = y * rw + x
+                Dim ex = Math.Min(If(rect.X = 0, Double.MaxValue, x), If(rect.Right = w, Double.MaxValue, rw - 1 - x))
+                Dim k = Smooth(PersonAt(person, rect.X + x, iy, w, h), 0.45, 0.85) * (1 - faceMask(i)) * (1 - below) * Smooth(Math.Min(ex, ey), 0, edge)
+                If k < 0.01 Then Continue For
+                Dim L As Double = lab(i * 3), a As Double = lab(i * 3 + 1), bb As Double = lab(i * 3 + 2)
+                ' 不是頭髮：顏色接近膚色、或接近白色而且沒什麼顏色（衣服、背景）
+                Dim skinDist = Math.Sqrt((a - mA) ^ 2 + (bb - mB) ^ 2 + ((L - mL) * 0.6) ^ 2)
+                Dim chroma = Math.Sqrt((a - 128) ^ 2 + (bb - 128) ^ 2)
+                k *= Smooth(skinDist, 12, 30) * (1 - Smooth(L, 150, 200) * (1 - Smooth(chroma, 8, 22)))
+                ' 跟取樣到的髮色差太多的不算（兜帽、衣領）
+                If hasHair Then
+                    ' 比髮色亮的（高光髮絲）：頭頂放寬，眼睛以下要嚴（兜帽、衣領常常在臉旁邊、比頭髮亮）
+                    Dim upper = 1 - Smooth(iy, eyeY, eyeY + fh * 0.3)
+                    Dim hairDist = Math.Sqrt((a - hA) ^ 2 + (bb - hB) ^ 2 + (Math.Max(0, L - hL - hSpread * (1.2 + 1.5 * upper)) * (1 - 0.5 * upper)) ^ 2 + (Math.Max(0, hL - L - hSpread * 1.5)) ^ 2)
+                    k *= 1 - Smooth(hairDist, 14, 34)
+                    k *= 1 - (1 - upper) * Smooth(faceDist(i), fw * 0.22, fw * 0.4)
+                End If
+                If k < 0.01 Then Continue For
+                weight(i) = CSng(k)
+                wSum += k : wL += k * L
+            Next
+        Next
+        If wSum < 1 Then Return
+        ' 提亮：按比例放大亮度（以頭髮的平均亮度算倍率），亮的髮絲亮得多、暗的縫隙亮得少，紋理才保留
+        Dim meanL = wL / wSum
+        Dim gain = Math.Min(2.5, Math.Max(1.0, (meanL + (Math.Min(t.L, 140) - meanL) * 0.6) / Math.Max(8.0, meanL)))
+        For i = 0 To rn - 1
+            Dim k As Double = weight(i) * amt
+            If k < 0.01 Then Continue For
+            Dim L As Double = lab(i * 3), a As Double = lab(i * 3 + 1), bb As Double = lab(i * 3 + 2)
+            Dim newL = L * (1 + (gain - 1) * k)
+            ' 暗的地方彩度也要跟著小（黑髮直接套金色的 a/b 會變橄欖綠、灰綠），但不能小到變灰
+            Dim cs = Math.Min(1.0, Math.Max(0.45, newL / Math.Max(1.0, t.L)))
+            Dim ta = 128 + (t.A - 128) * cs, tb = 128 + (t.B - 128) * cs
+            lab(i * 3) = ImagePipeline.ClampByte(newL)
+            lab(i * 3 + 1) = ImagePipeline.ClampByte(a + (ta - a) * 0.75 * k)
+            lab(i * 3 + 2) = ImagePipeline.ClampByte(bb + (tb - bb) * 0.75 * k)
+        Next
+        Using lm As New Mat(rh, rw, MatType.CV_8UC3), rm As New Mat()
+            Marshal.Copy(lab, 0, lm.Data, lab.Length)
+            Cv2.CvtColor(lm, rm, ColorConversionCodes.Lab2BGR)
+            Marshal.Copy(rm.Data, region, 0, region.Length)
+        End Using
+        For y = 0 To rh - 1
+            For x = 0 To rw - 1
+                If weight(y * rw + x) * amt < 0.01 Then Continue For
+                Dim di = (rect.Y + y) * stride + (rect.X + x) * 4
+                px(di) = region((y * rw + x) * 3) : px(di + 1) = region((y * rw + x) * 3 + 1) : px(di + 2) = region((y * rw + x) * 3 + 2)
+            Next
+        Next
     End Sub
 
     '=====================================================================
     ' 曬黑：整張照片裡和這張臉膚色相近的皮膚一起變深（臉、脖子、手臂顏色才一致）
     '=====================================================================
 
-    Private Shared Sub ApplyTan(px As Byte(), stride As Integer, w As Integer, h As Integer, f As FaceRegion, faces As IEnumerable(Of FaceRegion), amount As Double)
+    Private Shared Sub ApplyTan(px As Byte(), stride As Integer, w As Integer, h As Integer, source As Bitmap, f As FaceRegion, faces As IEnumerable(Of FaceRegion), amount As Double)
         If amount <= 0 Then Return
         ' 這張臉中央的平均膚色（YCrCb）
         Dim bx0 = CInt((f.Box.X + f.Box.Width * 0.3) * w), bx1 = CInt((f.Box.X + f.Box.Width * 0.7) * w)
@@ -807,9 +883,31 @@ Partial Public NotInheritable Class PortraitRetouch
         Next
         If cnt < 20 Then Return
         Dim avgY = sY / cnt, avgCr = sCr / cnt, avgCb = sCb / cnt
-        ' 皮膚程度（顏色接近、亮度不能太暗）→ 先算在縮小的遮罩上再模糊，邊緣自然
+        ' 皮膚程度 → 先算在縮小的遮罩上再模糊，邊緣自然。
+        ' 臉裡面：顏色接近、不太暗就算；臉外面（脖子、手臂）要更嚴：在人像遮罩裡、顏色更接近、亮度也接近
+        ' （冷色調或昏暗的照片臉色偏灰，只看顏色會把背景、衣服、頭髮、燭光一起曬黑）
         Dim sc = Math.Min(1.0, 640.0 / Math.Max(w, h))
         Dim mw = Math.Max(1, CInt(w * sc)), mh = Math.Max(1, CInt(h * sc))
+        Dim inFace(mw * mh - 1) As Single
+        Using fm As New Mat(mh, mw, MatType.CV_8UC1, Scalar.All(0)), ff As New Mat()
+            Dim oval = {10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109}
+            For Each fc In faces
+                Dim pts As OpenCvSharp.Point()
+                If fc.Mesh IsNot Nothing Then
+                    Dim ocx = oval.Average(Function(i) fc.Mesh(i).X), ocy = oval.Average(Function(i) fc.Mesh(i).Y)
+                    pts = oval.Select(Function(i) New OpenCvSharp.Point(CInt((ocx + (fc.Mesh(i).X - ocx) * 1.05) * mw), CInt((ocy + (fc.Mesh(i).Y - ocy) * 1.05) * mh))).ToArray()
+                Else
+                    pts = Enumerable.Range(0, 24).Select(Function(k) New OpenCvSharp.Point(CInt((fc.Box.X + fc.Box.Width * (0.5 + Math.Cos(k * Math.PI / 12) * 0.5)) * mw),
+                                                                                         CInt((fc.Box.Y + fc.Box.Height * (0.55 + Math.Sin(k * Math.PI / 12) * 0.55)) * mh))).ToArray()
+                End If
+                Cv2.FillPoly(fm, {pts}, Scalar.All(255), LineTypes.AntiAlias)
+            Next
+            fm.ConvertTo(ff, MatType.CV_32FC1, 1 / 255.0)
+            Cv2.GaussianBlur(ff, ff, New OpenCvSharp.Size(0, 0), Math.Max(1.0, f.Box.Width * mw * 0.04))
+            inFace = GetFloats(ff)
+        End Using
+        Dim person = PersonMask(source, w, h)
+        Dim fcx = (f.Box.X + f.Box.Width / 2) * w, fcy = (f.Box.Y + f.Box.Height / 2) * h, fwp = f.Box.Width * w
         Dim mask(mw * mh - 1) As Single
         For ry = 0 To mh - 1
             Dim y = Math.Min(h - 1, CInt(ry / sc))
@@ -820,7 +918,17 @@ Partial Public NotInheritable Class PortraitRetouch
                 Dim yy = 0.299 * rr + 0.587 * gg + 0.114 * bb
                 Dim cr = (rr - yy) * 0.713 + 128, cb = (bb - yy) * 0.564 + 128
                 Dim d = Math.Sqrt((cr - avgCr) ^ 2 + (cb - avgCb) ^ 2)
-                mask(ry * mw + rx) = CSng((1 - Smooth(d, 8, 22)) * Smooth(yy, avgY * 0.35, avgY * 0.6))
+                Dim face = inFace(ry * mw + rx)
+                Dim loose = (1 - Smooth(d, 8, 22)) * Smooth(yy, avgY * 0.35, avgY * 0.6)
+                Dim tight = 0.0
+                If face < 0.99 Then
+                    ' 不能比臉色更冷（藍灰的衣服、背景）；沒有人像模型時，只算臉附近（約 3 個臉寬內）
+                    Dim warm = Smooth((cr - cb) - (avgCr - avgCb), -12, -4)
+                    Dim where = If(person.Data IsNot Nothing, PersonAt(person, x, y, w, h),
+                                   1 - Smooth(Math.Sqrt((x - fcx) ^ 2 + (y - fcy) ^ 2), fwp * 2, fwp * 3.5))
+                    tight = (1 - Smooth(d, 6, 16)) * Smooth(yy, avgY * 0.4, avgY * 0.65) * (1 - Smooth(yy, avgY * 1.6, avgY * 2.1)) * warm * where
+                End If
+                mask(ry * mw + rx) = CSng(face * loose + (1 - face) * tight)
             Next
         Next
         ' 牙齒、眼白不能曬黑（顏色接近膚色時會被算進來）
