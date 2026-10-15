@@ -32,15 +32,18 @@ Partial Friend Class frmEditor
     ' 操作列
     '---------------------------------------------------------------------
 
+    Private ReadOnly _alignMenu As New ContextMenuStrip()
+
     Private Function BuildShapeBar() As Control
-        Dim keys = AlignKeys.Concat({"disth", "distv", "|"}).Concat(OpKeys) ' 形狀建立在左側工具列
+        ' 常用的三個對齊直接放，其餘（靠右、垂直置中、靠下、均分）在「⋯」選單；形狀建立在左側工具列
+        Dim keys = {"left", "hcenter", "top", "more", "|"}.Concat(OpKeys).Concat({"|"})
         For Each k In keys
             If k = "|" Then
                 _shapeBar.Controls.Add(New Panel With {.Width = 8, .Height = 28, .Margin = Padding.Empty, .BackColor = Color.Transparent})
                 Continue For
             End If
             Dim key = k
-            Dim help = If(AlignKeys.Contains(key), "draw.align." & key, If(OpKeys.Contains(key), "draw.op." & key, "draw." & key))
+            Dim help = If(AlignKeys.Contains(key), "draw.align." & key, If(OpKeys.Contains(key), "draw.op." & key, "draw.align." & key))
             Dim b = MakeButton("", help)
             b.Size = New Size(If(key = "builder", 30, 28), 28)
             b.Margin = New Padding(0, 0, 2, 0)
@@ -50,6 +53,29 @@ Partial Friend Class frmEditor
             _shapeButtons(key) = b
             _shapeBar.Controls.Add(b)
         Next
+        For Each t In {("clipin", "放進形狀", "draw.clip.in"), ("clipout", "取出內容", "draw.clip.out"), ("photoclip", "照片放進形狀", "draw.clip.photo")}
+            Dim key = t.Item1
+            Dim b = MakeButton(t.Item2, t.Item3)
+            b.Height = 28
+            b.AutoSize = True
+            b.AutoSizeMode = AutoSizeMode.GrowAndShrink
+            b.Margin = New Padding(0, 0, 4, 0)
+            b.Visible = False
+            AddHandler b.Click, Sub() ShapeCommand(key)
+            _shapeButtons(key) = b
+            _shapeBar.Controls.Add(b)
+        Next
+        For Each m In {("right", "靠右對齊"), ("vcenter", "垂直置中"), ("bottom", "靠下對齊"), ("-", ""), ("disth", "水平均分"), ("distv", "垂直均分")}
+            Dim key = m.Item1
+            If key = "-" Then _alignMenu.Items.Add(New ToolStripSeparator()) : Continue For
+            _alignMenu.Items.Add(m.Item2, Nothing, Sub() ShapeCommand(key)).Tag = key
+        Next
+        AddHandler _alignMenu.Opening, Sub()
+                                           Dim n = SelectionUnits().Count
+                                           For Each it As ToolStripItem In _alignMenu.Items
+                                               If TypeOf it.Tag Is String AndAlso CStr(it.Tag).StartsWith("dist") Then it.Enabled = n >= 3
+                                           Next
+                                       End Sub
         Return _shapeBar
     End Function
 
@@ -92,18 +118,26 @@ Partial Friend Class frmEditor
         End If
         Dim picking = _drawStrip.SelectedTool = DrawIcons.SelectTool
         Dim units = If(picking, SelectionUnits(), New List(Of List(Of Integer))())
-        For Each k In AlignKeys
+        For Each k In {"left", "hcenter", "top", "more"}
             _shapeButtons(k).Visible = picking AndAlso units.Count >= 1 AndAlso Not _builderOn
         Next
-        _shapeButtons("disth").Visible = picking AndAlso units.Count >= 3 AndAlso Not _builderOn
-        _shapeButtons("distv").Visible = _shapeButtons("disth").Visible
         Dim comb = picking AndAlso CombinableSelection() IsNot Nothing
         For Each k In OpKeys
             _shapeButtons(k).Visible = comb AndAlso Not _builderOn
         Next
+        ' PowerClip、照片放進形狀
+        _shapeButtons("clipin").Visible = picking AndAlso Not _builderOn AndAlso ClipCandidate().HasValue
+        _shapeButtons("clipout").Visible = picking AndAlso Not _builderOn AndAlso SelectedClipGroups().Count > 0
+        Dim pc = If(picking AndAlso Not _builderOn, PhotoClipCandidate(), Nothing)
+        _shapeButtons("photoclip").Visible = pc IsNot Nothing
+        If pc IsNot Nothing Then _shapeButtons("photoclip").Text = If(pc.Id IsNot Nothing AndAlso _recipe.PhotoClip = pc.Id, "取消照片裁切", "照片放進形狀")
         ' 分隔
-        Dim sep = _shapeBar.Controls.OfType(Of Panel)().FirstOrDefault()
-        If sep IsNot Nothing Then sep.Visible = _shapeButtons("left").Visible AndAlso _shapeButtons("weld").Visible
+        Dim seps = _shapeBar.Controls.OfType(Of Panel)().ToList()
+        If seps.Count >= 2 Then
+            seps(0).Visible = _shapeButtons("left").Visible AndAlso _shapeButtons("weld").Visible
+            seps(1).Visible = (_shapeButtons("left").Visible OrElse _shapeButtons("weld").Visible) AndAlso
+                              (_shapeButtons("clipin").Visible OrElse _shapeButtons("clipout").Visible OrElse _shapeButtons("photoclip").Visible)
+        End If
     End Sub
 
     Private Sub ShapeCommand(key As String)
@@ -116,6 +150,10 @@ Partial Friend Class frmEditor
             Case "intersect" : CombineSelected(ShapeOp.Intersect)
             Case "exclude" : CombineSelected(ShapeOp.Exclude)
             Case "builder" : If _builderOn Then ExitBuilder() Else EnterBuilder()
+            Case "more" : _alignMenu.Show(_shapeButtons("more"), New Point(0, _shapeButtons("more").Height))
+            Case "clipin" : ClipIntoShape()
+            Case "clipout" : ClipOut()
+            Case "photoclip" : TogglePhotoClip()
         End Select
         UpdateDrawControls()
         _canvas.Invalidate()
@@ -459,6 +497,10 @@ Partial Friend Class frmEditor
                 Case "top" : g.DrawLine(pen, 2, 3, 18, 3) : g.FillRectangle(br, 5, 4, 3.5F, 12) : g.FillRectangle(br, 11.5F, 4, 3.5F, 7)
                 Case "vcenter" : g.DrawLine(pen, 2, 10, 18, 10) : g.FillRectangle(soft, 5, 4, 3.5F, 12) : g.FillRectangle(soft, 11.5F, 6.5F, 3.5F, 7)
                 Case "bottom" : g.DrawLine(pen, 2, 17, 18, 17) : g.FillRectangle(br, 5, 4, 3.5F, 12) : g.FillRectangle(br, 11.5F, 9, 3.5F, 7)
+                Case "more"
+                    For Each x In {5.0F, 10.0F, 15.0F}
+                        g.FillEllipse(br, x - 1.6F, 8.4F, 3.2F, 3.2F)
+                    Next
                 Case "disth"
                     g.FillRectangle(br, 2, 6, 3.5F, 8) : g.FillRectangle(br, 8.25F, 3, 3.5F, 14) : g.FillRectangle(br, 14.5F, 6, 3.5F, 8)
                     Using thin As New Pen(col, 1) : g.DrawLine(thin, 2, 19, 18, 19) : End Using

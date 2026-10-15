@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Threading.Tasks
 Imports PhotoEdit
 
@@ -365,7 +365,7 @@ Partial Friend Class frmEditor
             _eraseBrush.Checked = False
         End If
         _canvas.Checkerboard = (has AndAlso c.Background = CutoutBackground.Transparent AndAlso Not _cutoutShowMask) OrElse
-                               _recipe.CropShape <> CropShape.Rectangle
+                               _recipe.CropShape <> CropShape.Rectangle OrElse _recipe.PhotoClip IsNot Nothing
     End Sub
 
     '---------------------------------------------------------------------

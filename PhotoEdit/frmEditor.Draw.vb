@@ -56,15 +56,16 @@ Partial Friend Class frmEditor
         _drawBar.BackColor = Color.FromArgb(236, 238, 242)
         _drawBar.Padding = New Padding(6, 4, 6, 4)
         _drawBar.Font = _panelFont
-        Dim undo = MakeButton("↶ 復原", "draw.undo")
-        Dim redo = MakeButton("↷ 重做", "draw.redo")
+        Dim undo = MakeButton("↶", "draw.undo") ' 小圖示，讓出位置給屬性列
+        Dim redo = MakeButton("↷", "draw.redo")
         Dim done = MakeButton("完成", "draw.done")
         For Each b In {undo, redo}
             b.Dock = DockStyle.Left
-            b.Width = 84
+            b.Width = 34
+            b.Font = New Font(_panelFont.FontFamily, 12)
         Next
         done.Dock = DockStyle.Right
-        done.Width = 80
+        done.Width = 60
         AddHandler undo.Click, Sub() RunCommand("undo")
         AddHandler redo.Click, Sub() RunCommand("redo")
         AddHandler done.Click, Sub() FinishDrawAction()
@@ -77,9 +78,9 @@ Partial Friend Class frmEditor
         _drawHint.ForeColor = Color.FromArgb(70, 76, 88)
         ' 停靠順序：最後加入的最先停靠。
         _drawBar.Controls.Add(_drawHint)
-        Dim full = MakeButton("⛶ 全螢幕", "draw.fullscreen")
+        Dim full = MakeButton("⛶", "draw.fullscreen")
         full.Dock = DockStyle.Right
-        full.Width = 96
+        full.Width = 34
         AddHandler full.Click, Sub() ToggleFullScreen()
         _drawBar.Controls.Add(full) ' 在「完成」左邊
         _drawBar.Controls.Add(done)
@@ -96,6 +97,7 @@ Partial Friend Class frmEditor
         _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
         _drawBar.Controls.Add(BuildGroupBar()) ' 群組按鈕、所在群組（在橡皮擦右邊；見 frmEditor.DrawGroups.vb）
         _drawBar.Controls.Add(eraserGroup)
+        _drawBar.Controls.Add(BuildPropBar()) ' 位置、大小、角度（見 frmEditor.DrawProps.vb）
         _drawBar.Controls.Add(redo)
         _drawBar.Controls.Add(undo)
         BuildBucketBar(done)
@@ -184,6 +186,7 @@ Partial Friend Class frmEditor
 
         Dim pct As Func(Of Integer, String) = Function(v) v & "%"
         AddRow(L, DrawRow("dw_width", "粗細", 1, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.StrokeWidth * 1000)), Sub(d, v) d.StrokeWidth = v / 1000.0))
+        BuildLineStyleRows(L) ' 虛線、端點、轉角、箭頭
         AddRow(L, DrawRow("dw_soft", "柔邊", 0, 100, pct, Function(d) d.Softness, Sub(d, v) d.Softness = v))
         AddRow(L, DrawRow("dw_opacity", "不透明度", 0, 100, pct, Function(d) d.Opacity, Sub(d, v) d.Opacity = v))
         AddRow(L, DrawRow("dw_flow", "流量", 2, 100, pct, Function(d) d.Flow, Sub(d, v) d.Flow = v))
@@ -361,6 +364,7 @@ Partial Friend Class frmEditor
             UpdateGroupBar()
             UpdateNodeBar()
             UpdateShapeBar()
+            UpdatePropBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
             For Each t In _brushTiles
                 t.Selected = t.Brush = st.Brush
@@ -392,6 +396,7 @@ Partial Friend Class frmEditor
             _drawStroke.Checked = st.Stroked
             _drawFill.Checked = st.Filled
             _drawShadow.Checked = st.Shadow
+            SyncLineStyle(st)
             UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
             Dim sel = SelDraw(_recipe)

@@ -1,4 +1,4 @@
-''' <summary>裁切範圍，以「拉直後影像」的寬高為 1 的相對座標表示，預覽圖與原圖共用同一組數值。</summary>
+﻿''' <summary>裁切範圍，以「拉直後影像」的寬高為 1 的相對座標表示，預覽圖與原圖共用同一組數值。</summary>
 Public Class CropRect
     Public Property X As Double
     Public Property Y As Double
@@ -212,6 +212,8 @@ Public Class EditRecipe
     ''' Nothing 時照舊：文字貼圖在下、繪圖在上；沒有列在這裡的圖層（剛新增的）放在最上面。見 LayerStack。
     ''' </summary>
     Public Property LayerOrder As List(Of String)
+    ''' <summary>照片放進形狀：這個繪圖圖層（封閉圖形）外面的照片變透明。Nothing＝不裁。</summary>
+    Public Property PhotoClip As String
 
     ''' <summary>選取區（選取分頁）；不影響算圖，只決定複製、剪下、填色、局部調整等操作的範圍。Nothing 表示沒有選取。</summary>
     Public Property Selection As SelectionSpec

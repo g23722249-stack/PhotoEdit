@@ -1,4 +1,4 @@
-''' <summary>繪圖圖層的群組：名稱、上一層群組、顯示、鎖定、在清單上是否收合。成員是 GroupId 指向它的圖層與 ParentId 指向它的群組。</summary>
+﻿''' <summary>繪圖圖層的群組：名稱、上一層群組、顯示、鎖定、在清單上是否收合。成員是 GroupId 指向它的圖層與 ParentId 指向它的群組。</summary>
 Public NotInheritable Class DrawGroup
     Public Property Id As String
     Public Property Name As String = ""
@@ -9,6 +9,8 @@ Public NotInheritable Class DrawGroup
     ''' <summary>清單上收合（只是顯示狀態：不存檔、不算修改、不進復原紀錄）。</summary>
     <System.Text.Json.Serialization.JsonIgnore>
     Public Property Collapsed As Boolean
+    ''' <summary>PowerClip：框（群組裡最下面那個封閉圖形）的圖層 Id；群組裡其他成員只畫在框裡面。Nothing＝一般群組。</summary>
+    Public Property ClipFrame As String
 
     Public Function Clone() As DrawGroup
         Return DirectCast(MemberwiseClone(), DrawGroup)
@@ -102,6 +104,23 @@ Public NotInheritable Class DrawGroups
             End If
         Next
         Normalize(r)
+        Return g
+    End Function
+
+    ''' <summary>PowerClip：框（封閉圖形）和內容組成群組，框放在群組最下面（填色在內容下、外框在內容上）。</summary>
+    Public Shared Function CreateClip(r As EditRecipe, frame As DrawLayer, contents As IEnumerable(Of DrawLayer), parentId As String, name As String) As DrawGroup
+        If frame.Id Is Nothing Then frame.Id = NewId()
+        Dim g = Create(r, {frame}.Concat(contents), parentId, name)
+        g.ClipFrame = frame.Id
+        Dim order = LayerStack.Order(r)
+        Dim fi = order.FindIndex(Function(x) x.Item Is frame)
+        Dim first = order.FindIndex(Function(x) Not x.IsOverlay AndAlso IsInside(r, x.Drawing, g.Id))
+        If first >= 0 AndAlso fi > first Then
+            Dim it = order(fi)
+            order.RemoveAt(fi)
+            order.Insert(first, it)
+            LayerStack.SetOrder(r, order)
+        End If
         Return g
     End Function
 

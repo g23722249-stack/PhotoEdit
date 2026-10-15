@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 
 ''' <summary>圖層清單裡的一個圖層：文字／貼圖（Overlay）或繪圖圖層（Drawing），兩者只有一個不是 Nothing。</summary>
 Public NotInheritable Class LayerRef
@@ -198,8 +198,18 @@ Public NotInheritable Class LayerStack
 
     ''' <summary>依堆疊順序畫上所有顯示中的文字、貼圖與繪圖圖層（各自的不透明度與混合模式）。</summary>
     Public Shared Sub Draw(bmp As Bitmap, recipe As EditRecipe)
+        ClipRender.ApplyPhotoClip(bmp, recipe) ' 照片放進形狀：形狀外面變透明
         Dim layers = Order(recipe).Where(Function(r) r.Visible).ToList()
         If layers.Count = 0 Then Return
+        ' PowerClip：每個框在這次繪製裡最後一個成員的位置（畫完它之後補畫框的外框）
+        Dim clipOfLayer = layers.Select(Function(r) If(r.IsOverlay, Nothing, ClipRender.ClipOf(recipe, r.Drawing))).ToList()
+        Dim lastOfFrame As New Dictionary(Of DrawLayer, Integer)()
+        For k = 0 To layers.Count - 1
+            If layers(k).IsOverlay Then Continue For
+            Dim c = clipOfLayer(k)
+            If c.HasValue Then lastOfFrame(c.Value.Frame) = k
+            If ClipRender.IsFrame(recipe, layers(k).Drawing) AndAlso Not lastOfFrame.ContainsKey(layers(k).Drawing) Then lastOfFrame(layers(k).Drawing) = k
+        Next
         DrawingRenderer.CurrentPaper = recipe.Paper ' 筆刷吃紙紋、「只有繪圖」的表面紋理
         Dim photo As Bitmap = Nothing
         If layers.Any(Function(r) r.IsOverlay AndAlso r.Overlay.Kind = OverlayKind.Text AndAlso r.Overlay.FillMode = TextFill.Photo) Then
@@ -223,9 +233,20 @@ Public NotInheritable Class LayerStack
                                                           End If
                                                       Next
                                                   End Sub
-                    DrawingRenderer.DrawOne(bmp, r.Drawing)
+                    Dim clip = clipOfLayer(k)
+                    If clip.HasValue Then
+                        ClipRender.DrawClipped(bmp, r.Drawing, clip.Value.Frame) ' PowerClip 的內容只畫在框裡
+                    ElseIf ClipRender.IsFrame(recipe, r.Drawing) Then
+                        DrawingRenderer.DrawOne(bmp, ClipRender.FramePart(r.Drawing, fillOnly:=True)) ' 框的填色在內容下面
+                    Else
+                        DrawingRenderer.DrawOne(bmp, r.Drawing)
+                    End If
                     DrawingRenderer.AboveDrawer = Nothing
                 End If
+                ' 框的外框畫在內容上面
+                For Each kv In lastOfFrame
+                    If kv.Value = k AndAlso kv.Key.Visible AndAlso kv.Key.Stroked Then DrawingRenderer.DrawOne(bmp, ClipRender.FramePart(kv.Key, fillOnly:=False))
+                Next
             Next
         Finally
             photo?.Dispose()

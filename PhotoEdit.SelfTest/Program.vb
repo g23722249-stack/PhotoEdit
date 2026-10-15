@@ -46,6 +46,7 @@ Module Program
             PathTestsRun()
             ShapeOpTestsRun()
             ToolBrushTestsRun()
+            LineClipTestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

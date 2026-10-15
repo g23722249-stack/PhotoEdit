@@ -216,6 +216,7 @@ Partial Public NotInheritable Class DrawingRenderer
         If layer.Brush = BrushKind.StickerHose Then extra = widthPx * 4
         If layer.Scatter > 0 Then extra = Math.Max(extra, widthPx * 1.6F * layer.Scatter / 100.0F + widthPx * 0.5F)
         If layer.SizeJitter > 0 OrElse figs.Any(Function(f) f.Angle IsNot Nothing) Then extra = Math.Max(extra, widthPx * 0.8F)
+        If layer.StartArrow <> ArrowKind.None OrElse layer.EndArrow <> ArrowKind.None Then extra = Math.Max(extra, ArrowSize(widthPx).Half + 2)
         padL += extra : padT += extra : padR += extra : padB += extra
         If layer.Shadow Then
             Dim s = ShadowOffset(widthPx) + ShadowBlur(widthPx) * 2
@@ -238,14 +239,22 @@ Partial Public NotInheritable Class DrawingRenderer
             Shade(cv, mask, Nothing, layer, Color.FromArgb(layer.FillColorArgb), widthPx, h, isFill:=True)
         End If
 
-        ' 2. 線條
+        ' 2. 線條（虛線切段、箭頭見 LineStyle.vb）
         If stroked Then
+            Dim styled = StyleStroke(figs, layer, widthPx)
+            Dim heads = styled.Heads
+            figs = styled.Lines
             If layer.Brush = BrushKind.FX Then
                 RenderFx(cv, figs, layer, widthPx, rnd, h)
             ElseIf layer.Brush = BrushKind.Particle Then
                 RenderParticles(cv, figs, layer, widthPx, rnd, h)
             ElseIf layer.Brush = BrushKind.StickerHose Then
                 RenderHose(cv, figs, layer, widthPx, rnd)
+            ElseIf NeedsGeometricStroke(layer) Then
+                ' 平頭、方頭、尖角、斜角：筆印做不到，用幾何外框當線條範圍（筆刷的質感在上色時保留）
+                Dim cov = GeometricStrokeMask(figs, layer, widthPx, region)
+                AddHeads(cov, heads, region)
+                Shade(cv, cov, Nothing, layer, Color.FromArgb(layer.StrokeColorArgb), widthPx, h, isFill:=False)
             Else
                 If PaperGrainAmount(layer) > 0 AndAlso IsGrainy(layer.Brush) AndAlso layer.PressureOpacity < 50 Then
                     layer = layer.Clone() : layer.PressureOpacity = 50 ' 有紙張時筆壓也影響濃淡：輕畫只碰到紙紋凸起
@@ -274,6 +283,7 @@ Partial Public NotInheritable Class DrawingRenderer
                         Stamp(cov, cv, path, pres, angles, flats, widthPx, sp, flow, edge, layer, stampRnd, tint)
                     End If
                 Next
+                AddHeads(cov, heads, region)
                 Shade(cv, cov, streak, layer, Color.FromArgb(layer.StrokeColorArgb), widthPx, h, isFill:=False, tint:=tint)
             End If
         End If
@@ -318,6 +328,15 @@ Partial Public NotInheritable Class DrawingRenderer
     End Function
 
     ''' <summary>封閉形狀的填色範圍（反鋸齒，0..1）。</summary>
+    ''' <summary>箭頭的實心外形加進線條的範圍。</summary>
+    Private Shared Sub AddHeads(cov As Single(), heads As List(Of PointF()), region As Rectangle)
+        If heads Is Nothing OrElse heads.Count = 0 Then Return
+        Dim m = FillMask(heads.Select(Function(hp) New DrawGeometry.Figure With {.Points = hp, .Closed = True}).ToList(), region)
+        For i = 0 To cov.Length - 1
+            If m(i) > cov(i) Then cov(i) = m(i)
+        Next
+    End Sub
+
     Private Shared Function FillMask(figs As List(Of DrawGeometry.Figure), region As Rectangle) As Single()
         Using bmp As New Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb)
             Using g = Graphics.FromImage(bmp), path As New GraphicsPath(FillMode.Winding)

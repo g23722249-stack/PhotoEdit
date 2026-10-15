@@ -43,7 +43,7 @@ Module PathTests
         DrawGeometry.ApplyDefaults(star)
         Dim sp = DrawGeometry.ToPath(star)
         Check("五角星轉曲線：10 個節點", sp IsNot Nothing AndAlso sp.Contours(0).Nodes.Count = 10, If(sp Is Nothing, "Nothing", sp.Contours(0).Nodes.Count.ToString()))
-        Check("圖說、點陣、填滿圖層不能轉", DrawGeometry.ToPath(New DrawLayer With {.Shape = DrawShape.CalloutRect}) Is Nothing AndAlso
+        Check("文字、點陣、填滿圖層不能直接轉（文字用 TextOutlines）", DrawGeometry.ToPath(New DrawLayer With {.Shape = DrawShape.Text}) Is Nothing AndAlso
               DrawGeometry.ToPath(New DrawLayer With {.Shape = DrawShape.Raster}) Is Nothing AndAlso DrawGeometry.ToPath(New DrawLayer With {.Shape = DrawShape.FillLayer}) Is Nothing)
 
         ' 加節點：曲線形狀不變

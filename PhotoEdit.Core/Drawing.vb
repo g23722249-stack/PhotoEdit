@@ -40,6 +40,39 @@ End Enum
 
 ''' <summary>漸層的形狀。</summary>
 ''' <summary>選取區填色（點陣圖層 Ops 裡的 Region 操作）的內容。</summary>
+''' <summary>線條樣式（虛線的長短以線寬為單位）。</summary>
+Public Enum LineDash
+    Solid = 0
+    Dash = 1
+    Dot = 2
+    DashDot = 3
+    LongDash = 4
+End Enum
+
+''' <summary>線條端點。</summary>
+Public Enum LineCapKind
+    Round = 0
+    Flat = 1
+    Square = 2
+End Enum
+
+''' <summary>線條轉角。</summary>
+Public Enum LineJoinKind
+    Round = 0
+    Miter = 1
+    Bevel = 2
+End Enum
+
+''' <summary>開放線條兩端的箭頭。</summary>
+Public Enum ArrowKind
+    None = 0
+    Triangle = 1
+    Open = 2
+    Circle = 3
+    Square = 4
+    Diamond = 5
+End Enum
+
 ''' <summary>橡皮擦的擦法。</summary>
 Public Enum EraseMode
     ''' <summary>擦成透明。</summary>
@@ -320,6 +353,13 @@ Public Class DrawLayer
     Public Property Flow As Integer = 100
     Public Property Filled As Boolean
     Public Property Stroked As Boolean = True
+    ' ---- 線條樣式 ----
+    Public Property Dash As LineDash
+    Public Property Cap As LineCapKind
+    Public Property Join As LineJoinKind
+    ''' <summary>開放線條起點、終點的箭頭（封閉圖形不加）。</summary>
+    Public Property StartArrow As ArrowKind
+    Public Property EndArrow As ArrowKind
     Public Property Shadow As Boolean
     ''' <summary>紋理與特效的亂數種子：同一個圖層每次畫出來都一樣。</summary>
     Public Property Seed As Integer = 1
@@ -406,6 +446,7 @@ Public Class DrawLayer
         StrokeColorArgb = s.StrokeColorArgb : FillColorArgb = s.FillColorArgb
         StrokeWidth = s.StrokeWidth : Softness = s.Softness : Opacity = s.Opacity : Flow = s.Flow
         Filled = s.Filled : Stroked = s.Stroked : Shadow = s.Shadow
+        Dash = s.Dash : Cap = s.Cap : Join = s.Join : StartArrow = s.StartArrow : EndArrow = s.EndArrow
         FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
         SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
         PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
@@ -417,7 +458,8 @@ Public Class DrawLayer
     Public Function SameStroke(s As DrawLayer) As Boolean
         Return Brush = s.Brush AndAlso Fx = s.Fx AndAlso Material = s.Material AndAlso StrokeColorArgb = s.StrokeColorArgb AndAlso
                Math.Abs(StrokeWidth - s.StrokeWidth) < 0.00001 AndAlso Softness = s.Softness AndAlso Opacity = s.Opacity AndAlso
-               Flow = s.Flow AndAlso Shadow = s.Shadow AndAlso
+               Flow = s.Flow AndAlso Shadow = s.Shadow AndAlso Dash = s.Dash AndAlso Cap = s.Cap AndAlso Join = s.Join AndAlso
+               StartArrow = s.StartArrow AndAlso EndArrow = s.EndArrow AndAlso
                SpacingPct = s.SpacingPct AndAlso Scatter = s.Scatter AndAlso SizeJitter = s.SizeJitter AndAlso HueJitter = s.HueJitter AndAlso
                LumJitter = s.LumJitter AndAlso PressureOpacity = s.PressureOpacity AndAlso PenTilt = s.PenTilt AndAlso PenRotation = s.PenRotation AndAlso
                Wet = s.Wet AndAlso PaperGrain = s.PaperGrain AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso

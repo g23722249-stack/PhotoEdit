@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports System.IO
 Imports System.Runtime.InteropServices
 Imports System.Text.Json
@@ -154,7 +154,7 @@ Partial Friend Class frmEditor
         ExitCropMode(apply:=True)
         ' 去背成透明背景、或裁成圓形等形狀時預設存 PNG（JPG 不能透明）。
         Dim transparent = (_recipe.Cutout IsNot Nothing AndAlso _recipe.Cutout.Background = CutoutBackground.Transparent) OrElse
-                          _recipe.CropShape <> CropShape.Rectangle
+                          _recipe.CropShape <> CropShape.Rectangle OrElse _recipe.PhotoClip IsNot Nothing
         Dim ext = If(transparent, ".png", ".jpg")
         Using dlg As New SaveFileDialog()
             dlg.Title = "匯出"

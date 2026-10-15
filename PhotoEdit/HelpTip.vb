@@ -33,7 +33,8 @@ Friend Class HelpTip
         End Function
     End Class
 
-    Public Property InitialDelay As Integer = 500
+    ''' <summary>滑鼠停留多久才顯示說明（毫秒）。</summary>
+    Public Property InitialDelay As Integer = 3000
     Public Property AutoPopDelay As Integer = 20000
     ''' <summary>False 時完全不顯示（「說明 → 顯示使用說明」可切換）。</summary>
     Public Property Active As Boolean = True

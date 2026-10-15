@@ -248,7 +248,7 @@ Partial Public NotInheritable Class DrawGeometry
     ''' </summary>
     Public Shared Function ToPath(layer As DrawLayer) As DrawLayer
         If layer.Shape = DrawShape.Path Then Return layer.Clone()
-        If HasText(layer.Shape) OrElse layer.Shape = DrawShape.Raster OrElse layer.Shape = DrawShape.Bucket OrElse
+        If layer.Shape = DrawShape.Text OrElse layer.Shape = DrawShape.Raster OrElse layer.Shape = DrawShape.Bucket OrElse
            layer.Shape = DrawShape.Gradient OrElse layer.Shape = DrawShape.FillLayer Then Return Nothing
         Dim r = layer.Clone()
         r.Shape = DrawShape.Path

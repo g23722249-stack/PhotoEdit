@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -84,7 +84,8 @@ Partial Friend Class frmEditor
         _nodeButtons("close").Visible = editing
         If editing Then _nodeButtons("close").Text = If(sel.Contours.All(Function(c) c.Closed), "開放", "封閉")
         _nodeButtons("join").Visible = editing AndAlso JoinableEnds().HasValue
-        _nodeButtons("convert").Visible = sel IsNot Nothing AndAlso Not isPath AndAlso DrawGeometry.ToPath(sel) IsNot Nothing AndAlso
+        _nodeButtons("convert").Visible = sel IsNot Nothing AndAlso Not isPath AndAlso
+                                          (DrawGeometry.ToPath(sel) IsNot Nothing OrElse (DrawGeometry.HasText(sel.Shape) AndAlso Not String.IsNullOrWhiteSpace(sel.Text))) AndAlso
                                           (NodeToolActive OrElse _drawStrip.SelectedTool = DrawIcons.SelectTool)
     End Sub
 
@@ -192,6 +193,7 @@ Partial Friend Class frmEditor
     ''' <summary>把選取的圖形轉成鋼筆路徑（之後用節點工具改）。</summary>
     Private Sub ConvertToPath(index As Integer)
         If index < 0 OrElse index >= LayerCount() Then Return
+        If DrawGeometry.HasText(_recipe.Drawings(index).Shape) Then ConvertTextToPaths(index) : Return ' 文字、圖說：每個字變成外框
         Dim p = DrawGeometry.ToPath(_recipe.Drawings(index))
         If p Is Nothing Then
             SetStatusMessage("圖說、點陣圖層、填滿圖層不能轉成曲線。")
