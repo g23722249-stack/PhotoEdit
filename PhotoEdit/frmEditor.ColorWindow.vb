@@ -9,7 +9,7 @@
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Shared ReadOnly ColorTargets As String() = {"線條", "填色", "文字", "第二色", "陰影"}
+    Private Shared ReadOnly ColorTargets As String() = {Lang.T("線條"), Lang.T("填色"), Lang.T("文字"), Lang.T("第二色"), Lang.T("陰影")}
     Private Const TargetStroke As Integer = 0, TargetFill As Integer = 1, TargetText As Integer = 2
 
     Private _colorWin As Aqua.ColorPickerWindow
@@ -207,8 +207,8 @@ Partial Friend Class frmEditor
         Dim c = Color.FromArgb(255, Color.FromArgb(ColorOf(st, _altPickTarget)))
         EnsureColorWindow()
         _colorWin.AddRecentColor(c)
-        SetStatusMessage($"吸色 RGB({c.R}, {c.G}, {c.B})，已設成{If(_altPickTarget = TargetFill, "填色", "線條色")}。" &
-                         "（Alt：線條色、Alt＋Shift：填色；仿製筆的 Alt 是設定來源）")
+        SetStatusMessage(Lang.F("吸色 RGB({0}, {1}, {2})，已設成{3}。", c.R, c.G, c.B, If(_altPickTarget = TargetFill, Lang.T("填色"), Lang.T("線條色"))) &
+                         Lang.T("（Alt：線條色、Alt＋Shift：填色；仿製筆的 Alt 是設定來源）"))
     End Sub
 
     ''' <summary>按下或放開 Alt 時馬上換游標（不必等滑鼠移動）。</summary>

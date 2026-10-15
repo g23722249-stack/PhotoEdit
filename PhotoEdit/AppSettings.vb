@@ -37,6 +37,8 @@ Friend Class AppSettings
     Public Property EraseMode As Integer
     ''' <summary>畫筆畫時的預覽：0 真實筆刷（邊畫邊用筆刷引擎重算）、1 快速線條、2 逐段筆印（Painter 式，保留給之後）。</summary>
     Public Property StrokePreview As Integer
+    ''' <summary>介面語言：0 依系統、1 繁體中文、2 簡體中文、3 英文（UiLanguage）。改了重新開啟才生效。</summary>
+    Public Property Language As Integer
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
     ''' <summary>我的妝容（美顏手動調整「存成我的妝容」）：名稱＋整組設定，出現在一鍵美顏小圖的最後面。</summary>

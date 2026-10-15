@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports System.IO
 Imports System.Runtime.InteropServices
 Imports PhotoEdit
@@ -31,23 +31,23 @@ Friend Class frmCollage
     Private _rendered As Bitmap
 
     Private Shared ReadOnly Aspects As (Name As String, Value As Double)() = {
-        ("3:2 橫式", 3 / 2.0), ("4:3 橫式", 4 / 3.0), ("16:9 橫式", 16 / 9.0), ("1:1 方形", 1),
-        ("2:3 直式", 2 / 3.0), ("3:4 直式", 3 / 4.0), ("9:16 直式", 9 / 16.0)}
+        (Lang.T("3:2 橫式"), 3 / 2.0), (Lang.T("4:3 橫式"), 4 / 3.0), (Lang.T("16:9 橫式"), 16 / 9.0), (Lang.T("1:1 方形"), 1),
+        (Lang.T("2:3 直式"), 2 / 3.0), (Lang.T("3:4 直式"), 3 / 4.0), (Lang.T("9:16 直式"), 9 / 16.0)}
     Private Shared ReadOnly LongSides As Integer() = {2000, 3000, 4000, 6000}
 
     Public Sub New(initial As IEnumerable(Of (Path As String, Recipe As EditRecipe)))
-        Text = "拼貼"
+        Text = Lang.T("拼貼")
         Size = New Size(1180, 800)
         MinimumSize = New Size(860, 600)
         StartPosition = FormStartPosition.CenterParent
         WindowBorderStyle = Aqua.FormBorderStyle.Sizable
 
         Dim root As New Aqua.MenuItem()
-        Dim fileMenu = root.AddItem(New Aqua.MenuItem("檔案"))
-        fileMenu.AddItem(New Aqua.MenuItem("加入照片…") With {.Name = "add"})
-        fileMenu.AddItem(New Aqua.MenuItem("匯出 JPG…") With {.Name = "export"})
+        Dim fileMenu = root.AddItem(New Aqua.MenuItem(Lang.T("檔案")))
+        fileMenu.AddItem(New Aqua.MenuItem(Lang.T("加入照片…")) With {.Name = "add"})
+        fileMenu.AddItem(New Aqua.MenuItem(Lang.T("匯出 JPG…")) With {.Name = "export"})
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(New Aqua.MenuItem("關閉") With {.Name = "close"})
+        fileMenu.AddItem(New Aqua.MenuItem(Lang.T("關閉")) With {.Name = "close"})
         AddMenu(root)
         AddHandler MenuSelected, Sub(s, item)
                                      Select Case item.Name
@@ -82,10 +82,10 @@ Friend Class frmCollage
     Private Function BuildSidePanel() As Panel
         Dim side As New Panel With {.Dock = DockStyle.Right, .Width = 280, .BackColor = Color.FromArgb(236, 238, 242), .Padding = New Padding(10)}
         Dim y = 8
-        Dim add As New Button With {.Text = "加入照片…", .UseVisualStyleBackColor = True}
+        Dim add As New Button With {.Text = Lang.T("加入照片…"), .UseVisualStyleBackColor = True}
         add.SetBounds(10, y, 125, 30)
         AddHandler add.Click, Sub() AddPhotos()
-        Dim clear As New Button With {.Text = "清除全部", .UseVisualStyleBackColor = True}
+        Dim clear As New Button With {.Text = Lang.T("清除全部"), .UseVisualStyleBackColor = True}
         clear.SetBounds(145, y, 125, 30)
         AddHandler clear.Click, Sub()
                                     For Each p In _photos
@@ -97,7 +97,7 @@ Friend Class frmCollage
         side.Controls.AddRange(New Control() {add, clear})
         y += 42
 
-        side.Controls.Add(Heading("版型", y)) : y += 26
+        side.Controls.Add(Heading(Lang.T("版型"), y)) : y += 26
         _layoutList.SetBounds(10, y, 260, 190)
         _layoutList.IntegralHeight = False
         For Each l In CollageLayout.BuiltIn
@@ -111,8 +111,8 @@ Friend Class frmCollage
         side.Controls.Add(_layoutList)
         y += 198
 
-        side.Controls.Add(Heading("畫布", y)) : y += 26
-        side.Controls.Add(Caption("比例", y))
+        side.Controls.Add(Heading(Lang.T("畫布"), y)) : y += 26
+        side.Controls.Add(Caption(Lang.T("比例"), y))
         _aspect.DropDownStyle = ComboBoxStyle.DropDownList
         _aspect.Items.AddRange(Aspects.Select(Function(a) CObj(a.Name)).ToArray())
         _aspect.SelectedIndex = 0
@@ -124,16 +124,16 @@ Friend Class frmCollage
         side.Controls.Add(_aspect)
         y += 32
 
-        side.Controls.Add(Caption("間距", y))
+        side.Controls.Add(Caption(Lang.T("間距"), y))
         SetupSlider(_spacing, y, _settings.Spacing, Sub(v) _settings.Spacing = v)
         side.Controls.Add(_spacing)
         y += 32
-        side.Controls.Add(Caption("圓角", y))
+        side.Controls.Add(Caption(Lang.T("圓角"), y))
         SetupSlider(_corner, y, _settings.CornerRadius, Sub(v) _settings.CornerRadius = v)
         side.Controls.Add(_corner)
         y += 32
 
-        side.Controls.Add(Caption("背景色", y))
+        side.Controls.Add(Caption(Lang.T("背景色"), y))
         _background.SetBounds(90, y - 2, 180, 26)
         _background.BackColor = _settings.Background
         _background.Text = ""
@@ -148,23 +148,23 @@ Friend Class frmCollage
         side.Controls.Add(_background)
         y += 40
 
-        side.Controls.Add(Heading("輸出", y)) : y += 26
-        side.Controls.Add(Caption("長邊", y))
+        side.Controls.Add(Heading(Lang.T("輸出"), y)) : y += 26
+        side.Controls.Add(Caption(Lang.T("長邊"), y))
         _longSide.DropDownStyle = ComboBoxStyle.DropDownList
-        _longSide.Items.AddRange(LongSides.Select(Function(v) CObj(v & " 像素")).ToArray())
+        _longSide.Items.AddRange(LongSides.Select(Function(v) CObj(v & Lang.T(" 像素"))).ToArray())
         _longSide.SelectedIndex = 1
         _longSide.SetBounds(90, y, 180, 24)
         side.Controls.Add(_longSide)
         y += 36
-        Dim export As New Button With {.Text = "匯出 JPG…", .UseVisualStyleBackColor = True}
+        Dim export As New Button With {.Text = Lang.T("匯出 JPG…"), .UseVisualStyleBackColor = True}
         export.SetBounds(10, y, 260, 34)
         AddHandler export.Click, Sub() ExportCollage()
         side.Controls.Add(export)
         y += 44
 
         Dim hint As New Label With {.AutoSize = False, .ForeColor = Color.FromArgb(105, 110, 120),
-            .Text = "點空白格加入照片；把一格拖到另一格可交換位置；在格子上按右鍵可移除。" & vbCrLf &
-                    "照片會套用各自已儲存的編輯。"}
+            .Text = Lang.T("點空白格加入照片；把一格拖到另一格可交換位置；在格子上按右鍵可移除。") & vbCrLf &
+                    Lang.T("照片會套用各自已儲存的編輯。")}
         hint.SetBounds(10, y, 260, 70)
         side.Controls.Add(hint)
         Return side
@@ -196,8 +196,8 @@ Friend Class frmCollage
     '---------------------------------------------------------------------
 
     Private Sub AddPhotos()
-        Using dlg As New OpenFileDialog With {.Title = "加入照片", .Multiselect = True,
-            .Filter = "圖片檔|" & String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x))}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("加入照片"), .Multiselect = True,
+            .Filter = Lang.T("圖片檔|") & String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x))}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Cursor = Cursors.WaitCursor
             Try
@@ -226,7 +226,7 @@ Friend Class frmCollage
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                    TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                    TypeOf ex Is ExternalException
-            MessageBox.Show(Me, $"無法加入「{IO.Path.GetFileName(path)}」：{ex.Message}", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.F("無法加入「{0}」：{1}", IO.Path.GetFileName(path), ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
         End Try
     End Sub
 
@@ -270,16 +270,16 @@ Friend Class frmCollage
         _rendered?.Dispose()
         _rendered = bmp
         Dim used = Math.Min(_photos.Count, _settings.Layout.Cells.Count)
-        _status.Text = $"{_settings.Layout.Name}　｜　已放 {used} / {_settings.Layout.Cells.Count} 格" &
-                       If(_photos.Count > _settings.Layout.Cells.Count, $"（另有 {_photos.Count - _settings.Layout.Cells.Count} 張放不下）", "")
+        _status.Text = Lang.F("{0}　｜　已放 {1} / {2} 格", _settings.Layout.Name, used, _settings.Layout.Cells.Count) &
+                       If(_photos.Count > _settings.Layout.Cells.Count, Lang.F("（另有 {0} 張放不下）", _photos.Count - _settings.Layout.Cells.Count), "")
     End Sub
 
     Private Sub ExportCollage()
         If _photos.Count = 0 Then
-            MessageBox.Show(Me, "請先加入照片。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information)
+            MessageBox.Show(Me, Lang.T("請先加入照片。"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
-        Using dlg As New SaveFileDialog With {.Title = "匯出拼貼", .Filter = "JPEG 圖片|*.jpg", .FileName = "拼貼.jpg"}
+        Using dlg As New SaveFileDialog With {.Title = Lang.T("匯出拼貼"), .Filter = Lang.T("JPEG 圖片|*.jpg"), .FileName = Lang.T("拼貼.jpg")}
             dlg.InitialDirectory = IO.Path.GetDirectoryName(_photos(0).Path)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Dim longSide = LongSides(_longSide.SelectedIndex)
@@ -300,9 +300,9 @@ Friend Class frmCollage
                         output.Save(dlg.FileName, codec, ep)
                     End Using
                 End Using
-                _status.Text = "已匯出：" & dlg.FileName
+                _status.Text = Lang.T("已匯出：") & dlg.FileName
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is ExternalException
-                MessageBox.Show(Me, "匯出失敗：" & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("匯出失敗：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Finally
                 For Each b In full
                     b.Dispose()

@@ -34,8 +34,8 @@ Partial Friend Class frmEditor
 
     Private ReadOnly _alignMenu As New ContextMenuStrip()
     Private Shared ReadOnly GlyphNames As New Dictionary(Of String, String) From {
-        {"left", "靠左對齊"}, {"hcenter", "水平置中"}, {"top", "靠上對齊"}, {"more", "更多對齊…"},
-        {"weld", "焊接"}, {"trim", "修剪"}, {"intersect", "相交"}, {"exclude", "排除"}}
+        {"left", Lang.T("靠左對齊")}, {"hcenter", Lang.T("水平置中")}, {"top", Lang.T("靠上對齊")}, {"more", Lang.T("更多對齊…")},
+        {"weld", Lang.T("焊接")}, {"trim", Lang.T("修剪")}, {"intersect", Lang.T("相交")}, {"exclude", Lang.T("排除")}}
 
     Private Function BuildShapeBar() As Control
         ' 常用的三個對齊直接放，其餘（靠右、垂直置中、靠下、均分）在「⋯」選單；形狀建立在左側工具列
@@ -57,7 +57,7 @@ Partial Friend Class frmEditor
             _shapeButtons(key) = b
             _shapeBar.Controls.Add(b)
         Next
-        For Each t In {("clipin", "放進形狀", "draw.clip.in"), ("clipout", "取出內容", "draw.clip.out"), ("photoclip", "照片放進形狀", "draw.clip.photo")}
+        For Each t In {("clipin", Lang.T("放進形狀"), "draw.clip.in"), ("clipout", Lang.T("取出內容"), "draw.clip.out"), ("photoclip", Lang.T("照片放進形狀"), "draw.clip.photo")}
             Dim key = t.Item1
             Dim b = MakeButton(t.Item2, t.Item3)
             b.Height = 28
@@ -69,7 +69,7 @@ Partial Friend Class frmEditor
             _shapeButtons(key) = b
             _shapeBar.Controls.Add(b)
         Next
-        For Each m In {("right", "靠右對齊"), ("vcenter", "垂直置中"), ("bottom", "靠下對齊"), ("-", ""), ("disth", "水平均分"), ("distv", "垂直均分")}
+        For Each m In {("right", Lang.T("靠右對齊")), ("vcenter", Lang.T("垂直置中")), ("bottom", Lang.T("靠下對齊")), ("-", ""), ("disth", Lang.T("水平均分")), ("distv", Lang.T("垂直均分"))}
             Dim key = m.Item1
             If key = "-" Then _alignMenu.Items.Add(New ToolStripSeparator()) : Continue For
             _alignMenu.Items.Add(m.Item2, Nothing, Sub() ShapeCommand(key)).Tag = key
@@ -134,7 +134,7 @@ Partial Friend Class frmEditor
         _shapeButtons("clipout").Visible = picking AndAlso Not _builderOn AndAlso SelectedClipGroups().Count > 0
         Dim pc = If(picking AndAlso Not _builderOn, PhotoClipCandidate(), Nothing)
         _shapeButtons("photoclip").Visible = pc IsNot Nothing
-        If pc IsNot Nothing Then _shapeButtons("photoclip").Text = If(pc.Id IsNot Nothing AndAlso _recipe.PhotoClip = pc.Id, "取消照片裁切", "照片放進形狀")
+        If pc IsNot Nothing Then _shapeButtons("photoclip").Text = If(pc.Id IsNot Nothing AndAlso _recipe.PhotoClip = pc.Id, Lang.T("取消照片裁切"), Lang.T("照片放進形狀"))
         ' 分隔
         Dim seps = _shapeBar.Controls.OfType(Of Panel)().ToList()
         If seps.Count >= 2 Then
@@ -231,12 +231,12 @@ Partial Friend Class frmEditor
     Private Sub CombineSelected(op As ShapeOp)
         Dim idx = CombinableSelection()
         If idx Is Nothing Then
-            SetStatusMessage("焊接、修剪要選兩個以上的封閉向量圖形（圖說、點陣圖層、填滿圖層、開放的線不行）。")
+            SetStatusMessage(Lang.T("焊接、修剪要選兩個以上的封閉向量圖形（圖說、點陣圖層、填滿圖層、開放的線不行）。"))
             Return
         End If
         Dim result = PathBoolean.Apply(idx.Select(Function(i) _recipe.Drawings(i)).ToList(), op)
         If result Is Nothing Then
-            SetStatusMessage(If(op = ShapeOp.Intersect, "這些圖形沒有全部重疊的地方。", "結果是空的（全部被減掉了）。"))
+            SetStatusMessage(If(op = ShapeOp.Intersect, Lang.T("這些圖形沒有全部重疊的地方。"), Lang.T("結果是空的（全部被減掉了）。")))
             Return
         End If
         Dim keep = If(op = ShapeOp.Trim, idx.Min(), idx.Max())
@@ -248,7 +248,7 @@ Partial Friend Class frmEditor
                         DrawGroups.Prune(r, EnteredGroup())
                     End Sub)
         SelectDrawLayer(_recipe.Drawings.IndexOf(result))
-        SetStatusMessage({"已焊接", "已修剪", "已相交", "已排除"}(CInt(op)) & "：結果是鋼筆路徑，可以用節點工具再修改。")
+        SetStatusMessage({Lang.T("已焊接"), Lang.T("已修剪"), Lang.T("已相交"), Lang.T("已排除")}(CInt(op)) & Lang.T("：結果是鋼筆路徑，可以用節點工具再修改。"))
     End Sub
 
     '---------------------------------------------------------------------

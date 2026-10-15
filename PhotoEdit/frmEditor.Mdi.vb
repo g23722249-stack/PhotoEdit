@@ -1,4 +1,4 @@
-Imports System.Reflection
+﻿Imports System.Reflection
 Imports PhotoEdit
 
 ''' <summary>
@@ -28,7 +28,7 @@ Partial Friend Class frmEditor
     Friend NotInheritable Class EditorDocument
         Public ReadOnly Values As New Dictionary(Of String, Object)()
         Public View As (Zoom As Double, Center As PointF)
-        Public Title As String = "未命名"
+        Public Title As String = Lang.T("未命名")
         Public Dirty As Boolean
         Public Window As DocWindow
 
@@ -59,7 +59,7 @@ Partial Friend Class frmEditor
         If _docFields Is Nothing Then
             _docFields = DocFieldNames.Select(Function(n)
                                                    Dim f = GetType(frmEditor).GetField(n, BindingFlags.Instance Or BindingFlags.NonPublic)
-                                                   If f Is Nothing Then Throw New InvalidOperationException("多文件：找不到欄位 " & n)
+                                                   If f Is Nothing Then Throw New InvalidOperationException(Lang.T("多文件：找不到欄位 ") & n)
                                                    Return f
                                                End Function).ToArray()
         End If
@@ -243,7 +243,7 @@ Partial Friend Class frmEditor
             ResetToBlank()
         End If
         _untitledCount += 1
-        Dim d As New EditorDocument With {.Title = "未命名 " & _untitledCount}
+        Dim d As New EditorDocument With {.Title = Lang.T("未命名 ") & _untitledCount}
         _docs.Add(d)
         _activeDoc = d
         If MdiWindows Then EnsureWindow(d)
@@ -377,16 +377,16 @@ Partial Friend Class frmEditor
 
     Private Sub BuildWindowMenu(root As Aqua.MenuItem)
         If Not _mdi Then Return
-        Dim windowMenu = root.AddItem(New Aqua.MenuItem("視窗"))
-        _mdiTabsItem = windowMenu.AddItem(Item("mdi_tabs", "分頁顯示"))
-        _mdiWindowsItem = windowMenu.AddItem(Item("mdi_windows", "子視窗顯示"))
+        Dim windowMenu = root.AddItem(New Aqua.MenuItem(Lang.T("視窗")))
+        _mdiTabsItem = windowMenu.AddItem(Item("mdi_tabs", Lang.T("分頁顯示")))
+        _mdiWindowsItem = windowMenu.AddItem(Item("mdi_windows", Lang.T("子視窗顯示")))
         windowMenu.AddItem(New Aqua.MenuItem("-"))
-        windowMenu.AddItem(Item("mdi_cascade", "重疊排列"))
-        windowMenu.AddItem(Item("mdi_tilev", "左右並排"))
-        windowMenu.AddItem(Item("mdi_tileh", "上下並排"))
+        windowMenu.AddItem(Item("mdi_cascade", Lang.T("重疊排列")))
+        windowMenu.AddItem(Item("mdi_tilev", Lang.T("左右並排")))
+        windowMenu.AddItem(Item("mdi_tileh", Lang.T("上下並排")))
         windowMenu.AddItem(New Aqua.MenuItem("-"))
-        windowMenu.AddItem(Item("nextdoc", "下一份文件 (Ctrl+Tab)"))
-        windowMenu.AddItem(Item("closedoc", "關閉文件 (Ctrl+W)"))
+        windowMenu.AddItem(Item("nextdoc", Lang.T("下一份文件 (Ctrl+Tab)")))
+        windowMenu.AddItem(Item("closedoc", Lang.T("關閉文件 (Ctrl+W)")))
         UpdateWindowMenuChecks()
     End Sub
 
@@ -459,7 +459,7 @@ Partial Friend Class frmEditor
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
             Height = 30
-            Font = New Font("Microsoft JhengHei UI", 9.5F)
+            Font = New Font(Lang.UiFont, 9.5F)
         End Sub
 
         Public Sub SetDocuments(docs As List(Of EditorDocument), active As EditorDocument)
@@ -505,7 +505,7 @@ Partial Friend Class frmEditor
                 x += w + 2
             Next
             If _docs.Count = 0 Then
-                TextRenderer.DrawText(g, "沒有開啟的文件（檔案 → 載入、新增，或把照片拖進來）", Font, ClientRectangle,
+                TextRenderer.DrawText(g, Lang.T("沒有開啟的文件（檔案 → 載入、新增，或把照片拖進來）"), Font, ClientRectangle,
                                       ThemeManager.Fore(Color.FromArgb(105, 110, 120)), TextFormatFlags.VerticalCenter Or TextFormatFlags.Left)
             End If
         End Sub
@@ -569,7 +569,7 @@ Partial Friend Class frmEditor
         Public Sub New(d As EditorDocument)
             Doc = d
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
-            Font = New Font("Microsoft JhengHei UI", 9.5F)
+            Font = New Font(Lang.UiFont, 9.5F)
             Body.Anchor = AnchorStyles.Top Or AnchorStyles.Left ' 位置由 LayoutBody 排（標題列下面）
             Body.BackColor = Color.FromArgb(52, 52, 56)
             AddHandler Body.Paint, AddressOf PaintSnapshot

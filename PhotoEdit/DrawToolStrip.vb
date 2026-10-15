@@ -55,12 +55,12 @@ Friend Class DrawToolStrip
         AutoScroll = True
         SetStyle(ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
         Dim S = Function(x As DrawShape) CInt(x)
-        AddGroup("共用", {V(DrawIcons.SelectTool), V(DrawIcons.PanTool), V(DrawIcons.ZoomTool), V(DrawIcons.EyedropperTool)})
-        AddGroup("點陣", {V(S(DrawShape.Raster)), V(DrawIcons.EraserTool), V(S(DrawShape.Bucket)), V(S(DrawShape.Gradient)),
+        AddGroup(Lang.T("共用"), {V(DrawIcons.SelectTool), V(DrawIcons.PanTool), V(DrawIcons.ZoomTool), V(DrawIcons.EyedropperTool)})
+        AddGroup(Lang.T("點陣"), {V(S(DrawShape.Raster)), V(DrawIcons.EraserTool), V(S(DrawShape.Bucket)), V(S(DrawShape.Gradient)),
                           V(DrawIcons.CloneTool, DrawIcons.HealTool), V(DrawIcons.SmudgeTool, DrawIcons.MixerTool),
                           V(DrawIcons.BlurTool, DrawIcons.SharpenTool),
                           V(DrawIcons.DodgeTool, DrawIcons.BurnTool, DrawIcons.SpongeMinusTool, DrawIcons.SpongePlusTool)})
-        AddGroup("向量", {V(DrawIcons.NodeTool), V(S(DrawShape.Path)), V(S(DrawShape.Freehand)), V(S(DrawShape.Line), S(DrawShape.Bezier)),
+        AddGroup(Lang.T("向量"), {V(DrawIcons.NodeTool), V(S(DrawShape.Path)), V(S(DrawShape.Freehand)), V(S(DrawShape.Line), S(DrawShape.Bezier)),
                           V(S(DrawShape.Rectangle), S(DrawShape.RoundRect)), V(S(DrawShape.Ellipse)),
                           V(S(DrawShape.Polygon), S(DrawShape.Star4), S(DrawShape.Star5), S(DrawShape.Star6)),
                           V(S(DrawShape.Arrow), S(DrawShape.Heart), S(DrawShape.Lightning)),
@@ -193,7 +193,7 @@ Friend Class DrawToolStrip
         g.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y)
         Using pen As New Pen(ThemeManager.Line(Color.FromArgb(200, 205, 214))), f As New Font(Font.FontFamily, 7.5F)
             Dim fore = ThemeManager.Fore(Color.FromArgb(110, 116, 126))
-            For Each grp In _groups.Select(Function(x) (x.Title, x.Top)).Concat({("色彩", _colorTop)})
+            For Each grp In _groups.Select(Function(x) (x.Title, x.Top)).Concat({(Lang.T("色彩"), _colorTop)})
                 Dim sz = TextRenderer.MeasureText(grp.Title, f)
                 TextRenderer.DrawText(g, grp.Title, f, New Point(5, grp.Top), fore)
                 g.DrawLine(pen, 7 + sz.Width - 4, grp.Top + 7, Width - 6, grp.Top + 7)
@@ -365,7 +365,7 @@ Friend Class DrawToolStrip
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
             Cursor = Cursors.Hand
-            AccessibleName = "色彩"
+            AccessibleName = Lang.T("色彩")
         End Sub
 
         Public ReadOnly Property PreferredHeight As Integer
@@ -479,7 +479,7 @@ Friend Class DrawToolStrip
                     DrawCell(g, pen, CellRect(i, PaletteTop), Palette(i))
                 Next
                 Using f As New Font(Font.FontFamily, 7.5F)
-                    TextRenderer.DrawText(g, "最近", f, New Point(GridLeft - 2, RecentTop - 15), ThemeManager.Fore(Color.FromArgb(110, 116, 126)))
+                    TextRenderer.DrawText(g, Lang.T("最近"), f, New Point(GridLeft - 2, RecentTop - 15), ThemeManager.Fore(Color.FromArgb(110, 116, 126)))
                 End Using
                 For i = 0 To 7
                     Dim r = CellRect(i, RecentTop)

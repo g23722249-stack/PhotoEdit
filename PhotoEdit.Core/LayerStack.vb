@@ -1,4 +1,5 @@
-﻿Imports System.Drawing
+﻿Imports PhotoEdit
+Imports System.Drawing
 
 ''' <summary>圖層清單裡的一個圖層：文字／貼圖（Overlay）或繪圖圖層（Drawing），兩者只有一個不是 Nothing。</summary>
 Public NotInheritable Class LayerRef
@@ -76,11 +77,11 @@ Public NotInheritable Class LayerRef
                     Case OverlayKind.Text
                         Dim t = If(Overlay.Text, "").Replace(vbCrLf, " ").Replace(vbLf, " ").Trim()
                         If t.Length > 24 Then t = t.Substring(0, 24) & "…"
-                        Return "文字：" & If(t = "", "（空白）", t)
+                        Return Lang.T("文字：") & If(t = "", Lang.T("（空白）"), t)
                     Case OverlayKind.Image
-                        Return "貼圖：" & IO.Path.GetFileNameWithoutExtension(If(Overlay.ImagePath, "").Replace("\"c, "/"c).Split("/"c).Last())
+                        Return Lang.T("貼圖：") & IO.Path.GetFileNameWithoutExtension(If(Overlay.ImagePath, "").Replace("\"c, "/"c).Split("/"c).Last())
                     Case Else
-                        Return "貼圖：" & Overlay.Sticker
+                        Return Lang.T("貼圖：") & Overlay.Sticker
                 End Select
             End If
             Return If(String.IsNullOrEmpty(Drawing.Name), DrawGeometry.ShapeNames(CInt(Drawing.Shape)), Drawing.Name)
@@ -262,11 +263,11 @@ Public NotInheritable Class LayerStack
     ''' <summary>不能合併的原因；可以時回傳 Nothing。</summary>
     Public Shared Function CannotMerge(layers As IEnumerable(Of LayerRef)) As String
         Dim list = layers.ToList()
-        If list.Count < 2 Then Return "至少要兩個顯示中的圖層才能合併。"
+        If list.Count < 2 Then Return Lang.T("至少要兩個顯示中的圖層才能合併。")
         Dim locked = list.FirstOrDefault(Function(r) r.Locked)
-        If locked IsNot Nothing Then Return $"「{locked.DisplayName}」已鎖定，先解除鎖定再合併。"
+        If locked IsNot Nothing Then Return Lang.F("「{0}」已鎖定，先解除鎖定再合併。", locked.DisplayName)
         Dim photo = list.FirstOrDefault(Function(r) r.DependsOnPhoto)
-        If photo IsNot Nothing Then Return $"「{photo.DisplayName}」用了「照片本身」填字或「壓暗照片」底色，會隨照片改變，不能合併。"
+        If photo IsNot Nothing Then Return Lang.F("「{0}」用了「照片本身」填字或「壓暗照片」底色，會隨照片改變，不能合併。", photo.DisplayName)
         Return Nothing
     End Function
 
@@ -294,9 +295,9 @@ Public NotInheritable Class LayerStack
     ''' <summary>合併向下：位置 index 的圖層和它正下方的圖層合併。回傳新圖層；不能合併時回傳 Nothing 並給出原因。</summary>
     Public Shared Function MergeDown(recipe As EditRecipe, index As Integer, aspect As Double, ByRef reason As String) As DrawLayer
         Dim o = Order(recipe)
-        If index <= 0 OrElse index >= o.Count Then reason = "下面沒有圖層可以合併。" : Return Nothing
+        If index <= 0 OrElse index >= o.Count Then reason = Lang.T("下面沒有圖層可以合併。") : Return Nothing
         Dim pair = {o(index - 1), o(index)}
-        If pair.Any(Function(r) Not r.Visible) Then reason = "兩個圖層都要是顯示中的才能合併。" : Return Nothing
+        If pair.Any(Function(r) Not r.Visible) Then reason = Lang.T("兩個圖層都要是顯示中的才能合併。") : Return Nothing
         reason = CannotMerge(pair)
         If reason IsNot Nothing Then Return Nothing
         Dim merged = MergeIntoRaster(pair, aspect, pair(0).DisplayName)
@@ -310,7 +311,7 @@ Public NotInheritable Class LayerStack
         Dim visible = o.Where(Function(r) r.Visible).ToList()
         reason = CannotMerge(visible)
         If reason IsNot Nothing Then Return Nothing
-        Dim merged = MergeIntoRaster(visible, aspect, "合併圖層")
+        Dim merged = MergeIntoRaster(visible, aspect, Lang.T("合併圖層"))
         Dim top = o.IndexOf(visible.Last()) - (visible.Count - 1)
         Replace(recipe, o, visible, merged, top)
         Return merged

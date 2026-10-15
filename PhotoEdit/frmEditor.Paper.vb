@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 「效果」分頁的紙張與表面紋理（類似 Corel Painter 的 Paper）：
@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
 
     Private Sub BuildPaperSection(L As PageLayout)
         L.Y += 6
-        AddHeading(L, "紙張與表面紋理")
+        AddHeading(L, Lang.T("紙張與表面紋理"))
         _paperGrid.SetBounds(8, L.Y, L.Width - 8, _paperGrid.HeightFor(L.Width - 8))
         AddHandler _paperGrid.KindClicked, AddressOf OnPaperClicked
         _help.SetHelp("paper.grid", _paperGrid)
@@ -22,27 +22,27 @@ Partial Friend Class frmEditor
         L.Y += _paperGrid.Height + 6
 
         Dim pct As Func(Of Integer, String) = Function(v) v & "%"
-        AddRow(L, MakeRow("paperscale", "紙紋大小", 25, 400, pct, Function(r) If(r.Paper?.Scale, 100), Sub(r, v) EnsurePaper(r).Scale = v))
-        AddRow(L, MakeRow("paperdepth", "紙紋深淺", 0, 100, AddressOf Plain, Function(r) If(r.Paper?.Contrast, 50), Sub(r, v) EnsurePaper(r).Contrast = v))
-        AddRow(L, MakeRow("paperrot", "紙紋旋轉", 0, 359, Function(v) v & "°", Function(r) If(r.Paper?.Rotation, 0), Sub(r, v) EnsurePaper(r).Rotation = v))
+        AddRow(L, MakeRow("paperscale", Lang.T("紙紋大小"), 25, 400, pct, Function(r) If(r.Paper?.Scale, 100), Sub(r, v) EnsurePaper(r).Scale = v))
+        AddRow(L, MakeRow("paperdepth", Lang.T("紙紋深淺"), 0, 100, AddressOf Plain, Function(r) If(r.Paper?.Contrast, 50), Sub(r, v) EnsurePaper(r).Contrast = v))
+        AddRow(L, MakeRow("paperrot", Lang.T("紙紋旋轉"), 0, 359, Function(v) v & "°", Function(r) If(r.Paper?.Rotation, 0), Sub(r, v) EnsurePaper(r).Rotation = v))
 
         Dim half = (L.Width - 8 - 6) \ 2
-        _paperInvert.Text = "凹凸反轉"
+        _paperInvert.Text = Lang.T("凹凸反轉")
         _paperInvert.BackColor = Color.Transparent
         _paperInvert.SetBounds(8, L.Y + 4, half, 24)
         _help.SetHelp("paper.invert", _paperInvert)
         AddHandler _paperInvert.CheckedChanged, Sub() If Not _syncing Then ChangePaper(Sub(p) p.Invert = _paperInvert.Checked)
         L.Add(_paperInvert)
-        Dim import = MakeButton("匯入紙紋…", "paper.import")
+        Dim import = MakeButton(Lang.T("匯入紙紋…"), "paper.import")
         import.SetBounds(8 + half + 6, L.Y + 1, half, 28)
         AddHandler import.Click, Sub() ImportPaper()
         L.Add(import)
         L.Y += 34
 
-        AddRow(L, MakeRow("surface", "表面紋理", 0, 100, AddressOf Plain, Function(r) If(r.Paper?.SurfaceStrength, 0), Sub(r, v) EnsurePaper(r).SurfaceStrength = v))
-        _help.SetHelpLinked("paper.target", _surfaceTarget, AddCaption(L, "作用在", L.Y), _surfaceTarget)
+        AddRow(L, MakeRow("surface", Lang.T("表面紋理"), 0, 100, AddressOf Plain, Function(r) If(r.Paper?.SurfaceStrength, 0), Sub(r, v) EnsurePaper(r).SurfaceStrength = v))
+        _help.SetHelpLinked("paper.target", _surfaceTarget, AddCaption(L, Lang.T("作用在"), L.Y), _surfaceTarget)
         _surfaceTarget.DropDownStyle = ComboBoxStyle.DropDownList
-        _surfaceTarget.Items.AddRange({"整張照片（照片、文字、貼圖、繪圖）", "只有繪圖（照片本身不變）"})
+        _surfaceTarget.Items.AddRange({Lang.T("整張照片（照片、文字、貼圖、繪圖）"), Lang.T("只有繪圖（照片本身不變）")})
         _surfaceTarget.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
         AddHandler _surfaceTarget.SelectedIndexChanged, Sub()
                                                            If _syncing OrElse _surfaceTarget.SelectedIndex < 0 Then Return
@@ -51,9 +51,9 @@ Partial Friend Class frmEditor
                                                        End Sub
         L.Add(_surfaceTarget)
         L.Y += RowHeight
-        AddRow(L, MakeRow("lightangle", "光源方向", 0, 359, Function(v) v & "°", Function(r) If(r.Paper?.LightAngle, 135), Sub(r, v) EnsurePaper(r).LightAngle = v))
-        AddHint(L, "紙張是整份文件共用的：鉛筆、炭筆、粉筆、蠟筆、乾刷、水彩會吃紙紋（輕畫只碰到凸起），" &
-                   "其他筆刷輕微受影響；繪圖「進階」的紙紋吃色可調。藝術風格的紙紋也用這張紙。")
+        AddRow(L, MakeRow("lightangle", Lang.T("光源方向"), 0, 359, Function(v) v & "°", Function(r) If(r.Paper?.LightAngle, 135), Sub(r, v) EnsurePaper(r).LightAngle = v))
+        AddHint(L, Lang.T("紙張是整份文件共用的：鉛筆、炭筆、粉筆、蠟筆、乾刷、水彩會吃紙紋（輕畫只碰到凸起），") &
+                   Lang.T("其他筆刷輕微受影響；繪圖「進階」的紙紋吃色可調。藝術風格的紙紋也用這張紙。"))
     End Sub
 
     ''' <summary>配方沒有紙張時建一張素描紙（調紋路或表面紋理時用）。</summary>
@@ -84,8 +84,8 @@ Partial Friend Class frmEditor
     ''' <summary>匯入一張圖片當紙紋（灰階，亮的地方是凸起；會自動平鋪）。</summary>
     Private Sub ImportPaper()
         If _photo Is Nothing Then Return
-        Using dlg As New OpenFileDialog With {.Title = "選擇紙紋圖片（亮 = 凸起，會平鋪）",
-                                              .Filter = "圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇紙紋圖片（亮 = 凸起，會平鋪）"),
+                                              .Filter = Lang.T("圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Dim path = dlg.FileName
             ChangePaper(Sub(p)
@@ -125,7 +125,7 @@ Partial Friend Class frmEditor
 
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
-            Font = New Font("Microsoft JhengHei UI", 8.5F)
+            Font = New Font(Lang.UiFont, 8.5F)
             Cursor = Cursors.Hand
         End Sub
 
@@ -198,12 +198,12 @@ Partial Friend Class frmEditor
                     Using b As New SolidBrush(ThemeManager.Back(Color.White))
                         g.FillRectangle(b, img)
                     End Using
-                    TextRenderer.DrawText(g, "內建紋路", Font, img, ThemeManager.Fore(Color.FromArgb(120, 126, 136)),
+                    TextRenderer.DrawText(g, Lang.T("內建紋路"), Font, img, ThemeManager.Fore(Color.FromArgb(120, 126, 136)),
                                           TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
                 Else
                     g.DrawImage(Thumb(kind, img.Width, img.Height), img.Location)
                 End If
-                Dim name = If(kind < 0, "無", Papers.Names(kind))
+                Dim name = If(kind < 0, Lang.T("無"), Papers.Names(kind))
                 Dim sel = kind = _selected
                 TextRenderer.DrawText(g, name, Font, New Rectangle(r.X, r.Bottom - 18, r.Width, 18),
                                       ThemeManager.Fore(If(sel, Color.FromArgb(24, 95, 165), Color.FromArgb(70, 76, 88))),

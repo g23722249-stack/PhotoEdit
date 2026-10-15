@@ -1,8 +1,9 @@
+﻿Imports PhotoEdit
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
 
 ''' <summary>
-''' 控制項的使用說明視窗（樣式沿用 iPhoto.Net 的 HelpTip）：滑鼠停在控制項上 0.5 秒後，
+''' 控制項的使用說明視窗（樣式沿用 iPhoto.Net 的 HelpTip）：滑鼠停在控制項上 2 秒後，
 ''' 在下方顯示一個小視窗：圖示、標題、說明，以及一行藍色的提示（快捷鍵、操作技巧）。
 '''
 '''   _help.SetHelp("btn.auto", button)                       ' 說明文字放在 HelpTexts
@@ -34,7 +35,7 @@ Friend Class HelpTip
     End Class
 
     ''' <summary>滑鼠停留多久才顯示說明（毫秒）。</summary>
-    Public Property InitialDelay As Integer = 3000
+    Public Property InitialDelay As Integer = 2000
     Public Property AutoPopDelay As Integer = 20000
     ''' <summary>False 時完全不顯示（「說明 → 顯示使用說明」可切換）。</summary>
     Public Property Active As Boolean = True
@@ -335,10 +336,10 @@ Friend Class HelpTip
         Private Shared ReadOnly BadgeTop As Color = Color.FromArgb(96, 156, 232)
         Private Shared ReadOnly BadgeBottom As Color = Color.FromArgb(42, 104, 196)
 
-        Private ReadOnly _titleFont As New Font("Microsoft JhengHei UI", 11.0F, FontStyle.Bold)
-        Private ReadOnly _textFont As New Font("Microsoft JhengHei UI", 9.75F)
-        Private ReadOnly _hintFont As New Font("Microsoft JhengHei UI", 9.0F)
-        Private ReadOnly _glyphFont As New Font("Microsoft JhengHei UI", 13.0F, FontStyle.Bold)
+        Private ReadOnly _titleFont As New Font(Lang.UiFont, 11.0F, FontStyle.Bold)
+        Private ReadOnly _textFont As New Font(Lang.UiFont, 9.75F)
+        Private ReadOnly _hintFont As New Font(Lang.UiFont, 9.0F)
+        Private ReadOnly _glyphFont As New Font(Lang.UiFont, 13.0F, FontStyle.Bold)
 
         Private _entry As Entry
         Private _disabled As Boolean
@@ -416,7 +417,7 @@ Friend Class HelpTip
 
         Private ReadOnly Property HintText As String
             Get
-                If _disabled AndAlso _entry.DisabledHint <> "" Then Return "目前無法使用：" & _entry.DisabledHint
+                If _disabled AndAlso _entry.DisabledHint <> "" Then Return Lang.T("目前無法使用：") & _entry.DisabledHint
                 Return _entry.Hint
             End Get
         End Property

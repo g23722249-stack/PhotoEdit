@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -101,7 +101,7 @@ Friend NotInheritable Class MorphEditor
         Dim g = e.Graphics
         g.Clear(BackColor)
         If _image Is Nothing Then
-            TextRenderer.DrawText(g, "（尚未選圖）", Font, ClientRectangle, Color.Gray, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            TextRenderer.DrawText(g, Lang.T("（尚未選圖）"), Font, ClientRectangle, Color.Gray, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             Return
         End If
         Dim tl = ToScreen(New PointF(0, 0)), br = ToScreen(New PointF(_image.Width, _image.Height))

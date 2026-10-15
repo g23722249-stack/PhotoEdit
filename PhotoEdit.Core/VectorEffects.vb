@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 
 ''' <summary>
@@ -136,7 +137,7 @@ Public NotInheritable Class ShapeBlend
             d.Opacity = CInt(Math.Round(a.Opacity + (b.Opacity - a.Opacity) * t))
             d.Filled = closed AndAlso (a.Filled OrElse b.Filled)
             d.Stroked = a.Stroked OrElse b.Stroked
-            d.Name = $"調和 {k}"
+            d.Name = Lang.F("調和 {0}", k)
             result.Add(d)
         Next
         Return result

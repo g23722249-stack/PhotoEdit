@@ -52,15 +52,15 @@ Partial Friend Class frmEditor
                             _fxBar.Controls.Add(b)
                         End Sub
         ' 陰影
-        addLabel("shadowSoftL", "柔邊") : addBox("shadowSoft", "draw.shadow.soft")
-        addLabel("shadowOpL", "不透明") : addBox("shadowOp", "draw.shadow.opacity")
-        addButton("shadowColor", "陰影色", "draw.shadow.color", Sub() ShowColorWindow(TargetShadow))
-        addButton("shadowOff", "移除陰影", "draw.shadow.remove", Sub() SetSelectedFx(Sub(d)
+        addLabel("shadowSoftL", Lang.T("柔邊")) : addBox("shadowSoft", "draw.shadow.soft")
+        addLabel("shadowOpL", Lang.T("不透明")) : addBox("shadowOp", "draw.shadow.opacity")
+        addButton("shadowColor", Lang.T("陰影色"), "draw.shadow.color", Sub() ShowColorWindow(TargetShadow))
+        addButton("shadowOff", Lang.T("移除陰影"), "draw.shadow.remove", Sub() SetSelectedFx(Sub(d)
                                                                                         d.Shadow = False : d.ShadowOffsetX = Nothing : d.ShadowOffsetY = Nothing
                                                                                     End Sub))
         ' 透明度
         Dim kind As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Width = 70, .Margin = New Padding(4, 3, 4, 0)}
-        kind.Items.AddRange({"線性", "放射"})
+        kind.Items.AddRange({Lang.T("線性"), Lang.T("放射")})
         kind.SelectedIndex = 0
         _help.SetHelp("draw.fade.kind", kind)
         AddHandler kind.SelectedIndexChanged, Sub()
@@ -70,12 +70,12 @@ Partial Friend Class frmEditor
                                               End Sub
         _fxControls("fadeKind") = kind
         _fxBar.Controls.Add(kind)
-        addButton("fadeOff", "移除透明", "draw.fade.remove", Sub() SetSelectedFx(Sub(d) d.FadeGradient = Nothing))
+        addButton("fadeOff", Lang.T("移除透明"), "draw.fade.remove", Sub() SetSelectedFx(Sub(d) d.FadeGradient = Nothing))
         ' 封套
-        addButton("envReset", "重設封套", "draw.envelope.reset", Sub() ResetEnvelope())
+        addButton("envReset", Lang.T("重設封套"), "draw.envelope.reset", Sub() ResetEnvelope())
         ' 調和（選取工具、選了兩個圖形）
-        addButton("blend", "調和", "draw.blend", Sub() BlendSelected())
-        addLabel("blendL", "步數")
+        addButton("blend", Lang.T("調和"), "draw.blend", Sub() BlendSelected())
+        addLabel("blendL", Lang.T("步數"))
         _help.SetHelp("draw.blend.steps", _blendSteps)
         _fxControls("blendSteps") = _blendSteps
         _fxBar.Controls.Add(_blendSteps)
@@ -101,7 +101,7 @@ Partial Friend Class frmEditor
         show({"blend", "blendL", "blendSteps"}, canBlend)
         If sel IsNot Nothing Then
             Dim s = CType(_fxControls("shadowSoft"), TextBox), o = CType(_fxControls("shadowOp"), TextBox)
-            If Not s.Focused Then s.Text = If(sel.ShadowSoft > 0, sel.ShadowSoft.ToString(), "自動")
+            If Not s.Focused Then s.Text = If(sel.ShadowSoft > 0, sel.ShadowSoft.ToString(), Lang.T("自動"))
             If Not o.Focused Then o.Text = sel.ShadowOpacity & "%"
             If sel.FadeGradient IsNot Nothing Then CType(_fxControls("fadeKind"), ComboBox).SelectedIndex = If(sel.FadeGradient.Kind = GradientKind.Radial, 1, 0)
         End If
@@ -110,7 +110,7 @@ Partial Friend Class frmEditor
     Private Sub FxBoxCommit(key As String, tb As TextBox)
         Dim v As Integer
         If Not Integer.TryParse(tb.Text.Trim().TrimEnd("%"c), v) Then
-            If key = "shadowSoft" AndAlso tb.Text.Trim() = "自動" Then Return
+            If key = "shadowSoft" AndAlso tb.Text.Trim() = Lang.T("自動") Then Return
             UpdateFxBar() : Return
         End If
         Select Case key
@@ -156,7 +156,7 @@ Partial Friend Class frmEditor
             If hitE < 0 Then EndEnvelope() : SelectDrawLayer(-1) : Return True
             Dim d = _recipe.Drawings(hitE)
             If Not Envelope.CanApply(d) OrElse d.Locked Then
-                SetStatusMessage("封套只能套在向量圖形上（文字先轉成曲線；點陣圖層不行）。")
+                SetStatusMessage(Lang.T("封套只能套在向量圖形上（文字先轉成曲線；點陣圖層不行）。"))
                 Return True
             End If
             SelectDrawLayer(hitE)
@@ -170,7 +170,7 @@ Partial Friend Class frmEditor
         End If
         Dim hit = FxTarget(u)
         If hit < 0 OrElse _recipe.Drawings(hit).Locked Then
-            SetStatusMessage("先按在圖形上再拖曳。")
+            SetStatusMessage(Lang.T("先按在圖形上再拖曳。"))
             Return True
         End If
         If hit <> _drawIndex OrElse IsMultiSelected() Then SelectDrawLayer(hit)
@@ -295,11 +295,11 @@ Partial Friend Class frmEditor
                             LayerStack.PlaceAbove(r, m, prev)
                             prev = m
                         Next
-                        DrawGroups.Create(r, {a}.Concat(mids).Concat({b}), entered, "調和")
+                        DrawGroups.Create(r, {a}.Concat(mids).Concat({b}), entered, Lang.T("調和"))
                     End Sub)
         Dim idx = {a}.Concat(mids).Concat({b}).Select(Function(d) _recipe.Drawings.IndexOf(d)).Where(Function(i) i >= 0).ToList()
         SetMultiSelection(idx, idx.Max())
-        SetStatusMessage($"已調和：中間加了 {mids.Count} 個圖形（和兩端組成群組）。改兩端不會自動更新，要重做時解散群組、刪掉中間的再調和一次。")
+        SetStatusMessage(Lang.F("已調和：中間加了 {0} 個圖形（和兩端組成群組）。改兩端不會自動更新，要重做時解散群組、刪掉中間的再調和一次。", mids.Count))
         UpdateDrawControls()
     End Sub
 
@@ -333,18 +333,18 @@ Partial Friend Class frmEditor
     ''' <summary>描好的圖形加成繪圖圖層（兩個以上組成「描圖」群組），切到繪圖分頁並選取。</summary>
     Friend Sub AddTracedLayers(layers As List(Of DrawLayer))
             If layers.Count = 0 Then
-                SetStatusMessage("沒有描出任何圖形。")
+                SetStatusMessage(Lang.T("沒有描出任何圖形。"))
                 Return
             End If
             ApplyChange(Sub(r)
                             If r.Drawings Is Nothing Then r.Drawings = New List(Of DrawLayer)()
                             r.Drawings.AddRange(layers)
-                            If layers.Count >= 2 Then DrawGroups.Create(r, layers, Nothing, "描圖") Else layers(0).Name = "描圖"
+                            If layers.Count >= 2 Then DrawGroups.Create(r, layers, Nothing, Lang.T("描圖")) Else layers(0).Name = Lang.T("描圖")
                         End Sub)
             If _tabs.SelectedIndex <> TabDraw Then _tabs.SelectedIndex = TabDraw
             Dim idx = layers.Select(Function(d) _recipe.Drawings.IndexOf(d)).Where(Function(i) i >= 0).ToList()
             If idx.Count >= 2 Then SetMultiSelection(idx, idx.Max()) Else SelectDrawLayer(idx(0))
-            SetStatusMessage($"描圖完成：{layers.Count} 個向量圖形（組成「描圖」群組）。可以隱藏照片看效果，或匯出 SVG。")
+            SetStatusMessage(Lang.F("描圖完成：{0} 個向量圖形（組成「描圖」群組）。可以隱藏照片看效果，或匯出 SVG。", layers.Count))
             UpdateDrawControls()
     End Sub
 
@@ -394,9 +394,9 @@ Partial Friend Class frmEditor
     ''' <summary>新工具的提示。</summary>
     Private Function FxHint(tool As Integer) As String
         Select Case tool
-            Case DrawIcons.ShadowTool : Return "陰影：在圖形上按住往外拖，拖的方向和距離就是陰影的位置；上方可以調柔邊、不透明度、顏色。"
-            Case DrawIcons.TransparencyTool : Return "透明度：在圖形上從要保持不透明的地方拖到要變透明的地方；上方可以換成放射、移除。"
-            Case DrawIcons.EnvelopeTool : Return "封套：點一個圖形，拖曳四角（白）和四邊中點（黃）把圖形彎曲變形；結果是鋼筆路徑。"
+            Case DrawIcons.ShadowTool : Return Lang.T("陰影：在圖形上按住往外拖，拖的方向和距離就是陰影的位置；上方可以調柔邊、不透明度、顏色。")
+            Case DrawIcons.TransparencyTool : Return Lang.T("透明度：在圖形上從要保持不透明的地方拖到要變透明的地方；上方可以換成放射、移除。")
+            Case DrawIcons.EnvelopeTool : Return Lang.T("封套：點一個圖形，拖曳四角（白）和四邊中點（黃）把圖形彎曲變形；結果是鋼筆路徑。")
         End Select
         Return Nothing
     End Function

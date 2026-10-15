@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
 Imports System.IO
 Imports System.Runtime.InteropServices
@@ -62,8 +62,8 @@ Partial Friend Class frmEditor
 
     Private Sub BuildSelectPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "選取工具")
-        Dim toolNames = {("矩形", "select.rect"), ("橢圓", "select.ellipse"), ("套索", "select.lasso"), ("魔術棒", "select.wand"), ("貝茲", "select.bezier")}
+        AddHeading(L, Lang.T("選取工具"))
+        Dim toolNames = {(Lang.TC("seltool", "矩形"), "select.rect"), (Lang.TC("seltool", "橢圓"), "select.ellipse"), (Lang.TC("seltool", "套索"), "select.lasso"), (Lang.TC("seltool", "魔術棒"), "select.wand"), (Lang.TC("seltool", "貝茲"), "select.bezier")}
         Dim toolPanel As New Panel With {.BackColor = Color.Transparent}
         toolPanel.SetBounds(8, L.Y + 2, L.Width - 8, 32)
         Dim tw = (L.Width - 8 - 4 * 4) \ 5
@@ -85,8 +85,8 @@ Partial Friend Class frmEditor
         L.Add(toolPanel)
         L.Y += 38
 
-        AddHeading(L, "選取模式")
-        Dim modeNames = {("新增", "select.new"), ("加入", "select.add"), ("減去", "select.subtract"), ("交集", "select.intersect")}
+        AddHeading(L, Lang.T("選取模式"))
+        Dim modeNames = {(Lang.T("新增"), "select.new"), (Lang.T("加入"), "select.add"), (Lang.T("減去"), "select.subtract"), (Lang.T("交集"), "select.intersect")}
         Dim modePanel As New Panel With {.BackColor = Color.Transparent}
         modePanel.SetBounds(8, L.Y + 2, L.Width - 8, 32)
         Dim mw = (L.Width - 8 - 3 * 4) \ 4
@@ -100,29 +100,29 @@ Partial Friend Class frmEditor
         _selModeButtons(0).Checked = True
         L.Add(modePanel)
         L.Y += 36
-        AddHint(L, "按住 Shift 加入、Alt 減去、Shift＋Alt 交集；矩形與橢圓按住 Ctrl 為正方形／正圓。")
+        AddHint(L, Lang.T("按住 Shift 加入、Alt 減去、Shift＋Alt 交集；矩形與橢圓按住 Ctrl 為正方形／正圓。"))
 
-        AddRow(L, New SliderRow With {.Key = "sel_wand", .Caption = "相似程度", .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
+        AddRow(L, New SliderRow With {.Key = "sel_wand", .Caption = Lang.T("相似程度"), .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
             .GetValue = Function(r) _selWandTolerance,
             .SetValue = Sub(r, v) _selWandTolerance = v})
-        _selContiguous.Text = "魔術棒只選相連區域"
+        _selContiguous.Text = Lang.T("魔術棒只選相連區域")
         _selContiguous.Checked = True
         _selContiguous.SetBounds(8, L.Y, L.Width - 8, 24)
         _help.SetHelp("select.contiguous", _selContiguous)
         L.Add(_selContiguous)
         L.Y += 30
-        AddRow(L, New SliderRow With {.Key = "sel_feather", .Caption = "羽化", .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
+        AddRow(L, New SliderRow With {.Key = "sel_feather", .Caption = Lang.T("羽化"), .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
             .GetValue = Function(r) If(r.Selection?.Feather, 0),
             .SetValue = Sub(r, v)
                             If r.Selection IsNot Nothing Then r.Selection.Feather = v
                         End Sub})
 
-        AddSelButtons(L, {("全選", "select.all", "selectall"), ("取消選取", "select.none", "deselect"), ("反轉", "select.invert", "invertsel")})
-        AddHeading(L, "選取區操作")
-        AddSelButtons(L, {("複製", "select.copy", "copy"), ("剪下", "select.cut", "cut"), ("貼成物件", "select.paste", "pasteobject")})
-        AddSelButtons(L, {("複製成物件", "select.toobject", "toobject"), ("只調整選取區", "select.adjust", "seladjust")})
-        AddSelButtons(L, {("刪除（透明）", "select.delete", "seldelete"), ("填滿…", "select.fill", "selfill"), ("描邊…", "select.stroke", "selstroke")})
-        AddSelButtons(L, {("裁切到選取區", "select.crop", "selcrop"), ("當作去背範圍", "select.cutout", "selcutout")})
+        AddSelButtons(L, {(Lang.T("全選"), "select.all", "selectall"), (Lang.T("取消選取"), "select.none", "deselect"), (Lang.T("反轉"), "select.invert", "invertsel")})
+        AddHeading(L, Lang.T("選取區操作"))
+        AddSelButtons(L, {(Lang.T("複製"), "select.copy", "copy"), (Lang.T("剪下"), "select.cut", "cut"), (Lang.T("貼成物件"), "select.paste", "pasteobject")})
+        AddSelButtons(L, {(Lang.T("複製成物件"), "select.toobject", "toobject"), (Lang.T("只調整選取區"), "select.adjust", "seladjust")})
+        AddSelButtons(L, {(Lang.T("刪除（透明）"), "select.delete", "seldelete"), (Lang.T("填滿…"), "select.fill", "selfill"), (Lang.T("描邊…"), "select.stroke", "selstroke")})
+        AddSelButtons(L, {(Lang.T("裁切到選取區"), "select.crop", "selcrop"), (Lang.T("當作去背範圍"), "select.cutout", "selcutout")})
 
         AddHandler _antsTimer.Tick, Sub() OnAntsTick()
         AddHandler FormClosed, Sub() _antsTimer.Dispose()
@@ -223,7 +223,7 @@ Partial Friend Class frmEditor
 
     Private Function RequireSelection() As Boolean
         If HasSelection Then Return True
-        SetStatusMessage("先用選取分頁的工具選取一個範圍（或按 Ctrl+A 全選）。")
+        SetStatusMessage(Lang.T("先用選取分頁的工具選取一個範圍（或按 Ctrl+A 全選）。"))
         Return False
     End Function
 
@@ -350,11 +350,11 @@ Partial Friend Class frmEditor
                 Else
                     ' 點一下：改成點選多邊形，繼續點下一個頂點；按兩下、Enter 或點回第一點結束。
                     _selPolygon = True
-                    SetStatusMessage("點選多邊形的頂點；按兩下、Enter 或點回第一點完成，Esc 取消。")
+                    SetStatusMessage(Lang.T("點選多邊形的頂點；按兩下、Enter 或點回第一點完成，Esc 取消。"))
                 End If
             Case SelTool.Bezier
                 _selBezierDragging = False
-                SetStatusMessage("貝茲選取：點一下加錨點、拖曳拉出曲線；按兩下、Enter 或點回第一點完成，Esc 取消。")
+                SetStatusMessage(Lang.T("貝茲選取：點一下加錨點、拖曳拉出曲線；按兩下、Enter 或點回第一點完成，Esc 取消。"))
         End Select
         _canvas.Invalidate()
     End Sub
@@ -426,7 +426,7 @@ Partial Friend Class frmEditor
                         If r.Selection Is Nothing Then r.Selection = New SelectionSpec()
                         r.Selection.Apply(op)
                     End Sub)
-        If Not HasSelection Then SetStatusMessage("選取區是空的。") Else UpdateSelectionStatus()
+        If Not HasSelection Then SetStatusMessage(Lang.T("選取區是空的。")) Else UpdateSelectionStatus()
     End Sub
 
     Private Sub CommitPolygon(points As List(Of PointF))
@@ -497,9 +497,9 @@ Partial Friend Class frmEditor
 
     Private Sub UpdateSelectionStatus()
         Dim b = SelectionMask.Bounds(_recipe.Selection)
-        If b.IsEmpty Then SetStatusMessage("選取區是空的。") : Return
+        If b.IsEmpty Then SetStatusMessage(Lang.T("選取區是空的。")) : Return
         Dim full = FullOutputSize()
-        SetStatusMessage($"選取範圍 {CInt(b.Width * full.Width)} × {CInt(b.Height * full.Height)}　｜　Shift 加入、Alt 減去；Ctrl+C 複製、Del 刪除、Ctrl+D 取消選取")
+        SetStatusMessage(Lang.F("選取範圍 {0} × {1}　｜　Shift 加入、Alt 減去；Ctrl+C 複製、Del 刪除、Ctrl+D 取消選取", CInt(b.Width * full.Width), CInt(b.Height * full.Height)))
     End Sub
 
     ''' <summary>全尺寸輸出（不含邊框）的大小。</summary>
@@ -672,14 +672,14 @@ Partial Friend Class frmEditor
         Cursor = Cursors.WaitCursor
         Try
             Using piece = RenderSelection(includeLayers, bounds)
-                If piece Is Nothing Then SetStatusMessage("選取區是空的。") : Return False
+                If piece Is Nothing Then SetStatusMessage(Lang.T("選取區是空的。")) : Return False
                 PutOnClipboard(piece)
                 _lastCopy = (bounds, piece.Size)
-                SetStatusMessage($"已複製選取區（{piece.Width} × {piece.Height}）到剪貼簿；「貼成物件」可以貼回照片上當成可移動的物件。")
+                SetStatusMessage(Lang.F("已複製選取區（{0} × {1}）到剪貼簿；「貼成物件」可以貼回照片上當成可移動的物件。", piece.Width, piece.Height))
                 Return True
             End Using
         Catch ex As Exception When TypeOf ex Is ExternalException OrElse TypeOf ex Is OutOfMemoryException OrElse TypeOf ex Is ArgumentException
-            MessageBox.Show(Me, "無法複製到剪貼簿：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法複製到剪貼簿：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return False
         Finally
             Cursor = Cursors.Default
@@ -706,12 +706,12 @@ Partial Friend Class frmEditor
         Dim file As String
         Dim size As Size
         Using bmp = ReadClipboardBitmap()
-            If bmp Is Nothing Then SetStatusMessage("剪貼簿裡沒有圖片。") : Return
+            If bmp Is Nothing Then SetStatusMessage(Lang.T("剪貼簿裡沒有圖片。")) : Return
             size = bmp.Size
             Try
                 file = SaveClipboardImage(bmp)
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is ExternalException
-                MessageBox.Show(Me, "無法貼上：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("無法貼上：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return
             End Try
         End Using
@@ -725,7 +725,7 @@ Partial Friend Class frmEditor
             Dim s = Math.Min(1.0, 0.8 / Math.Max(fw, fh))
             b = New RectangleF(CSng(0.5 - fw * s / 2), CSng(0.5 - fh * s / 2), CSng(fw * s), CSng(fh * s))
         End If
-        AddImageObject(file, b, "已貼成物件，可以拖曳移動、縮放、旋轉。")
+        AddImageObject(file, b, Lang.T("已貼成物件，可以拖曳移動、縮放、旋轉。"))
     End Sub
 
     ''' <summary>複製成物件：選取區（照片本身）變成可移動的圖片物件，放在原位，原本的照片不變。</summary>
@@ -735,16 +735,16 @@ Partial Friend Class frmEditor
         Cursor = Cursors.WaitCursor
         Try
             Using piece = RenderSelection(includeLayers:=False, bounds)
-                If piece Is Nothing Then SetStatusMessage("選取區是空的。") : Return
+                If piece Is Nothing Then SetStatusMessage(Lang.T("選取區是空的。")) : Return
                 file = SaveClipboardImage(piece)
             End Using
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is ExternalException
-            MessageBox.Show(Me, "無法建立物件：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法建立物件：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         Finally
             Cursor = Cursors.Default
         End Try
-        AddImageObject(file, bounds, "已把選取區複製成物件（在原位上面），拖曳就能移開；原本的照片不變。")
+        AddImageObject(file, bounds, Lang.T("已把選取區複製成物件（在原位上面），拖曳就能移開；原本的照片不變。"))
     End Sub
 
     ''' <summary>加入圖片物件：bounds 為照片 0..1 的範圍（物件高度＝範圍高度）。</summary>
@@ -768,20 +768,20 @@ Partial Friend Class frmEditor
         SyncSliders()
         UpdateCreativeControls()
         UpdateToolFromTab()
-        SetStatusMessage("已新增「選取區調整」（先提亮一點），用下面的滑桿調整；只會改選取區裡面。")
+        SetStatusMessage(Lang.T("已新增「選取區調整」（先提亮一點），用下面的滑桿調整；只會改選取區裡面。"))
     End Sub
 
     ''' <summary>刪除：選取區變透明（以去背做，原圖不變；匯出 JPG 時透明處為白色）。</summary>
     Private Sub DeleteSelection(fromCut As Boolean)
         Dim region = SourceRegion(SelectionMask.Inverted(_recipe.Selection))
         AddCutoutRegion(region)
-        SetStatusMessage(If(fromCut, "已剪下選取區（原處變透明）；「貼成物件」可以貼回。", "已刪除選取區（變透明）；按復原可以還原。") &
-                         "在「去背」分頁可以把透明處換成顏色或其他背景。")
+        SetStatusMessage(If(fromCut, Lang.T("已剪下選取區（原處變透明）；「貼成物件」可以貼回。"), Lang.T("已刪除選取區（變透明）；按復原可以還原。")) &
+                         Lang.T("在「去背」分頁可以把透明處換成顏色或其他背景。"))
     End Sub
 
     Private Sub SelectionAsCutout()
         AddCutoutRegion(SourceRegion(_recipe.Selection))
-        SetStatusMessage("已把選取區當作去背範圍：選取區以外變透明。可以到「去背」分頁換背景、或再用魔術棒與筆刷修正。")
+        SetStatusMessage(Lang.T("已把選取區當作去背範圍：選取區以外變透明。可以到「去背」分頁換背景、或再用魔術棒與筆刷修正。"))
     End Sub
 
     ''' <summary>換算到原圖座標（去背在原圖上算）。</summary>
@@ -810,7 +810,7 @@ Partial Friend Class frmEditor
         If _lastFill Is Nothing Then _lastFill = New FillChoice With {.ColorArgb = _drawStyle.FillColorArgb, .Gradient = GradientOptions().Kind, .Material = _drawStyle.Material}
         Dim sel = SelDraw(_recipe)
         Dim target = If(sel IsNot Nothing AndAlso sel.Shape = DrawShape.Raster AndAlso sel.Visible AndAlso Not sel.Locked,
-                        If(String.IsNullOrEmpty(sel.Name), "點陣圖層", sel.Name), Nothing)
+                        If(String.IsNullOrEmpty(sel.Name), Lang.T("點陣圖層"), sel.Name), Nothing)
         Dim c As FillChoice
         Using dlg As New frmFillSelection(_lastFill, target, _help)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
@@ -825,11 +825,11 @@ Partial Friend Class frmEditor
         If Not HasSelection Then Return
         Dim sel = SelDraw(_recipe)
         Dim target = If(sel IsNot Nothing AndAlso sel.Shape = DrawShape.Raster AndAlso sel.Visible AndAlso Not sel.Locked,
-                        If(String.IsNullOrEmpty(sel.Name), "點陣圖層", sel.Name), Nothing)
+                        If(String.IsNullOrEmpty(sel.Name), Lang.T("點陣圖層"), sel.Name), Nothing)
         Dim aspect = PhotoAspect()
         Dim region = _recipe.Selection.Clone()
         Dim op As DrawLayer
-        Dim names = {"填色", "漸層", "材質", "內容感知"}
+        Dim names = {Lang.T("填色"), Lang.T("漸層"), Lang.T("材質"), Lang.T("內容感知")}
         If c.Content = FillKind.Gradient Then
             ' 漸層：依選取範圍的外框與方向決定起點、終點（照片高度單位）
             Dim b = SelectionMask.Bounds(region, 1024, 1024)
@@ -861,10 +861,10 @@ Partial Friend Class frmEditor
                             If r.Drawings(index).Ops Is Nothing Then r.Drawings(index).Ops = New List(Of DrawLayer)()
                             r.Drawings(index).Ops.Add(op)
                         End Sub)
-            SetStatusMessage($"已把選取範圍填滿{names(CInt(c.Content))}（在「{target}」{If(op.KeepAlpha, "，保留透明度", "")}）。")
+            SetStatusMessage(Lang.F("已把選取範圍填滿{0}（在「{1}」{2}）。", names(CInt(c.Content)), target, If(op.KeepAlpha, Lang.T("，保留透明度"), "")))
         Else
             AddRegionLayer(names(CInt(c.Content)), op)
-            SetStatusMessage($"已把選取範圍填滿{names(CInt(c.Content))}（新的點陣圖層，可以在「圖層」分頁調不透明度與混合模式）。")
+            SetStatusMessage(Lang.F("已把選取範圍填滿{0}（新的點陣圖層，可以在「圖層」分頁調不透明度與混合模式）。", names(CInt(c.Content))))
         End If
     End Sub
 
@@ -893,15 +893,15 @@ Partial Friend Class frmEditor
         Dim c = Color.FromArgb(_drawStyle.StrokeColorArgb)
         Dim widthPx = Math.Max(2, full.Height \ 200)
         Dim position = 1
-        Using dlg As New Form With {.Text = "描邊", .FormBorderStyle = FormBorderStyle.FixedDialog, .MaximizeBox = False, .MinimizeBox = False,
+        Using dlg As New Form With {.Text = Lang.T("描邊"), .FormBorderStyle = FormBorderStyle.FixedDialog, .MaximizeBox = False, .MinimizeBox = False,
                                     .StartPosition = FormStartPosition.CenterParent, .ShowInTaskbar = False, .ClientSize = New Size(320, 168),
-                                    .Font = New Font("Microsoft JhengHei UI", 9.5F)}
+                                    .Font = New Font(Lang.UiFont, 9.5F)}
             Dim colorButton As New Button With {.BackColor = c, .FlatStyle = FlatStyle.Flat}
             Dim widthBox As New NumericUpDown With {.Minimum = 1, .Maximum = 2000, .Value = widthPx}
             Dim posBox As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-            posBox.Items.AddRange({"內側", "置中", "外側"})
+            posBox.Items.AddRange({Lang.T("內側"), Lang.T("置中"), Lang.T("外側")})
             posBox.SelectedIndex = position
-            Dim captions = {("顏色", 16), ("寬度（像素）", 52), ("位置", 88)}
+            Dim captions = {(Lang.T("顏色"), 16), (Lang.T("寬度（像素）"), 52), (Lang.T("位置"), 88)}
             For Each cap In captions
                 Dim lbl As New Label With {.Text = cap.Item1, .AutoSize = False, .TextAlign = ContentAlignment.MiddleLeft}
                 lbl.SetBounds(16, cap.Item2, 100, 26)
@@ -915,8 +915,8 @@ Partial Friend Class frmEditor
                                                   If cd.ShowDialog(dlg) = DialogResult.OK Then colorButton.BackColor = cd.Color
                                               End Using
                                           End Sub
-            Dim ok As New Button With {.Text = "確定", .DialogResult = DialogResult.OK}
-            Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel}
+            Dim ok As New Button With {.Text = Lang.T("確定"), .DialogResult = DialogResult.OK}
+            Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel}
             ok.SetBounds(140, 128, 80, 28)
             cancel.SetBounds(228, 128, 80, 28)
             dlg.Controls.AddRange(New Control() {colorButton, widthBox, posBox, ok, cancel})
@@ -927,10 +927,10 @@ Partial Friend Class frmEditor
             widthPx = CInt(widthBox.Value)
             position = posBox.SelectedIndex
         End Using
-        AddRegionLayer("描邊", New DrawLayer With {.Shape = DrawShape.Raster, .Region = _recipe.Selection.Clone(), .Filled = False, .Stroked = True,
+        AddRegionLayer(Lang.T("描邊"), New DrawLayer With {.Shape = DrawShape.Raster, .Region = _recipe.Selection.Clone(), .Filled = False, .Stroked = True,
                                                    .StrokeColorArgb = c.ToArgb(), .StrokeWidth = widthPx / CDbl(full.Height),
                                                    .Param2 = position, .Opacity = 100, .Param1 = PhotoAspect()})
-        SetStatusMessage("已描邊選取區（新的點陣圖層）。")
+        SetStatusMessage(Lang.T("已描邊選取區（新的點陣圖層）。"))
     End Sub
 
     Private Sub AddRegionLayer(name As String, op As DrawLayer)
@@ -941,13 +941,13 @@ Partial Friend Class frmEditor
     ''' <summary>裁切到選取區的外接矩形（裁切後選取區取消）。</summary>
     Private Sub CropToSelection()
         Dim b = SelectionMask.Bounds(_recipe.Selection, 1024, 1024)
-        If b.IsEmpty Then SetStatusMessage("選取區是空的。") : Return
+        If b.IsEmpty Then SetStatusMessage(Lang.T("選取區是空的。")) : Return
         ExitCropMode(apply:=True)
         ApplyChange(Sub(r)
                         Dim c = If(r.Crop Is Nothing, New CropRect(), r.Crop.Normalized())
                         r.Crop = New CropRect(c.X + b.X * c.Width, c.Y + b.Y * c.Height, b.Width * c.Width, b.Height * c.Height)
                         r.Selection = Nothing
                     End Sub)
-        SetStatusMessage("已裁切到選取範圍；按復原可以還原。")
+        SetStatusMessage(Lang.T("已裁切到選取範圍；按復原可以還原。"))
     End Sub
 End Class

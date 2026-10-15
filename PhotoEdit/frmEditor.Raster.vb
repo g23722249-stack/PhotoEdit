@@ -19,7 +19,7 @@ Partial Friend Class frmEditor
     End Function
 
     Private Sub BuildEraseModeCombo()
-        _eraseMode.Items.AddRange({"擦掉", "漂白", "加深"})
+        _eraseMode.Items.AddRange({Lang.T("擦掉"), Lang.T("漂白"), Lang.T("加深")})
         _eraseMode.SelectedIndex = Math.Max(0, Math.Min(2, _appSettings.EraseMode))
         _eraseMode.Visible = False
         _help.SetHelp("draw.erasemode", _eraseMode)
@@ -35,7 +35,7 @@ Partial Friend Class frmEditor
 
     Private Sub BuildEraserToggle()
         _drawEraser.Appearance = Appearance.Button
-        _drawEraser.Text = "橡皮擦 (E)"
+        _drawEraser.Text = Lang.T("橡皮擦 (E)")
         _drawEraser.TextAlign = ContentAlignment.MiddleCenter
         _drawEraser.Dock = DockStyle.Left
         _drawEraser.Width = 100
@@ -51,7 +51,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Function NewRasterLayer() As DrawLayer
-        Return New DrawLayer With {.Shape = DrawShape.Raster, .Ops = New List(Of DrawLayer)(), .Name = "點陣圖層 " & (LayerCount() + 1)}
+        Return New DrawLayer With {.Shape = DrawShape.Raster, .Ops = New List(Of DrawLayer)(), .Name = Lang.T("點陣圖層 ") & (LayerCount() + 1)}
     End Function
 
     ''' <summary>直接繪製按下：決定畫在哪個圖層，必要時先問要不要點陣化。</summary>
@@ -60,7 +60,7 @@ Partial Friend Class frmEditor
         If sel IsNot Nothing Then
             Dim name = If(String.IsNullOrEmpty(sel.Name), DrawGeometry.ShapeNames(CInt(sel.Shape)), sel.Name)
             If Not sel.Visible OrElse sel.Locked Then
-                SetStatusMessage($"「{name}」{If(sel.Locked, "已鎖定", "已隱藏")}，不能在上面畫。")
+                SetStatusMessage(Lang.F("「{0}」{1}，不能在上面畫。", name, If(sel.Locked, Lang.T("已鎖定"), Lang.T("已隱藏"))))
                 Return
             End If
             If sel.Shape <> DrawShape.Raster Then
@@ -70,7 +70,7 @@ Partial Friend Class frmEditor
                 Return
             End If
         ElseIf IsErasing() Then
-            SetStatusMessage("先在圖層清單選一個點陣圖層，再用橡皮擦擦。")
+            SetStatusMessage(Lang.T("先在圖層清單選一個點陣圖層，再用橡皮擦擦。"))
             Return
         End If
         _dd = DrawDrag.Freehand
@@ -83,14 +83,14 @@ Partial Friend Class frmEditor
         If index < 0 OrElse index >= LayerCount() Then Return
         Dim d = _recipe.Drawings(index)
         Dim name = If(String.IsNullOrEmpty(d.Name), DrawGeometry.ShapeNames(CInt(d.Shape)), d.Name)
-        Dim rasterize As New TaskDialogButton("點陣化")
-        Dim addLayer As New TaskDialogButton("新增點陣圖層")
+        Dim rasterize As New TaskDialogButton(Lang.T("點陣化"))
+        Dim addLayer As New TaskDialogButton(Lang.T("新增點陣圖層"))
         Dim page As New TaskDialogPage With {
             .Caption = AppName,
-            .Heading = $"「{name}」是向量圖層",
-            .Text = "直接繪製要畫在點陣圖層上。" & vbCrLf &
-                    "點陣化：把這個圖層變成像素再畫，之後就不能再調整形狀、文字與筆刷。" & vbCrLf &
-                    "新增點陣圖層：在它上面加一個空白圖層來畫，原本的圖層不變。",
+            .Heading = Lang.F("「{0}」是向量圖層", name),
+            .Text = Lang.T("直接繪製要畫在點陣圖層上。") & vbCrLf &
+                    Lang.T("點陣化：把這個圖層變成像素再畫，之後就不能再調整形狀、文字與筆刷。") & vbCrLf &
+                    Lang.T("新增點陣圖層：在它上面加一個空白圖層來畫，原本的圖層不變。"),
             .Icon = TaskDialogIcon.Information,
             .DefaultButton = rasterize}
         page.Buttons.Add(rasterize)
@@ -100,7 +100,7 @@ Partial Friend Class frmEditor
         If result Is rasterize Then
             ApplyChange(Sub(r) r.Drawings(index) = DrawGeometry.Rasterize(r.Drawings(index)))
             SelectDrawLayer(index)
-            SetStatusMessage($"「{name}」已點陣化，可以直接畫上去了。")
+            SetStatusMessage(Lang.F("「{0}」已點陣化，可以直接畫上去了。", name))
         ElseIf result Is addLayer Then
             Dim layer = NewRasterLayer()
             ApplyChange(Sub(r)
@@ -108,7 +108,7 @@ Partial Friend Class frmEditor
                             LayerStack.PlaceAbove(r, layer, r.Drawings(index))
                         End Sub)
             SelectDrawLayer(index + 1)
-            SetStatusMessage($"已在「{name}」上面新增「{layer.Name}」。")
+            SetStatusMessage(Lang.F("已在「{0}」上面新增「{1}」。", name, layer.Name))
         End If
     End Sub
 

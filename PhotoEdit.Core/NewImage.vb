@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
@@ -55,39 +56,39 @@ Public Class CanvasPreset
     End Function
 
     Public Shared ReadOnly BuiltIn As IReadOnlyList(Of CanvasPreset) = New List(Of CanvasPreset) From {
-        New CanvasPreset("相片", "相片大小 3.5 x 5 英吋（3×5）", 3.5, 5, SizeUnit.Inches),
-        New CanvasPreset("相片", "相片大小 4 x 6 英吋（4×6）", 4, 6, SizeUnit.Inches),
-        New CanvasPreset("相片", "相片大小 5 x 7 英吋", 5, 7, SizeUnit.Inches),
-        New CanvasPreset("相片", "相片大小 6 x 8 英吋", 6, 8, SizeUnit.Inches),
-        New CanvasPreset("相片", "相片大小 8 x 10 英吋", 8, 10, SizeUnit.Inches),
-        New CanvasPreset("相片", "相片大小 8 x 12 英吋", 8, 12, SizeUnit.Inches),
-        New CanvasPreset("證件照", "1 吋大頭照 2.8 x 3.5 公分", 2.8, 3.5, SizeUnit.Centimeters),
-        New CanvasPreset("證件照", "2 吋大頭照 3.5 x 4.5 公分（身分證、護照）", 3.5, 4.5, SizeUnit.Centimeters),
-        New CanvasPreset("證件照", "美國簽證 2 x 2 英吋", 2, 2, SizeUnit.Inches),
-        New CanvasPreset("紙張", "A3 297 x 420 公釐", 297, 420, SizeUnit.Millimeters),
-        New CanvasPreset("紙張", "A4 210 x 297 公釐", 210, 297, SizeUnit.Millimeters),
-        New CanvasPreset("紙張", "A5 148 x 210 公釐", 148, 210, SizeUnit.Millimeters),
-        New CanvasPreset("紙張", "B5 182 x 257 公釐", 182, 257, SizeUnit.Millimeters),
-        New CanvasPreset("紙張", "Letter 8.5 x 11 英吋", 8.5, 11, SizeUnit.Inches),
-        New CanvasPreset("紙張", "Legal 8.5 x 14 英吋", 8.5, 14, SizeUnit.Inches),
-        New CanvasPreset("紙張", "明信片 100 x 148 公釐", 100, 148, SizeUnit.Millimeters),
-        New CanvasPreset("紙張", "名片 90 x 54 公釐", 90, 54, SizeUnit.Millimeters),
-        New CanvasPreset("螢幕", "640 x 480", 640, 480, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "800 x 600", 800, 600, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "1024 x 768", 1024, 768, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "HD 1280 x 720", 1280, 720, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "Full HD 1920 x 1080", 1920, 1080, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "2K 2560 x 1440", 2560, 1440, SizeUnit.Pixels),
-        New CanvasPreset("螢幕", "4K 3840 x 2160", 3840, 2160, SizeUnit.Pixels),
-        New CanvasPreset("社群", "IG 貼文 1080 x 1080", 1080, 1080, SizeUnit.Pixels),
-        New CanvasPreset("社群", "IG 直式貼文 1080 x 1350", 1080, 1350, SizeUnit.Pixels),
-        New CanvasPreset("社群", "限時動態／短影音 1080 x 1920", 1080, 1920, SizeUnit.Pixels),
-        New CanvasPreset("社群", "FB 封面 851 x 315", 851, 315, SizeUnit.Pixels),
-        New CanvasPreset("社群", "FB 分享圖 1200 x 630", 1200, 630, SizeUnit.Pixels),
-        New CanvasPreset("社群", "YouTube 縮圖 1280 x 720", 1280, 720, SizeUnit.Pixels),
-        New CanvasPreset("圖示", "圖示 32 x 32", 32, 32, SizeUnit.Pixels),
-        New CanvasPreset("圖示", "圖示 256 x 256", 256, 256, SizeUnit.Pixels),
-        New CanvasPreset("圖示", "圖示 512 x 512", 512, 512, SizeUnit.Pixels)
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 3.5 x 5 英吋（3×5）"), 3.5, 5, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 4 x 6 英吋（4×6）"), 4, 6, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 5 x 7 英吋"), 5, 7, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 6 x 8 英吋"), 6, 8, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 8 x 10 英吋"), 8, 10, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("相片"), Lang.T("相片大小 8 x 12 英吋"), 8, 12, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("證件照"), Lang.T("1 吋大頭照 2.8 x 3.5 公分"), 2.8, 3.5, SizeUnit.Centimeters),
+        New CanvasPreset(Lang.T("證件照"), Lang.T("2 吋大頭照 3.5 x 4.5 公分（身分證、護照）"), 3.5, 4.5, SizeUnit.Centimeters),
+        New CanvasPreset(Lang.T("證件照"), Lang.T("美國簽證 2 x 2 英吋"), 2, 2, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("A3 297 x 420 公釐"), 297, 420, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("A4 210 x 297 公釐"), 210, 297, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("A5 148 x 210 公釐"), 148, 210, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("B5 182 x 257 公釐"), 182, 257, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("Letter 8.5 x 11 英吋"), 8.5, 11, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("Legal 8.5 x 14 英吋"), 8.5, 14, SizeUnit.Inches),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("明信片 100 x 148 公釐"), 100, 148, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("紙張"), Lang.T("名片 90 x 54 公釐"), 90, 54, SizeUnit.Millimeters),
+        New CanvasPreset(Lang.T("螢幕"), "640 x 480", 640, 480, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "800 x 600", 800, 600, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "1024 x 768", 1024, 768, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "HD 1280 x 720", 1280, 720, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "Full HD 1920 x 1080", 1920, 1080, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "2K 2560 x 1440", 2560, 1440, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("螢幕"), "4K 3840 x 2160", 3840, 2160, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("IG 貼文 1080 x 1080"), 1080, 1080, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("IG 直式貼文 1080 x 1350"), 1080, 1350, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("限時動態／短影音 1080 x 1920"), 1080, 1920, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("FB 封面 851 x 315"), 851, 315, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("FB 分享圖 1200 x 630"), 1200, 630, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("社群"), Lang.T("YouTube 縮圖 1280 x 720"), 1280, 720, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("圖示"), Lang.T("圖示 32 x 32"), 32, 32, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("圖示"), Lang.T("圖示 256 x 256"), 256, 256, SizeUnit.Pixels),
+        New CanvasPreset(Lang.T("圖示"), Lang.T("圖示 512 x 512"), 512, 512, SizeUnit.Pixels)
     }
 
     Public Shared ReadOnly Property Categories As IReadOnlyList(Of String)
@@ -145,10 +146,10 @@ Public Module NewImage
 
     Public Function UnitName(unit As SizeUnit) As String
         Select Case unit
-            Case SizeUnit.Inches : Return "英吋"
-            Case SizeUnit.Centimeters : Return "公分"
-            Case SizeUnit.Millimeters : Return "公釐"
-            Case Else : Return "像素"
+            Case SizeUnit.Inches : Return Lang.T("英吋")
+            Case SizeUnit.Centimeters : Return Lang.T("公分")
+            Case SizeUnit.Millimeters : Return Lang.T("公釐")
+            Case Else : Return Lang.T("像素")
         End Select
     End Function
 
@@ -176,9 +177,9 @@ Public Module NewImage
 
     ''' <summary>尺寸不合理時回傳說明，可以建立時回傳 Nothing。</summary>
     Public Function Validate(spec As NewImageSpec) As String
-        If spec.Width < 1 OrElse spec.Height < 1 Then Return "寬度與高度至少要 1 像素。"
-        If spec.Width > MaxSide OrElse spec.Height > MaxSide Then Return $"寬度與高度最多 {MaxSide:N0} 像素。"
-        If CLng(spec.Width) * spec.Height > MaxPixels Then Return $"影像太大（{CLng(spec.Width) * spec.Height:N0} 像素），最多 {MaxPixels:N0} 像素。"
+        If spec.Width < 1 OrElse spec.Height < 1 Then Return Lang.T("寬度與高度至少要 1 像素。")
+        If spec.Width > MaxSide OrElse spec.Height > MaxSide Then Return Lang.F("寬度與高度最多 {0:N0} 像素。", MaxSide)
+        If CLng(spec.Width) * spec.Height > MaxPixels Then Return Lang.F("影像太大（{0:N0} 像素），最多 {1:N0} 像素。", CLng(spec.Width) * spec.Height, MaxPixels)
         Return Nothing
     End Function
 

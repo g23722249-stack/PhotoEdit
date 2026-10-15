@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports PhotoEdit
 
 ''' <summary>變形動畫（影像 → 變形動畫…）：用目前看到的樣子（含調整）當第一張，另外選第二張，輸出 MP4、GIF。</summary>
@@ -10,7 +10,7 @@ Partial Friend Class frmEditor
         Try
             source = RenderMerged(_recipe)
         Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ArgumentException
-            MessageBox.Show(Me, "無法取得目前的影像：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法取得目前的影像：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         Using source
@@ -27,7 +27,7 @@ Partial Friend Class frmEditor
         Try
             source = RenderMerged(_recipe)
         Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ArgumentException
-            MessageBox.Show(If(owner, Me), "無法取得目前的影像：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(If(owner, Me), Lang.T("無法取得目前的影像：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         Using source

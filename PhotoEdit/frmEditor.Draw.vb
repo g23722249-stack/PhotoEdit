@@ -58,7 +58,7 @@ Partial Friend Class frmEditor
         _drawBar.Font = _panelFont
         Dim undo = MakeButton("↶", "draw.undo") ' 小圖示，讓出位置給屬性列
         Dim redo = MakeButton("↷", "draw.redo")
-        Dim done = MakeButton("完成", "draw.done")
+        Dim done = MakeButton(Lang.T("完成"), "draw.done")
         For Each b In {undo, redo}
             b.Dock = DockStyle.Left
             b.Width = 34
@@ -111,7 +111,7 @@ Partial Friend Class frmEditor
 
     Private Sub BuildDrawPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "筆刷")
+        AddHeading(L, Lang.T("筆刷"))
         Dim panelBrushes = Enumerable.Range(0, DrawGeometry.BrushNames.Length).Where(Function(i) Not DrawLayer.IsToolOnlyBrush(CType(i, BrushKind))).ToList()
         Dim brushRows = (panelBrushes.Count + 3) \ 4
         _brushGrid.SetBounds(8, L.Y, L.Width - 8, brushRows * 42)
@@ -129,7 +129,7 @@ Partial Friend Class frmEditor
         LayoutBrushTiles()
 
         ' 特效／材質：先選分類，再選項目（選項目時線條色換成建議顏色）。
-        Dim subCaption = AddCaption(L, "效果", L.Y)
+        Dim subCaption = AddCaption(L, Lang.T("效果"), L.Y)
         _help.SetHelpLinked("draw.subcat", _drawSubCat, subCaption, _drawSubCat)
         _help.SetHelp("draw.sub", _drawSub)
         Dim catW = (L.Width - CaptionWidth - 8 - 6) * 2 \ 5
@@ -154,11 +154,11 @@ Partial Friend Class frmEditor
         L.Add(_drawSub)
         L.Y += RowHeight
 
-        AddHeading(L, "顏色")
+        AddHeading(L, Lang.T("顏色"))
         Dim third = (L.Width - 8 - 12) \ 3
-        _drawStrokeColor.Text = "線條色"
-        _drawFillColor.Text = "填色"
-        _drawTextColor.Text = "文字色"
+        _drawStrokeColor.Text = Lang.T("線條色")
+        _drawFillColor.Text = Lang.T("填色")
+        _drawTextColor.Text = Lang.T("文字色")
         Dim colorButtons = {(_drawStrokeColor, "draw.strokecolor"), (_drawFillColor, "draw.fillcolor"), (_drawTextColor, "draw.textcolor")}
         For i = 0 To 2
             Dim b = colorButtons(i).Item1
@@ -174,7 +174,7 @@ Partial Friend Class frmEditor
         AddHandler _drawFillColor.Click, Sub() ShowColorWindow(TargetFill)
         AddHandler _drawTextColor.Click, Sub() ShowColorWindow(TargetText)
         L.Y += 38
-        Dim checks = {(_drawStroke, "外框", "draw.stroke"), (_drawFill, "填色", "draw.fill"), (_drawShadow, "陰影", "draw.shadow")}
+        Dim checks = {(_drawStroke, Lang.T("外框"), "draw.stroke"), (_drawFill, Lang.T("填色"), "draw.fill"), (_drawShadow, Lang.T("陰影"), "draw.shadow")}
         For i = 0 To 2
             Dim cb = checks(i).Item1
             cb.Text = checks(i).Item2
@@ -190,14 +190,14 @@ Partial Friend Class frmEditor
         BuildFillStyleRow(L) ' 填色方式：單色、線性漸層、放射漸層（見 frmEditor.DrawBatch2.vb）
 
         Dim pct As Func(Of Integer, String) = Function(v) v & "%"
-        AddRow(L, DrawRow("dw_width", "粗細", 1, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.StrokeWidth * 1000)), Sub(d, v) d.StrokeWidth = v / 1000.0))
+        AddRow(L, DrawRow("dw_width", Lang.T("粗細"), 1, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.StrokeWidth * 1000)), Sub(d, v) d.StrokeWidth = v / 1000.0))
         BuildLineStyleRows(L) ' 虛線、端點、轉角、箭頭
-        AddRow(L, DrawRow("dw_soft", "柔邊", 0, 100, pct, Function(d) d.Softness, Sub(d, v) d.Softness = v))
-        AddRow(L, DrawRow("dw_opacity", "不透明度", 0, 100, pct, Function(d) d.Opacity, Sub(d, v) d.Opacity = v))
-        AddRow(L, DrawRow("dw_flow", "流量", 2, 100, pct, Function(d) d.Flow, Sub(d, v) d.Flow = v))
+        AddRow(L, DrawRow("dw_soft", Lang.T("柔邊"), 0, 100, pct, Function(d) d.Softness, Sub(d, v) d.Softness = v))
+        AddRow(L, DrawRow("dw_opacity", Lang.T("不透明度"), 0, 100, pct, Function(d) d.Opacity, Sub(d, v) d.Opacity = v))
+        AddRow(L, DrawRow("dw_flow", Lang.T("流量"), 2, 100, pct, Function(d) d.Flow, Sub(d, v) d.Flow = v))
         BuildDrawAdvanced(L)
 
-        _help.SetHelpLinked("draw.font", _drawFont, AddCaption(L, "圖說字型", L.Y), _drawFont)
+        _help.SetHelpLinked("draw.font", _drawFont, AddCaption(L, Lang.T("圖說字型"), L.Y), _drawFont)
         _drawFont.DropDownStyle = ComboBoxStyle.DropDownList
         _drawFont.Items.AddRange(TextFonts.Where(Function(f) f.Family <> TextRender.SevenSegmentFont).Select(Function(f) CObj(f.Name)).ToArray())
         _drawFont.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
@@ -208,11 +208,11 @@ Partial Friend Class frmEditor
                                                     End Sub
         L.Add(_drawFont)
         L.Y += RowHeight
-        AddRow(L, DrawRow("dw_textsize", "圖說字級", 10, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.TextSize * 1000)), Sub(d, v) d.TextSize = v / 1000.0))
+        AddRow(L, DrawRow("dw_textsize", Lang.T("圖說字級"), 10, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.TextSize * 1000)), Sub(d, v) d.TextSize = v / 1000.0))
 
-        AddHeading(L, "圖層")
-        Dim names = {("新增", "draw.layer.add"), ("複製", "draw.layer.dup"), ("上移", "draw.layer.up"), ("下移", "draw.layer.down"), ("刪除", "draw.layer.delete"),
-                     ("填滿…", "draw.layer.fill")}
+        AddHeading(L, Lang.T("圖層"))
+        Dim names = {(Lang.T("新增"), "draw.layer.add"), (Lang.T("複製"), "draw.layer.dup"), (Lang.T("上移"), "draw.layer.up"), (Lang.T("下移"), "draw.layer.down"), (Lang.T("刪除"), "draw.layer.delete"),
+                     (Lang.T("填滿…"), "draw.layer.fill")}
         Dim bw = (L.Width - 8 - 4 * (names.Length - 1)) \ names.Length
         For i = 0 To names.Length - 1
             Dim b = MakeButton(names(i).Item1, names(i).Item2)
@@ -312,7 +312,7 @@ Partial Friend Class frmEditor
         ' 混色、塗抹、仿製要讀取畫布，只能直接繪製在點陣圖層上。
         If DrawLayer.SamplesCanvas(b) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso Not IsFillTool() Then
             _drawStrip.SelectedTool = CInt(DrawShape.Raster)
-            SetStatusMessage($"「{DrawGeometry.BrushNames(CInt(b))}」會讀取照片的顏色，已切換到直接繪製（畫在點陣圖層上）。")
+            SetStatusMessage(Lang.F("「{0}」會讀取照片的顏色，已切換到直接繪製（畫在點陣圖層上）。", DrawGeometry.BrushNames(CInt(b))))
         End If
         If Not DrawLayer.SamplesCanvas(b) Then _lastPaintBrush = b
         SetDrawProp(Sub(d) d.Brush = b)
@@ -419,11 +419,11 @@ Partial Friend Class frmEditor
             ' 多選而且顏色不一樣：顏色按鈕顯示「混合」
             If multi Then
                 Dim ts = StyleTargets(_recipe)
-                For Each sw In {(_drawStrokeColor, "線條色", CType(Function(d As DrawLayer) d.StrokeColorArgb, Func(Of DrawLayer, Integer))),
-                                (_drawFillColor, "填色", CType(Function(d As DrawLayer) d.FillColorArgb, Func(Of DrawLayer, Integer))),
-                                (_drawTextColor, "文字色", CType(Function(d As DrawLayer) d.TextColorArgb, Func(Of DrawLayer, Integer)))}
+                For Each sw In {(_drawStrokeColor, Lang.T("線條色"), CType(Function(d As DrawLayer) d.StrokeColorArgb, Func(Of DrawLayer, Integer))),
+                                (_drawFillColor, Lang.T("填色"), CType(Function(d As DrawLayer) d.FillColorArgb, Func(Of DrawLayer, Integer))),
+                                (_drawTextColor, Lang.T("文字色"), CType(Function(d As DrawLayer) d.TextColorArgb, Func(Of DrawLayer, Integer)))}
                     If ts.Select(sw.Item3).Distinct().Count() > 1 Then
-                        sw.Item1.Text = sw.Item2 & "（混合）"
+                        sw.Item1.Text = sw.Item2 & Lang.T("（混合）")
                         sw.Item1.BackColor = ThemeManager.Back(Color.FromArgb(244, 245, 248))
                         sw.Item1.ForeColor = ThemeManager.Fore(Color.FromArgb(70, 76, 88))
                     Else
@@ -431,7 +431,7 @@ Partial Friend Class frmEditor
                     End If
                 Next
             Else
-                _drawStrokeColor.Text = "線條色" : _drawFillColor.Text = "填色" : _drawTextColor.Text = "文字色"
+                _drawStrokeColor.Text = Lang.T("線條色") : _drawFillColor.Text = Lang.T("填色") : _drawTextColor.Text = Lang.T("文字色")
             End If
             UpdateDrawHint()
         Finally
@@ -482,17 +482,17 @@ Partial Friend Class frmEditor
         If st.Brush = BrushKind.StickerHose Then
             ' 貼圖主題（內建＋貼圖資料夾），值為清單索引；選了主題不換線條色。
             Dim c = Color.FromArgb(st.StrokeColorArgb)
-            Return {New EffectCatalog.Category With {.Name = "貼圖主題",
-                .Items = HoseThemes().Select(Function(n, i) New EffectCatalog.Entry With {.Value = i, .Name = n, .Color = c, .Tinted = True}).ToArray()}}
+            Return {New EffectCatalog.Category With {.Name = Lang.T("貼圖主題"),
+                .Items = HoseThemes().Select(Function(n, i) New EffectCatalog.Entry With {.Value = i, .Name = If(n = StickerLibrary.BuiltInTheme, Lang.T(n), n), .Color = c, .Tinted = True}).ToArray()}}
         End If
         Return Nothing
     End Function
 
     Private Shared ReadOnly ParticleCategories As EffectCatalog.Category() = {
-        New EffectCatalog.Category With {.Name = "粒子", .Items = {
-            New EffectCatalog.Entry With {.Value = ParticleKind.Gravity, .Name = "重力（噴泉、毛髮、火花）", .Color = Color.FromArgb(60, 80, 160), .Tinted = True},
-            New EffectCatalog.Entry With {.Value = ParticleKind.Flow, .Name = "流動（煙絲、水流、髮絲）", .Color = Color.FromArgb(70, 130, 190), .Tinted = True},
-            New EffectCatalog.Entry With {.Value = ParticleKind.Spring, .Name = "彈簧（甩出一圈圈的線）", .Color = Color.FromArgb(40, 42, 52), .Tinted = True}}}}
+        New EffectCatalog.Category With {.Name = Lang.T("粒子"), .Items = {
+            New EffectCatalog.Entry With {.Value = ParticleKind.Gravity, .Name = Lang.T("重力（噴泉、毛髮、火花）"), .Color = Color.FromArgb(60, 80, 160), .Tinted = True},
+            New EffectCatalog.Entry With {.Value = ParticleKind.Flow, .Name = Lang.T("流動（煙絲、水流、髮絲）"), .Color = Color.FromArgb(70, 130, 190), .Tinted = True},
+            New EffectCatalog.Entry With {.Value = ParticleKind.Spring, .Name = Lang.T("彈簧（甩出一圈圈的線）"), .Color = Color.FromArgb(40, 42, 52), .Tinted = True}}}}
 
     Private Shared Function HoseThemes() As List(Of String)
         Dim list As New List(Of String) From {StickerLibrary.BuiltInTheme}
@@ -524,29 +524,29 @@ Partial Friend Class frmEditor
                         End Select
                         d.StrokeColorArgb = argb
                     End Sub)
-        If Not entry.Tinted Then SetStatusMessage($"「{entry.Name}」使用本身的顏色；線條色只會稍微影響或不影響。")
+        If Not entry.Tinted Then SetStatusMessage(Lang.F("「{0}」使用本身的顏色；線條色只會稍微影響或不影響。", entry.Name))
     End Sub
 
     Private Sub UpdateDrawHint()
         Dim tool = _drawStrip.SelectedTool
-        Dim pen = If(_canvas.PenPressure.HasValue, "（繪圖筆：依筆壓改變粗細）", "")
+        Dim pen = If(_canvas.PenPressure.HasValue, Lang.T("（繪圖筆：依筆壓改變粗細）"), "")
         Dim text As String
         If _photo Is Nothing Then
-            text = "先開啟一張照片。"
+            text = Lang.T("先開啟一張照片。")
         ElseIf _polyPoints IsNot Nothing Then
-            text = "點一下加一個頂點；點回第一點、按兩下或 Enter 完成，Esc 取消。"
+            text = Lang.T("點一下加一個頂點；點回第一點、按兩下或 Enter 完成，Esc 取消。")
         ElseIf _builderOn Then
-            text = "形狀建立：在一塊一塊上拖曳，拖過的合成一塊；按住 Alt 點（或拖）刪掉那幾塊。Esc、Enter 或點外面結束。"
+            text = Lang.T("形狀建立：在一塊一塊上拖曳，拖過的合成一塊；按住 Alt 點（或拖）刪掉那幾塊。Esc、Enter 或點外面結束。")
         ElseIf _penContour IsNot Nothing Then
-            text = "鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。"
+            text = Lang.T("鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。")
         ElseIf tool = DrawIcons.NodeTool Then
-            text = "節點：點選鋼筆路徑後拖曳節點移動（Shift＋點選多選）、拖曳把手改彎曲（Alt：只動一邊）；按兩下路徑加節點、按兩下節點刪除。其他圖形先按「轉成曲線」。"
+            text = Lang.T("節點：點選鋼筆路徑後拖曳節點移動（Shift＋點選多選）、拖曳把手改彎曲（Alt：只動一邊）；按兩下路徑加節點、按兩下節點刪除。其他圖形先按「轉成曲線」。")
         ElseIf tool = CInt(DrawShape.Path) Then
-            text = "鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。之後用節點工具修改。"
+            text = Lang.T("鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。之後用節點工具修改。")
         ElseIf tool = DrawIcons.SelectTool AndAlso IsMultiSelected() Then
-            text = $"已選 {SelectedIndices().Count} 個物件：拖曳一起移動，藍色方塊縮放（Shift 不等比例）、圓點旋轉；Shift＋點選加選或取消，方向鍵微調，Del 刪除。"
+            text = Lang.F("已選 {0} 個物件：拖曳一起移動，藍色方塊縮放（Shift 不等比例）、圓點旋轉；Shift＋點選加選或取消，方向鍵微調，Del 刪除。", SelectedIndices().Count)
         ElseIf tool = DrawIcons.SelectTool Then
-            text = "點選圖形後可拖曳移動；藍色方塊縮放、圓點旋轉、黃點調整形狀。拖曳空白處框選、Shift＋點選多選、Ctrl+G 群組（雙擊進入群組、Ctrl＋點選群組裡的物件）。"
+            text = Lang.T("點選圖形後可拖曳移動；藍色方塊縮放、圓點旋轉、黃點調整形狀。拖曳空白處框選、Shift＋點選多選、Ctrl+G 群組（雙擊進入群組、Ctrl＋點選群組裡的物件）。")
         ElseIf ToolHint(tool) IsNot Nothing Then
             text = ToolHint(tool)
         ElseIf tool < 0 Then
@@ -557,37 +557,37 @@ Partial Friend Class frmEditor
             Dim shape = CType(tool, DrawShape)
             Select Case shape
                 Case DrawShape.Gradient
-                    text = "漸層：在照片上拖一條線，起點是線條色、終點是填色（Shift 鎖 45°）；有選取範圍時只畫在範圍裡。"
+                    text = Lang.T("漸層：在照片上拖一條線，起點是線條色、終點是填色（Shift 鎖 45°）；有選取範圍時只畫在範圍裡。")
                 Case DrawShape.Bucket
-                    text = "油漆桶：點一下把顏色相近的區域填滿（線條色＋目前筆刷的質感），填在選取的點陣圖層。" &
-                           "線稿有缺口就調高「補缺口」；Alt＋點一下吸色。"
+                    text = Lang.T("油漆桶：點一下把顏色相近的區域填滿（線條色＋目前筆刷的質感），填在選取的點陣圖層。") &
+                           Lang.T("線稿有缺口就調高「補缺口」；Alt＋點一下吸色。")
                 Case DrawShape.Raster
                     If _drawEraser.Checked Then
-                        text = {"橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方", "漂白：拖曳讓畫過的地方越來越淡（往白色）", "加深：拖曳讓畫過的地方越來越暗"}(Math.Max(0, Math.Min(2, _appSettings.EraseMode))) &
-                               "（B 換回畫筆；平常按住右鍵或用繪圖筆的橡皮擦端也能擦）。"
+                        text = {Lang.T("橡皮擦：拖曳擦掉目前點陣圖層上畫過的地方"), Lang.T("漂白：拖曳讓畫過的地方越來越淡（往白色）"), Lang.T("加深：拖曳讓畫過的地方越來越暗")}(Math.Max(0, Math.Min(2, _appSettings.EraseMode))) &
+                               Lang.T("（B 換回畫筆；平常按住右鍵或用繪圖筆的橡皮擦端也能擦）。")
                     ElseIf _drawStyle.Brush = BrushKind.Clone Then
-                        text = If(_cloneSource.HasValue, "仿製筆：拖曳把來源（十字準星）的照片畫過來；Alt＋點一下換來源。",
-                                  "仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。")
+                        text = If(_cloneSource.HasValue, Lang.T("仿製筆：拖曳把來源（十字準星）的照片畫過來；Alt＋點一下換來源。"),
+                                  Lang.T("仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。"))
                     ElseIf _drawStyle.Brush = BrushKind.Smudge Then
-                        text = "塗抹筆：拖曳把照片與下面圖層的顏色推開、抹勻（結果畫在點陣圖層，原圖不動）。"
+                        text = Lang.T("塗抹筆：拖曳把照片與下面圖層的顏色推開、抹勻（結果畫在點陣圖層，原圖不動）。")
                     ElseIf _drawStyle.Brush = BrushKind.Mixer Then
-                        text = "混色筆：帶著線條色畫，同時沾起畫布上的顏色混在一起。"
+                        text = Lang.T("混色筆：帶著線條色畫，同時沾起畫布上的顏色混在一起。")
                     Else
-                        text = "直接畫在目前的點陣圖層上，畫完就是像素；沒有選圖層時自動新增。E 切換橡皮擦。"
+                        text = Lang.T("直接畫在目前的點陣圖層上，畫完就是像素；沒有選圖層時自動新增。E 切換橡皮擦。")
                     End If
                     text &= pen
-                Case DrawShape.Freehand : text = "在照片上拖曳畫線（向量，之後可以再調整）。換顏色或筆刷後再畫，會成為新的圖層。" & pen
-                Case DrawShape.Polygon : text = "點一下開始，逐點畫出多邊形。"
-                Case DrawShape.Line : text = "拖曳畫出直線（Shift：45° 角）；畫好後可拖曳兩端。"
-                Case DrawShape.Bezier : text = "拖曳畫出曲線，再拖曳黃色控制點調整彎曲。"
+                Case DrawShape.Freehand : text = Lang.T("在照片上拖曳畫線（向量，之後可以再調整）。換顏色或筆刷後再畫，會成為新的圖層。") & pen
+                Case DrawShape.Polygon : text = Lang.T("點一下開始，逐點畫出多邊形。")
+                Case DrawShape.Line : text = Lang.T("拖曳畫出直線（Shift：45° 角）；畫好後可拖曳兩端。")
+                Case DrawShape.Bezier : text = Lang.T("拖曳畫出曲線，再拖曳黃色控制點調整彎曲。")
                 Case Else
-                    text = $"拖曳畫出{DrawGeometry.ShapeNames(tool)}（Shift：等比例）；畫好後可縮放、旋轉"
+                    text = Lang.F("拖曳畫出{0}（Shift：等比例）；畫好後可縮放、旋轉", DrawGeometry.ShapeNames(tool))
                     If DrawGeometry.IsCallout(shape) Then
-                        text &= "，拖曳黃點改變指向，按兩下輸入文字。"
+                        text &= Lang.T("，拖曳黃點改變指向，按兩下輸入文字。")
                     ElseIf DrawGeometry.ParamHandles(New DrawLayer With {.Shape = shape, .Param1 = 0.3, .Param2 = 0.3}).Count > 0 Then
-                        text &= "，拖曳黃點調整形狀。"
+                        text &= Lang.T("，拖曳黃點調整形狀。")
                     Else
-                        text &= "。"
+                        text &= Lang.T("。")
                     End If
             End Select
         End If
@@ -626,7 +626,7 @@ Partial Friend Class frmEditor
         ' 清單上最後點的是群組列（而且選著）：改群組名稱
         If _listAnchorRow >= 0 AndAlso _listAnchorRow < _layerRows.Count AndAlso _layerRows(_listAnchorRow).Group IsNot Nothing AndAlso RowSelected(_listAnchorRow) Then
             Dim gid = _layerRows(_listAnchorRow).Group.Id
-            Dim gname = Microsoft.VisualBasic.Interaction.InputBox("群組名稱：", AppName, GroupName(DrawGroups.Find(_recipe, gid)))
+            Dim gname = Microsoft.VisualBasic.Interaction.InputBox(Lang.T("群組名稱："), AppName, GroupName(DrawGroups.Find(_recipe, gid)))
             If String.IsNullOrWhiteSpace(gname) Then Return
             ApplyChange(Sub(r) DrawGroups.Find(r, gid).Name = gname.Trim())
             Return
@@ -634,7 +634,7 @@ Partial Friend Class frmEditor
         Dim d = SelDraw(_recipe)
         If d Is Nothing Then Return
         If d.Shape = DrawShape.FillLayer Then EditFillLayer(_drawIndex) : Return ' 填滿圖層：按兩下修改內容（名稱也在對話框裡）
-        Dim name = Microsoft.VisualBasic.Interaction.InputBox("圖層名稱：", AppName, d.Name)
+        Dim name = Microsoft.VisualBasic.Interaction.InputBox(Lang.T("圖層名稱："), AppName, d.Name)
         If String.IsNullOrWhiteSpace(name) Then Return
         Dim index = _drawIndex
         ApplyChange(Sub(r) r.Drawings(index).Name = name.Trim())
@@ -657,7 +657,7 @@ Partial Friend Class frmEditor
                 If original Is Nothing Then Return
                 Dim d = original.Clone()
                 DrawGeometry.Offset(d, 0.02, 0.02)
-                d.Name &= " 複本"
+                d.Name &= Lang.T(" 複本")
                 d.Id = Nothing
                 ApplyChange(Sub(r)
                                 r.Drawings.Add(d)
@@ -905,7 +905,7 @@ Partial Friend Class frmEditor
                     Return
                 End If
                 If Not _cloneSource.HasValue Then
-                    SetStatusMessage("仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。")
+                    SetStatusMessage(Lang.T("仿製筆：先按住 Alt 在照片上點一下，設定要仿製的來源。"))
                     Return
                 End If
             End If
@@ -1175,7 +1175,7 @@ Partial Friend Class frmEditor
                     EnterGroup(child)
                     Dim unit = ExpandToGroups({hit})
                     SetMultiSelection(unit, hit)
-                    SetStatusMessage("已進入群組：可以選裡面的物件，畫的新圖形會放進這個群組；Esc 或點群組外面離開。")
+                    SetStatusMessage(Lang.T("已進入群組：可以選裡面的物件，畫的新圖形會放進這個群組；Esc 或點群組外面離開。"))
                     Return
                 End If
             End If
@@ -1264,7 +1264,7 @@ Partial Friend Class frmEditor
             Dim d As New DrawLayer With {.Shape = DrawShape.Freehand, .Strokes = New List(Of DrawStroke) From {stroke}, .Seed = _strokeSeed} ' 和即時預覽同一個種子
             d.CopyStyleFrom(_drawStyle)
             Dim kind = If(d.Brush = BrushKind.FX, EffectCatalog.FxNames(CInt(d.Fx)), If(d.Brush = BrushKind.Texture, EffectCatalog.MaterialNames(CInt(d.Material)), DrawGeometry.BrushNames(CInt(d.Brush))))
-            d.Name = $"筆畫（{kind}）{LayerCount() + 1}"
+            d.Name = Lang.F("筆畫（{0}）{1}", kind, LayerCount() + 1)
             AddDrawLayer(d)
         End If
     End Sub
@@ -1583,7 +1583,7 @@ Partial Friend Class frmEditor
         Private _selected As Boolean
         Private _hover As Boolean
         Private _dark As Boolean
-        Private Shared ReadOnly NameFont As New Font("Microsoft JhengHei UI", 8.5F)
+        Private Shared ReadOnly NameFont As New Font(Lang.UiFont, 8.5F)
 
         Public Sub New(b As BrushKind)
             Brush = b

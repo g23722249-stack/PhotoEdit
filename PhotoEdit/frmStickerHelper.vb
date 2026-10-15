@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports System.IO
 Imports PhotoEdit
 
@@ -41,10 +41,10 @@ Friend Class frmStickerHelper
 
     Private ReadOnly _onSaved As Action(Of String)
     Private ReadOnly _help As New HelpTip()
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
     Private _source As Bitmap
     Private _sourcePixels As Byte()
-    Private _sourceName As String = "貼圖"
+    Private _sourceName As String = Lang.T("貼圖")
     Private _background As Color = Color.White
     Private _manualBackground As Boolean
     Private ReadOnly _items As New List(Of StickerItem)()
@@ -82,7 +82,7 @@ Friend Class frmStickerHelper
 
     Public Sub New(onSaved As Action(Of String))
         _onSaved = onSaved
-        Text = "貼圖小幫手"
+        Text = Lang.T("貼圖小幫手")
         Size = New Size(1320, 860)
         MinimumSize = New Size(1000, 680)
         StartPosition = FormStartPosition.CenterParent
@@ -115,7 +115,7 @@ Friend Class frmStickerHelper
                                    _help.Dispose()
                                End Sub
         UpdateDetail()
-        _status.Text = "開啟或貼上一張排了很多貼圖的圖片（Ctrl+V）。"
+        _status.Text = Lang.T("開啟或貼上一張排了很多貼圖的圖片（Ctrl+V）。")
         ' 開啟時直接最大化（還原時用上面的大小）；範圍限制在工作區，見 UpdateMaximizedBounds。
         WindowState = FormWindowState.Maximized
         ThemeManager.Attach(Me)
@@ -164,12 +164,12 @@ Friend Class frmStickerHelper
 
     Private Function BuildTopBar() As Control
         Dim p = Bar(40)
-        Dim open = MakeButton("開啟圖片…", 100, "helper.open")
-        Dim paste = MakeButton("貼上圖片 (Ctrl+V)", 150, "helper.paste")
+        Dim open = MakeButton(Lang.T("開啟圖片…"), 100, "helper.open")
+        Dim paste = MakeButton(Lang.T("貼上圖片 (Ctrl+V)"), 150, "helper.paste")
         AddHandler open.Click, Sub() OpenImage()
         AddHandler paste.Click, Sub() PasteImage()
         _bgCombo.DropDownStyle = ComboBoxStyle.DropDownList
-        _bgCombo.Items.AddRange({"自動", "指定顏色…"})
+        _bgCombo.Items.AddRange({Lang.T("自動"), Lang.T("指定顏色…")})
         _bgCombo.SelectedIndex = 0
         _bgCombo.Width = 110
         _bgCombo.Margin = New Padding(2, 3, 2, 0)
@@ -190,7 +190,7 @@ Friend Class frmStickerHelper
                                                        End If
                                                        Resplit()
                                                    End Sub
-        Dim bgLabel = Caption("背景")
+        Dim bgLabel = Caption(Lang.T("背景"))
         _help.SetHelp("helper.background", bgLabel, _bgCombo)
         _bgSwatch.Size = New Size(26, 22)
         _bgSwatch.Margin = New Padding(2, 4, 6, 0)
@@ -199,11 +199,11 @@ Friend Class frmStickerHelper
         _help.SetHelp("helper.background", _bgSwatch)
         SetupSlider(_merge, 0, 100, 30, 110)
         SetupSlider(_minSize, 0, 100, 20, 110)
-        Dim mergeLabel = Caption("合併距離")
-        Dim minLabel = Caption("最小尺寸")
+        Dim mergeLabel = Caption(Lang.T("合併距離"))
+        Dim minLabel = Caption(Lang.T("最小尺寸"))
         _help.SetHelpLinked("helper.merge", _merge, mergeLabel, _merge)
         _help.SetHelpLinked("helper.minsize", _minSize, minLabel, _minSize)
-        Dim resplitButton = MakeButton("重新拆分", 90, "helper.resplit")
+        Dim resplitButton = MakeButton(Lang.T("重新拆分"), 90, "helper.resplit")
         AddHandler resplitButton.Click, Sub() Resplit()
         _found.AutoSize = True
         _found.Margin = New Padding(12, 6, 2, 0)
@@ -214,7 +214,7 @@ Friend Class frmStickerHelper
 
     Private Sub BuildSourcePane(host As Control)
         Dim title As New Label With {.Dock = DockStyle.Top, .Height = 26, .Padding = New Padding(6, 6, 0, 0),
-                                     .Text = "原圖：點框選取、按兩下排除／加回、拖曳邊緣調整、框上按右鍵拆開、右鍵拖曳補畫、Del 刪除",
+                                     .Text = Lang.T("原圖：點框選取、按兩下排除／加回、拖曳邊緣調整、框上按右鍵拆開、右鍵拖曳補畫、Del 刪除"),
                                      .ForeColor = Color.FromArgb(70, 76, 88), .AutoEllipsis = True}
         _sourceView.Dock = DockStyle.Fill
         AddHandler _sourceView.BoxSelected, Sub(i) SelectItem(i)
@@ -238,12 +238,12 @@ Friend Class frmStickerHelper
         ' 上：拆分結果
         Dim tilesBar = Bar(36)
         tilesBar.BackColor = Color.FromArgb(236, 238, 242)
-        Dim tilesTitle = Caption("拆分結果")
+        Dim tilesTitle = Caption(Lang.T("拆分結果"))
         tilesTitle.Font = New Font(_font, FontStyle.Bold)
-        Dim allCut = MakeButton("全部去背", 84, "helper.allcut")
-        Dim allRaw = MakeButton("全部原圖", 84, "helper.allraw")
-        Dim selAll = MakeButton("全選", 60, "helper.selall")
-        Dim selNone = MakeButton("全不選", 70, "helper.selnone")
+        Dim allCut = MakeButton(Lang.T("全部去背"), 84, "helper.allcut")
+        Dim allRaw = MakeButton(Lang.T("全部原圖"), 84, "helper.allraw")
+        Dim selAll = MakeButton(Lang.T("全選"), 60, "helper.selall")
+        Dim selNone = MakeButton(Lang.T("全不選"), 70, "helper.selnone")
         AddHandler allCut.Click, Sub() SetAllModes(CutMode.EdgeFill)
         AddHandler allRaw.Click, Sub() SetAllModes(CutMode.None)
         AddHandler selAll.Click, Sub() SetAllIncluded(True)
@@ -263,8 +263,8 @@ Friend Class frmStickerHelper
         _detailTitle.Font = New Font(_font, FontStyle.Bold)
         Dim modes = Bar(36)
         modes.BackColor = Color.FromArgb(236, 238, 242)
-        modes.Controls.Add(Caption("去背方式"))
-        Dim modeNames = {"背景色填充", "AI 一般", "AI 人像", "不去背"}
+        modes.Controls.Add(Caption(Lang.T("去背方式")))
+        Dim modeNames = {Lang.T("背景色填充"), Lang.T("AI 一般"), Lang.T("AI 人像"), Lang.T("不去背")}
         Dim modeKeys = {"helper.mode.edge", "helper.mode.aigeneral", "helper.mode.aihuman", "helper.mode.none"}
         For i = 0 To 3
             Dim index = i
@@ -282,7 +282,7 @@ Friend Class frmStickerHelper
         Next
         Dim tools = Bar(36)
         tools.BackColor = Color.FromArgb(236, 238, 242)
-        Dim toolDefs = {(_wandTool, "魔術棒 (W)", "helper.wand"), (_keepTool, "保留筆刷", "helper.keep"), (_eraseTool, "擦除筆刷", "helper.erase"), (_showMask, "檢查遮罩", "helper.showmask")}
+        Dim toolDefs = {(_wandTool, Lang.T("魔術棒 (W)"), "helper.wand"), (_keepTool, Lang.T("保留筆刷"), "helper.keep"), (_eraseTool, Lang.T("擦除筆刷"), "helper.erase"), (_showMask, Lang.T("檢查遮罩"), "helper.showmask")}
         For Each td In toolDefs
             Dim cb = td.Item1
             cb.Text = td.Item2
@@ -303,12 +303,12 @@ Friend Class frmStickerHelper
         AddHandler _keepTool.CheckedChanged, Sub() OnToolToggled(_keepTool)
         AddHandler _eraseTool.CheckedChanged, Sub() OnToolToggled(_eraseTool)
         AddHandler _showMask.CheckedChanged, Sub() RefreshDetailImage()
-        Dim undo = MakeButton("復原 (Ctrl+Z)", 110, "helper.undo")
+        Dim undo = MakeButton(Lang.T("復原 (Ctrl+Z)"), 110, "helper.undo")
         AddHandler undo.Click, Sub() UndoItem()
-        Dim zoom = MakeButton("放大修正", 90, "helper.zoom")
+        Dim zoom = MakeButton(Lang.T("放大修正"), 90, "helper.zoom")
         AddHandler zoom.Click, Sub()
                                    _rightSplit.Panel1Collapsed = Not _rightSplit.Panel1Collapsed
-                                   zoom.Text = If(_rightSplit.Panel1Collapsed, "顯示全部", "放大修正")
+                                   zoom.Text = If(_rightSplit.Panel1Collapsed, Lang.T("顯示全部"), Lang.T("放大修正"))
                                End Sub
         tools.Controls.Add(undo)
         tools.Controls.Add(zoom)
@@ -320,8 +320,8 @@ Friend Class frmStickerHelper
         SetupSlider(_brushSize, 2, 80, 14, 80)
         SetupSlider(_feather, 0, 100, 5, 80)
         SetupSlider(_shift, -50, 50, 0, 80)
-        Dim sliderDefs = {("背景容許度", _edgeTol, "helper.edgetol"), ("魔術棒", _wandTol, "helper.wandtol"), ("筆刷", _brushSize, "helper.brush"),
-                          ("羽化", _feather, "helper.feather"), ("內縮外擴", _shift, "helper.shift")}
+        Dim sliderDefs = {(Lang.T("背景容許度"), _edgeTol, "helper.edgetol"), (Lang.T("魔術棒"), _wandTol, "helper.wandtol"), (Lang.T("筆刷"), _brushSize, "helper.brush"),
+                          (Lang.T("羽化"), _feather, "helper.feather"), (Lang.T("內縮外擴"), _shift, "helper.shift")}
         For Each sd In sliderDefs
             Dim cap = Caption(sd.Item1)
             _help.SetHelpLinked(sd.Item3, sd.Item2, cap, sd.Item2)
@@ -355,25 +355,25 @@ Friend Class frmStickerHelper
         _themeBox.Width = 180
         _themeBox.Margin = New Padding(2, 3, 2, 0)
         _themeBox.Items.AddRange(StickerLibrary.Themes().Cast(Of Object)().ToArray())
-        Dim themeLabel = Caption("存到主題")
+        Dim themeLabel = Caption(Lang.T("存到主題"))
         _help.SetHelp("helper.theme", themeLabel, _themeBox)
         _prefixBox.Width = 150
         _prefixBox.Margin = New Padding(2, 3, 2, 0)
-        Dim prefixLabel = Caption("檔名")
+        Dim prefixLabel = Caption(Lang.T("檔名"))
         _help.SetHelp("helper.prefix", prefixLabel, _prefixBox)
-        _trim.Text = "剪掉透明邊"
+        _trim.Text = Lang.T("剪掉透明邊")
         _trim.Checked = True
         _trim.AutoSize = True
         _trim.Margin = New Padding(10, 6, 2, 0)
         _help.SetHelp("helper.trim", _trim)
-        _save.Text = "存成貼圖"
+        _save.Text = Lang.T("存成貼圖")
         _save.Width = 150
         _save.Height = 30
         _save.Font = New Font(_font, FontStyle.Bold)
         _save.Margin = New Padding(20, 0, 3, 0)
         AddHandler _save.Click, Sub() SaveStickers()
         _help.SetHelp("helper.save", _save)
-        Dim closeButton = MakeButton("關閉", 80, "helper.close")
+        Dim closeButton = MakeButton(Lang.T("關閉"), 80, "helper.close")
         AddHandler closeButton.Click, Sub() Me.Close()
         p.Controls.AddRange(New Control() {themeLabel, _themeBox, prefixLabel, _prefixBox, _trim, _save, closeButton})
         Return p
@@ -384,14 +384,14 @@ Friend Class frmStickerHelper
     '=====================================================================
 
     Private Sub OpenImage()
-        Using dlg As New OpenFileDialog With {.Title = "選擇貼圖圖片", .Filter = "圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇貼圖圖片"), .Filter = Lang.T("圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
                 Using fs As New FileStream(dlg.FileName, FileMode.Open, FileAccess.Read), img = Image.FromStream(fs)
                     LoadSource(New Bitmap(img), Path.GetFileNameWithoutExtension(dlg.FileName))
                 End Using
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException
-                MessageBox.Show(Me, "無法開啟圖片：" & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("無法開啟圖片：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
         End Using
     End Sub
@@ -414,10 +414,10 @@ Friend Class frmStickerHelper
             bmp = Nothing
         End Try
         If bmp Is Nothing Then
-            _status.Text = "剪貼簿裡沒有圖片。"
+            _status.Text = Lang.T("剪貼簿裡沒有圖片。")
             Return
         End If
-        LoadSource(bmp, "貼上的貼圖")
+        LoadSource(bmp, Lang.T("貼上的貼圖"))
     End Sub
 
     ''' <summary>換一張原圖（bmp 由本視窗保管）。</summary>
@@ -443,7 +443,7 @@ Friend Class frmStickerHelper
     Private Sub Resplit()
         If _source Is Nothing Then Return
         If _items.Any(Function(it) it.History.Count > 0) AndAlso
-           MessageBox.Show(Me, "重新拆分會清除每張貼圖的修正，要繼續嗎？", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
+           MessageBox.Show(Me, Lang.T("重新拆分會清除每張貼圖的修正，要繼續嗎？"), Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
         If Not _manualBackground Then _background = StickerSplitter.BorderColor(_sourcePixels, _source.Width, _source.Height)
         _bgSwatch.BackColor = If(_background.A = 0, Color.White, _background)
         Dim longSide = Math.Max(_source.Width, _source.Height)
@@ -463,8 +463,8 @@ Friend Class frmStickerHelper
         _selected = If(_items.Count > 0, 0, -1)
         RebuildTiles()
         UpdateDetail()
-        _status.Text = If(_background.A = 0, "背景：透明。", $"背景：RGB({_background.R}, {_background.G}, {_background.B})。") &
-                       $"找到 {_items.Count} 張；點左邊的框或右邊的縮圖可以逐張修正。"
+        _status.Text = If(_background.A = 0, Lang.T("背景：透明。"), Lang.F("背景：RGB({0}, {1}, {2})。", _background.R, _background.G, _background.B)) &
+                       Lang.F("找到 {0} 張；點左邊的框或右邊的縮圖可以逐張修正。", _items.Count)
     End Sub
 
     '=====================================================================
@@ -498,7 +498,7 @@ Friend Class frmStickerHelper
         _selected = _items.IndexOf(it)
         RebuildTiles()
         UpdateDetail()
-        _status.Text = $"已補一個框，共 {_items.Count} 張。"
+        _status.Text = Lang.F("已補一個框，共 {0} 張。", _items.Count)
     End Sub
 
     ''' <summary>框的右鍵選單：平均拆成幾張（在最空的位置切）、排除／加回、刪除。</summary>
@@ -508,15 +508,15 @@ Friend Class frmStickerHelper
         Dim menu As New ContextMenuStrip With {.Font = _font}
         For Each n In {2, 3, 4}
             Dim parts = n
-            menu.Items.Add($"左右拆成 {n} 張", Nothing, Sub() SplitBox(index, parts, horizontal:=True))
+            menu.Items.Add(Lang.F("左右拆成 {0} 張", n), Nothing, Sub() SplitBox(index, parts, horizontal:=True))
         Next
         For Each n In {2, 3}
             Dim parts = n
-            menu.Items.Add($"上下拆成 {n} 張", Nothing, Sub() SplitBox(index, parts, horizontal:=False))
+            menu.Items.Add(Lang.F("上下拆成 {0} 張", n), Nothing, Sub() SplitBox(index, parts, horizontal:=False))
         Next
         menu.Items.Add(New ToolStripSeparator())
-        menu.Items.Add(If(_items(index).Included, "排除這張", "加回這張"), Nothing, Sub() ToggleInclude(index))
-        menu.Items.Add("刪除這個框", Nothing, Sub() DeleteSelected())
+        menu.Items.Add(If(_items(index).Included, Lang.T("排除這張"), Lang.T("加回這張")), Nothing, Sub() ToggleInclude(index))
+        menu.Items.Add(Lang.T("刪除這個框"), Nothing, Sub() DeleteSelected())
         AddHandler menu.Closed, Sub() BeginInvoke(Sub() menu.Dispose())
         menu.Show(_sourceView, location)
     End Sub
@@ -527,7 +527,7 @@ Friend Class frmStickerHelper
         Dim old = _items(index)
         Dim rects = StickerSplitter.SplitRect(_sourcePixels, _source.Width, _source.Height, _background, old.Rect, parts, horizontal)
         If rects.Count < 2 Then
-            _status.Text = "這個框找不到可以切開的地方。"
+            _status.Text = Lang.T("這個框找不到可以切開的地方。")
             Return
         End If
         old.DisposeImages()
@@ -549,7 +549,7 @@ Friend Class frmStickerHelper
         _selected = _items.IndexOf(added(0))
         RebuildTiles()
         UpdateDetail()
-        _status.Text = $"已拆成 {rects.Count} 張，共 {_items.Count} 張。"
+        _status.Text = Lang.F("已拆成 {0} 張，共 {1} 張。", rects.Count, _items.Count)
     End Sub
 
     Private Sub DeleteSelected()
@@ -632,10 +632,10 @@ Friend Class frmStickerHelper
     ''' <summary>AI 去背在背景執行，算好後套用（這張貼圖還是 AI 模式時）。</summary>
     Private Sub ComputeAi(it As StickerItem, model As CutoutModel)
         If Not BackgroundRemover.ModelAvailable(model) Then
-            MessageBox.Show(Me, "找不到去背模型：" & BackgroundRemover.ModelPath(model), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("找不到去背模型：") & BackgroundRemover.ModelPath(model), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
-        _status.Text = "AI 去背計算中…（第一次載入模型會久一點）"
+        _status.Text = Lang.T("AI 去背計算中…（第一次載入模型會久一點）")
         Cursor = Cursors.AppStarting
         Dim copy = DirectCast(it.Crop.Clone(), Bitmap)
         Task.Run(Function() BackgroundRemover.ComputeMask(copy, model)).ContinueWith(
@@ -647,12 +647,12 @@ Friend Class frmStickerHelper
                     BeginInvoke(Sub()
                                     Cursor = Cursors.Default
                                     If mask Is Nothing OrElse Not _items.Contains(it) Then
-                                        _status.Text = "AI 去背失敗。"
+                                        _status.Text = Lang.T("AI 去背失敗。")
                                         mask?.Dispose()
                                         Return
                                     End If
                                     it.AiMasks(model) = mask
-                                    _status.Text = "AI 去背完成。"
+                                    _status.Text = Lang.T("AI 去背完成。")
                                     Recompose(it)
                                     RefreshTiles()
                                     If it Is Current Then RefreshDetailImage()
@@ -785,13 +785,13 @@ Friend Class frmStickerHelper
             tile.Picture = it.Result
             tile.Included = it.Included
             tile.Selected = tile.Index = _selected
-            tile.Label = $"{tile.Index + 1}　{it.Rect.Width}×{it.Rect.Height}"
+            tile.Label = Lang.F("{0}　{1}×{2}", tile.Index + 1, it.Rect.Width, it.Rect.Height)
             tile.Invalidate()
         Next
         _sourceView.SetBoxes(_items.Select(Function(it) it.Rect).ToList(), _items.Select(Function(it) it.Included).ToList(), _selected)
         Dim n = _items.Where(Function(it) it.Included).Count()
-        _found.Text = If(_items.Count = 0, "", $"找到 {_items.Count} 張，已選 {n} 張")
-        _save.Text = $"存成貼圖（{n} 張）"
+        _found.Text = If(_items.Count = 0, "", Lang.F("找到 {0} 張，已選 {1} 張", _items.Count, n))
+        _save.Text = Lang.F("存成貼圖（{0} 張）", n)
         _save.Enabled = n > 0
     End Sub
 
@@ -809,9 +809,9 @@ Friend Class frmStickerHelper
                 _feather.Value = it.Settings.Feather
                 _shift.Value = it.Settings.Shift
                 If it.Settings.Wand.Count > 0 Then _wandTol.Value = it.Settings.Wand(it.Settings.Wand.Count - 1).Tolerance
-                _detailTitle.Text = $"第 {_selected + 1} 張（{it.Rect.Width} × {it.Rect.Height}）：魔術棒點一下去掉、Alt＋點補回；滾輪縮放、右鍵拖曳平移"
+                _detailTitle.Text = Lang.F("第 {0} 張（{1} × {2}）：魔術棒點一下去掉、Alt＋點補回；滾輪縮放、右鍵拖曳平移", _selected + 1, it.Rect.Width, it.Rect.Height)
             Else
-                _detailTitle.Text = "選取的貼圖"
+                _detailTitle.Text = Lang.T("選取的貼圖")
             End If
         Finally
             _syncing = False
@@ -848,7 +848,7 @@ Friend Class frmStickerHelper
         Dim bad = Path.GetInvalidFileNameChars()
         Dim theme = New String(_themeBox.Text.Trim().Where(Function(ch) Not bad.Contains(ch)).ToArray())
         Dim prefix = New String(_prefixBox.Text.Trim().Where(Function(ch) Not bad.Contains(ch)).ToArray())
-        If theme = "" OrElse theme = StickerLibrary.BuiltInTheme Then theme = "貼圖小幫手"
+        If theme = "" OrElse theme = StickerLibrary.BuiltInTheme Then theme = "貼圖小幫手" ' 主題資料夾的名字：不翻譯
         If prefix = "" Then prefix = theme
         Dim dir = Path.Combine(StickerLibrary.Root, theme)
         Dim saved = 0
@@ -869,10 +869,10 @@ Friend Class frmStickerHelper
                 End Using
             Next
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is Runtime.InteropServices.ExternalException
-            MessageBox.Show(Me, "存檔失敗：" & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("存檔失敗：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
-        _status.Text = $"已存 {saved} 張到 stick\{theme}\。"
+        _status.Text = Lang.F("已存 {0} 張到 stick\{1}\。", saved, theme)
         If Not _themeBox.Items.Contains(theme) Then _themeBox.Items.Add(theme)
         _onSaved?.Invoke(theme)
     End Sub
@@ -988,7 +988,7 @@ Friend Class frmStickerHelper
             Dim g = e.Graphics
             g.Clear(BackColor)
             If _image Is Nothing Then
-                TextRenderer.DrawText(g, "開啟或貼上（Ctrl+V）一張排了很多貼圖的圖片", Font, ClientRectangle, Color.FromArgb(180, 180, 185),
+                TextRenderer.DrawText(g, Lang.T("開啟或貼上（Ctrl+V）一張排了很多貼圖的圖片"), Font, ClientRectangle, Color.FromArgb(180, 180, 185),
                                       TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
                 Return
             End If

@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 
 ''' <summary>文字樣式預設集：一組外觀設定，套用時保留文字內容、位置、大小與角度（Overlay.CopyStyleFrom）。</summary>
@@ -25,36 +26,36 @@ Public Class TextPreset
         .Shadow = False, .GlowSize = 12, .GlowColorArgb = C(255, 80, 0), .Bold = False}
 
     Public Shared ReadOnly BuiltIn As IReadOnlyList(Of TextPreset) = New List(Of TextPreset) From {
-        New TextPreset("標題", New Overlay With {.ColorArgb = C(255, 255, 255), .OutlineWidth = 45, .OutlineColorArgb = C(20, 20, 20),
+        New TextPreset(Lang.T("標題"), New Overlay With {.ColorArgb = C(255, 255, 255), .OutlineWidth = 45, .OutlineColorArgb = C(20, 20, 20),
                                                 .ShadowBlur = 40, .ShadowOpacity = 55}),
-        New TextPreset("貼紙", New Overlay With {.ColorArgb = C(255, 90, 120), .OutlineWidth = 70, .OutlineColorArgb = C(255, 255, 255),
+        New TextPreset(Lang.T("貼紙"), New Overlay With {.ColorArgb = C(255, 90, 120), .OutlineWidth = 70, .OutlineColorArgb = C(255, 255, 255),
                                                 .ShadowDistance = 12, .ShadowBlur = 50, .ShadowOpacity = 45}),
-        New TextPreset("霓虹", New Overlay With {.ColorArgb = C(255, 240, 255), .OutlineWidth = 18, .OutlineColorArgb = C(255, 60, 200),
+        New TextPreset(Lang.T("霓虹"), New Overlay With {.ColorArgb = C(255, 240, 255), .OutlineWidth = 18, .OutlineColorArgb = C(255, 60, 200),
                                                 .GlowSize = 60, .GlowColorArgb = C(255, 40, 200), .Shadow = False}),
-        New TextPreset("復古", New Overlay With {.FontName = "Georgia", .ColorArgb = C(245, 225, 175), .OutlineWidth = 14, .OutlineColorArgb = C(90, 50, 20),
+        New TextPreset(Lang.T("復古"), New Overlay With {.FontName = "Georgia", .ColorArgb = C(245, 225, 175), .OutlineWidth = 14, .OutlineColorArgb = C(90, 50, 20),
                                                 .ExtrudeDepth = 35, .ExtrudeColorArgb = C(120, 60, 25), .ExtrudeAngle = 45, .Shadow = False}),
-        New TextPreset("可愛", New Overlay With {.ColorArgb = C(255, 140, 185), .OutlineWidth = 50, .OutlineColorArgb = C(255, 255, 255),
+        New TextPreset(Lang.T("可愛"), New Overlay With {.ColorArgb = C(255, 140, 185), .OutlineWidth = 50, .OutlineColorArgb = C(255, 255, 255),
                                                 .Outline2Width = 20, .Outline2ColorArgb = C(255, 140, 185), .ShadowDistance = 10, .ShadowOpacity = 30}),
-        New TextPreset("字幕", New Overlay With {.ColorArgb = C(255, 255, 255), .Bold = False, .BackgroundStyle = TextBackground.Bar,
+        New TextPreset(Lang.T("字幕"), New Overlay With {.ColorArgb = C(255, 255, 255), .Bold = False, .BackgroundStyle = TextBackground.Bar,
                                                 .BackgroundColorArgb = C(0, 0, 0), .BackgroundOpacity = 55, .BackgroundPadding = 35, .Shadow = False}),
-        New TextPreset("標籤", New Overlay With {.ColorArgb = C(255, 255, 255), .BackgroundStyle = TextBackground.Box, .BackgroundColorArgb = C(230, 70, 90),
+        New TextPreset(Lang.T("標籤"), New Overlay With {.ColorArgb = C(255, 255, 255), .BackgroundStyle = TextBackground.Box, .BackgroundColorArgb = C(230, 70, 90),
                                                 .BackgroundOpacity = 100, .BackgroundRadius = 45, .BackgroundPadding = 40, .ShadowBlur = 40, .ShadowOpacity = 35}),
-        New TextPreset("漸層", New Overlay With {.FillMode = TextFill.Gradient, .ColorArgb = C(255, 200, 40), .Color2Argb = C(255, 60, 130),
+        New TextPreset(Lang.T("漸層"), New Overlay With {.FillMode = TextFill.Gradient, .ColorArgb = C(255, 200, 40), .Color2Argb = C(255, 60, 130),
                                                 .OutlineWidth = 25, .OutlineColorArgb = C(255, 255, 255), .ShadowBlur = 40}),
-        New TextPreset("彩虹", New Overlay With {.FillMode = TextFill.Rainbow, .GradientAngle = 0, .OutlineWidth = 25, .OutlineColorArgb = C(40, 40, 60),
+        New TextPreset(Lang.T("彩虹"), New Overlay With {.FillMode = TextFill.Rainbow, .GradientAngle = 0, .OutlineWidth = 25, .OutlineColorArgb = C(40, 40, 60),
                                                 .ShadowBlur = 30}),
-        New TextPreset("立體", New Overlay With {.ColorArgb = C(255, 215, 60), .OutlineWidth = 10, .OutlineColorArgb = C(90, 45, 10),
+        New TextPreset(Lang.T("立體"), New Overlay With {.ColorArgb = C(255, 215, 60), .OutlineWidth = 10, .OutlineColorArgb = C(90, 45, 10),
                                                 .ExtrudeDepth = 55, .ExtrudeColorArgb = C(190, 95, 20), .ExtrudeAngle = 50, .ShadowBlur = 40, .ShadowOpacity = 35}),
-        New TextPreset("鏤空", New Overlay With {.FillMode = TextFill.Photo, .BackgroundStyle = TextBackground.DimPhoto, .BackgroundColorArgb = C(0, 0, 0),
+        New TextPreset(Lang.T("鏤空"), New Overlay With {.FillMode = TextFill.Photo, .BackgroundStyle = TextBackground.DimPhoto, .BackgroundColorArgb = C(0, 0, 0),
                                                 .BackgroundOpacity = 65, .OutlineWidth = 8, .OutlineColorArgb = C(255, 255, 255), .Shadow = False}),
-        New TextPreset("印章", New Overlay With {.FontName = "DFKai-SB", .ColorArgb = C(255, 255, 255), .Vertical = True, .LineSpacing = 90,
+        New TextPreset(Lang.T("印章"), New Overlay With {.FontName = "DFKai-SB", .ColorArgb = C(255, 255, 255), .Vertical = True, .LineSpacing = 90,
                                                 .BackgroundStyle = TextBackground.Box, .BackgroundColorArgb = C(200, 30, 35), .BackgroundOpacity = 100,
                                                 .BackgroundRadius = 8, .BackgroundPadding = 18, .Shadow = False}),
-        New TextPreset("外框章", New Overlay With {.FontName = "DFKai-SB", .ColorArgb = C(200, 30, 35), .Vertical = True, .LineSpacing = 90,
+        New TextPreset(Lang.T("外框章"), New Overlay With {.FontName = "DFKai-SB", .ColorArgb = C(200, 30, 35), .Vertical = True, .LineSpacing = 90,
                                                  .BackgroundStyle = TextBackground.Frame, .BackgroundColorArgb = C(200, 30, 35), .BackgroundOpacity = 100,
                                                  .BackgroundRadius = 8, .BackgroundPadding = 18, .Shadow = False}),
-        New TextPreset("浮水印", New Overlay With {.ColorArgb = C(255, 255, 255), .Opacity = 45, .Shadow = False, .Bold = False}),
-        New TextPreset("日期", DateStamp.Clone())
+        New TextPreset(Lang.T("浮水印"), New Overlay With {.ColorArgb = C(255, 255, 255), .Opacity = 45, .Shadow = False, .Bold = False}),
+        New TextPreset(Lang.T("日期"), DateStamp.Clone())
     }
 End Class
 

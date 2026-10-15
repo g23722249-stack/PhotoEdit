@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Text.Json
 Imports System.Threading
 Imports PhotoEdit
@@ -16,28 +16,28 @@ Friend Class frmMorph
     Private Const PreviewW As Integer = 330
 
     Private ReadOnly _help As HelpTip
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
-    Private ReadOnly _small As New Font("Microsoft JhengHei UI", 9.0F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
+    Private ReadOnly _small As New Font(Lang.UiFont, 9.0F)
     Private ReadOnly _editA As New MorphEditor()
     Private ReadOnly _editB As New MorphEditor()
     Private ReadOnly _preview As New PictureBox With {.SizeMode = PictureBoxSizeMode.Zoom, .BackColor = Color.FromArgb(30, 30, 32)}
     Private ReadOnly _t As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .Value = 50, .ShowTicks = False}
     Private ReadOnly _tValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
-    Private ReadOnly _play As New Button With {.Text = "播放"}
+    Private ReadOnly _play As New Button With {.Text = Lang.T("播放")}
     Private ReadOnly _guide As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(47, 128, 237)}
     Private ReadOnly _capB As New Label With {.AutoSize = False, .BackColor = Color.Transparent}
     Private ReadOnly _seconds As New NumericUpDown With {.Minimum = 1, .Maximum = 20, .DecimalPlaces = 1, .Increment = 0.5D, .Value = 3}
     Private ReadOnly _fps As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _holdStart As New NumericUpDown With {.Minimum = 0, .Maximum = 5, .DecimalPlaces = 1, .Increment = 0.5D, .Value = 0.5D}
     Private ReadOnly _holdEnd As New NumericUpDown With {.Minimum = 0, .Maximum = 5, .DecimalPlaces = 1, .Increment = 0.5D, .Value = 1}
-    Private ReadOnly _pingPong As New CheckBox With {.Text = "變過去再變回來", .AutoSize = True, .BackColor = Color.Transparent}
-    Private ReadOnly _ease As New CheckBox With {.Text = "慢入慢出", .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
+    Private ReadOnly _pingPong As New CheckBox With {.Text = Lang.T("變過去再變回來"), .AutoSize = True, .BackColor = Color.Transparent}
+    Private ReadOnly _ease As New CheckBox With {.Text = Lang.T("慢入慢出"), .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
     Private ReadOnly _align As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .Value = 50, .ShowTicks = False}
     Private ReadOnly _alignValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
     Private ReadOnly _size As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-    Private ReadOnly _saveMp4 As New Button With {.Text = "存成 MP4…"}
-    Private ReadOnly _saveGif As New Button With {.Text = "存成 GIF…"}
-    Private ReadOnly _cancelExport As New Button With {.Text = "停止", .Enabled = False}
+    Private ReadOnly _saveMp4 As New Button With {.Text = Lang.T("存成 MP4…")}
+    Private ReadOnly _saveGif As New Button With {.Text = Lang.T("存成 GIF…")}
+    Private ReadOnly _cancelExport As New Button With {.Text = Lang.T("停止"), .Enabled = False}
     Private ReadOnly _progress As New ProgressBar With {.Minimum = 0, .Maximum = 100}
     Private ReadOnly _status As New Label With {.AutoSize = False, .BackColor = Color.Transparent}
     Private ReadOnly _previewTimer As New System.Windows.Forms.Timer With {.Interval = 120}
@@ -58,13 +58,13 @@ Friend Class frmMorph
     Private _cts As CancellationTokenSource
 
     ''' <summary>輸出的資料夾（測試時可改）。</summary>
-    Friend Shared Property OutputFolder As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", "變形動畫")
+    Friend Shared Property OutputFolder As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", Lang.T("變形動畫"))
 
     Public Sub New(imageA As Bitmap, nameA As String, help As HelpTip)
         _imageA = imageA
         _nameA = nameA
         _help = help
-        Text = "變形動畫"
+        Text = Lang.T("變形動畫")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -77,10 +77,10 @@ Friend Class frmMorph
         ClientSize = New Size(xP + PreviewW + 16, top + 30 + EditH + 150)
 
         ' 上方：兩張圖的標題與換圖
-        Dim capA As New Label With {.Text = "第一張（目前的影像）", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top + 4)}
+        Dim capA As New Label With {.Text = Lang.T("第一張（目前的影像）"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top + 4)}
         _capB.SetBounds(xB, top + 4, EditW - 100, 22)
-        _capB.Text = "第二張（變成這張）"
-        Dim pickB As New Button With {.Text = "選圖…"}
+        _capB.Text = Lang.T("第二張（變成這張）")
+        Dim pickB As New Button With {.Text = Lang.T("選圖…")}
         pickB.SetBounds(xB + EditW - 96, top, 96, 28)
         AddHandler pickB.Click, Sub() PickImageB()
         help?.SetHelp("morph.pick", pickB)
@@ -98,16 +98,16 @@ Friend Class frmMorph
         Dim ty = y + EditH + 6
         _guide.Font = _small
         _guide.SetBounds(16, ty, EditW * 2 + 10 - 330, 40)
-        Dim resetPts As New Button With {.Text = "重設點位", .Font = _small}
+        Dim resetPts As New Button With {.Text = Lang.T("重設點位"), .Font = _small}
         resetPts.SetBounds(16 + EditW * 2 + 10 - 324, ty, 76, 28)
         AddHandler resetPts.Click, Sub() ResetPoints()
-        Dim loadPts As New Button With {.Text = "讀點位…", .Font = _small}
+        Dim loadPts As New Button With {.Text = Lang.T("讀點位…"), .Font = _small}
         loadPts.SetBounds(16 + EditW * 2 + 10 - 244, ty, 76, 28)
         AddHandler loadPts.Click, Sub() LoadPoints()
-        Dim savePts As New Button With {.Text = "存點位…", .Font = _small}
+        Dim savePts As New Button With {.Text = Lang.T("存點位…"), .Font = _small}
         savePts.SetBounds(16 + EditW * 2 + 10 - 164, ty, 76, 28)
         AddHandler savePts.Click, Sub() SavePoints()
-        Dim fit As New Button With {.Text = "整張", .Font = _small}
+        Dim fit As New Button With {.Text = Lang.T("整張"), .Font = _small}
         fit.SetBounds(16 + EditW * 2 + 10 - 84, ty, 76, 28)
         AddHandler fit.Click, Sub()
                                   _editA.ResetView()
@@ -119,7 +119,7 @@ Friend Class frmMorph
         Controls.AddRange({_guide, resetPts, loadPts, savePts, fit})
 
         ' 右邊：預覽
-        Controls.Add(New Label With {.Text = "預覽", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xP, top + 4)})
+        Controls.Add(New Label With {.Text = Lang.T("預覽"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xP, top + 4)})
         _preview.SetBounds(xP, y, PreviewW, 400)
         Controls.Add(_preview)
         Dim py = y + 406
@@ -134,7 +134,7 @@ Friend Class frmMorph
         help?.SetHelpLinked("morph.preview", _t, _t, _tValue, _play)
         Controls.AddRange({_t, _tValue, _play})
         py += 36
-        Dim alignCap As New Label With {.Text = "對齊", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xP, py + 4)}
+        Dim alignCap As New Label With {.Text = Lang.T("對齊"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xP, py + 4)}
         _align.SetBounds(xP + 44, py + 2, PreviewW - 98, 24)
         _alignValue.SetBounds(xP + PreviewW - 52, py, 52, 26)
         AddHandler _align.ValueChanged, Sub()
@@ -147,15 +147,15 @@ Friend Class frmMorph
         ' 下方：時間與輸出
         Dim by = y + EditH + 52
         Dim lab = Function(s As String, x As Integer) New Label With {.Text = s, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(x, by + 4)}
-        Controls.Add(lab("變形秒數", 16))
+        Controls.Add(lab(Lang.T("變形秒數"), 16))
         _seconds.SetBounds(90, by, 64, 26)
-        Controls.Add(lab("每秒格數", 168))
+        Controls.Add(lab(Lang.T("每秒格數"), 168))
         _fps.Items.AddRange({"24", "30", "60"})
         _fps.SelectedIndex = 1
         _fps.SetBounds(242, by, 56, 26)
-        Controls.Add(lab("開頭停", 312))
+        Controls.Add(lab(Lang.T("開頭停"), 312))
         _holdStart.SetBounds(370, by, 56, 26)
-        Controls.Add(lab("結尾停", 436))
+        Controls.Add(lab(Lang.T("結尾停"), 436))
         _holdEnd.SetBounds(494, by, 56, 26)
         _pingPong.Location = New Point(566, by + 3)
         _ease.Location = New Point(706, by + 3)
@@ -166,8 +166,8 @@ Friend Class frmMorph
         help?.SetHelp("morph.ease", _ease)
         Controls.AddRange({_seconds, _fps, _holdStart, _holdEnd, _pingPong, _ease})
         by += 36
-        Controls.Add(lab("輸出大小（長邊）", 16))
-        _size.Items.AddRange({"720", "1080", "1440", "第一張原尺寸"})
+        Controls.Add(lab(Lang.T("輸出大小（長邊）"), 16))
+        _size.Items.AddRange({"720", "1080", "1440", Lang.T("第一張原尺寸")})
         _size.SelectedIndex = 1
         _size.SetBounds(140, by, 118, 26)
         help?.SetHelp("morph.size", _size)
@@ -185,7 +185,7 @@ Friend Class frmMorph
         _status.Font = _small
         _status.SetBounds(16, by, xP - 30, 22)
         Controls.Add(_status)
-        Dim closeBtn As New Button With {.Text = "關閉", .DialogResult = DialogResult.Cancel}
+        Dim closeBtn As New Button With {.Text = Lang.T("關閉"), .DialogResult = DialogResult.Cancel}
         closeBtn.SetBounds(ClientSize.Width - 112, ClientSize.Height - 44, 96, 32)
         Controls.Add(closeBtn)
         CancelButton = closeBtn
@@ -216,7 +216,7 @@ Friend Class frmMorph
                                             _editA.Invalidate()
                                             _editB.Invalidate()
                                             Dim pts = If(isA, _pointsA, _pointsB)
-                                            If i >= 0 AndAlso i < pts.Count Then _status.Text = $"第 {i + 1} 點：{pts(i).Name}"
+                                            If i >= 0 AndAlso i < pts.Count Then _status.Text = Lang.F("第 {0} 點：{1}", i + 1, pts(i).Name)
                                         End Sub
         AddHandler ed.PointAddRequested, Sub(p) AddPair(p, isA)
         AddHandler ed.PointDeleteRequested, Sub(i) DeletePair(i)
@@ -234,10 +234,10 @@ Friend Class frmMorph
             ' 沒有臉：五個關鍵點放在中間，使用者自己拖
             Dim w = _imageA.Width, h = _imageA.Height
             _templateA = New List(Of MorphPoint) From {
-                New MorphPoint("左眼", New PointF(w * 0.38F, h * 0.42F)), New MorphPoint("右眼", New PointF(w * 0.62F, h * 0.42F)),
-                New MorphPoint("鼻尖", New PointF(w * 0.5F, h * 0.55F)), New MorphPoint("左嘴角", New PointF(w * 0.42F, h * 0.66F)),
-                New MorphPoint("右嘴角", New PointF(w * 0.58F, h * 0.66F))}
-            _status.Text = "第一張找不到臉：先把 5 個關鍵點拖到兩眼、鼻尖、兩嘴角，其他點自己加。"
+                New MorphPoint(Lang.T("左眼"), New PointF(w * 0.38F, h * 0.42F)), New MorphPoint(Lang.T("右眼"), New PointF(w * 0.62F, h * 0.42F)),
+                New MorphPoint(Lang.T("鼻尖"), New PointF(w * 0.5F, h * 0.55F)), New MorphPoint(Lang.T("左嘴角"), New PointF(w * 0.42F, h * 0.66F)),
+                New MorphPoint(Lang.T("右嘴角"), New PointF(w * 0.58F, h * 0.66F))}
+            _status.Text = Lang.T("第一張找不到臉：先把 5 個關鍵點拖到兩眼、鼻尖、兩嘴角，其他點自己加。")
         End If
         _pointsA = Clone(_templateA)
         _editA.SetPoints(_pointsA)
@@ -257,11 +257,11 @@ Friend Class frmMorph
             Dim auto = If(face Is Nothing OrElse Not _aHasFace, Nothing, FaceMorph.DefaultPoints(face, _imageB.Width, _imageB.Height))
             If auto IsNot Nothing AndAlso auto.Count = _pointsA.Count Then
                 _pointsB = auto
-                _status.Text = "第二張也找到臉：點位已自動對好，可以再微調。"
+                _status.Text = Lang.T("第二張也找到臉：點位已自動對好，可以再微調。")
             Else
                 _pointsB = New List(Of MorphPoint)
                 _editB.KeyMode = True
-                _status.Text = "第二張不是人臉：請依照下方提示，在第二張圖上依序點 5 個關鍵點。"
+                _status.Text = Lang.T("第二張不是人臉：請依照下方提示，在第二張圖上依序點 5 個關鍵點。")
             End If
         End If
         _editB.SetPoints(_pointsB)
@@ -280,7 +280,7 @@ Friend Class frmMorph
             PushUndo()
             _pointsB = FaceMorph.EstimateFromKeys(_pointsA, _keys.ToArray(), _imageB.Width, _imageB.Height)
             _editB.SetPoints(_pointsB)
-            _status.Text = "其他點已依 5 個關鍵點推估過去：請把第二張的點拖到對應的位置（耳朵、輪廓、嘴…）。"
+            _status.Text = Lang.T("其他點已依 5 個關鍵點推估過去：請把第二張的點拖到對應的位置（耳朵、輪廓、嘴…）。")
             Rebuild()
         End If
         UpdateGuide()
@@ -288,12 +288,12 @@ Friend Class frmMorph
 
     Private Sub UpdateGuide()
         If _imageB Is Nothing Then
-            _guide.Text = "按右上「選圖…」選第二張（要變成的圖）。"
+            _guide.Text = Lang.T("按右上「選圖…」選第二張（要變成的圖）。")
         ElseIf _editB.KeyMode Then
             Dim n = FaceMorph.KeyNames(_keys.Count)
-            _guide.Text = $"在第二張圖上點：{n}（{_keys.Count + 1}/5）" & If(n.StartsWith("左"), "　※ 左＝畫面左邊", "")
+            _guide.Text = Lang.F("在第二張圖上點：{0}（{1}/5）", n, _keys.Count + 1) & If(n.StartsWith(Lang.T("左")), Lang.T("　※ 左＝畫面左邊"), "")
         Else
-            _guide.Text = "拖點對齊兩張圖相同的部位。空白處點一下加點、右鍵點刪除、滾輪縮放、中鍵拖曳平移、Ctrl+Z 復原。"
+            _guide.Text = Lang.T("拖點對齊兩張圖相同的部位。空白處點一下加點、右鍵點刪除、滾輪縮放、中鍵拖曳平移、Ctrl+Z 復原。")
         End If
     End Sub
 
@@ -335,13 +335,13 @@ Friend Class frmMorph
         Dim dstImg = If(isA, _imageB, _imageA)
         Dim q = MapPoint(p, src, dst)
         q = New PointF(Math.Max(0, Math.Min(dstImg.Width - 1, q.X)), Math.Max(0, Math.Min(dstImg.Height - 1, q.Y)))
-        Dim name = "自訂" & (_pointsA.Where(Function(m) m.Name.StartsWith("自訂")).Count() + 1)
+        Dim name = Lang.T("自訂") & (_pointsA.Where(Function(m) m.Name.StartsWith(Lang.T("自訂"))).Count() + 1)
         src.Add(New MorphPoint(name, p))
         dst.Add(New MorphPoint(name, q))
         Dim i = _pointsA.Count - 1
         _editA.Selected = i : _editB.Selected = i
         _editA.Invalidate() : _editB.Invalidate()
-        _status.Text = $"加了第 {i + 1} 點；請到另一張圖把它拖到對應的位置。"
+        _status.Text = Lang.F("加了第 {0} 點；請到另一張圖把它拖到對應的位置。", i + 1)
         Rebuild()
     End Sub
 
@@ -369,7 +369,7 @@ Friend Class frmMorph
     Private Sub DeletePair(i As Integer)
         If i < 0 OrElse i >= _pointsA.Count Then Return
         If FaceMorph.KeyNames.Contains(_pointsA(i).Name) Then
-            _status.Text = $"「{_pointsA(i).Name}」是對齊用的關鍵點，不能刪（可以拖動）。"
+            _status.Text = Lang.F("「{0}」是對齊用的關鍵點，不能刪（可以拖動）。", _pointsA(i).Name)
             Return
         End If
         PushUndo()
@@ -397,8 +397,8 @@ Friend Class frmMorph
     '---------------------------------------------------------------------
 
     Private Sub PickImageB()
-        Using dlg As New OpenFileDialog With {.Title = "選第二張圖（要變成的圖）",
-                                              .Filter = "圖片|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.webp;*.heic|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選第二張圖（要變成的圖）"),
+                                              .Filter = Lang.T("圖片|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.webp;*.heic|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Dim img As Bitmap
             Try
@@ -406,7 +406,7 @@ Friend Class frmMorph
                     img = New Bitmap(pf.Image) ' 已依 EXIF 轉正；複製一份（PhotoFile 釋放時圖也會釋放）
                 End Using
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is ArgumentException OrElse TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is NotSupportedException
-                MessageBox.Show(Me, "無法開啟：" & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("無法開啟：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return
             End Try
             SetImageB(img, dlg.FileName)
@@ -418,32 +418,32 @@ Friend Class frmMorph
         _imageB?.Dispose()
         _imageB = img
         _nameB = IO.Path.GetFileNameWithoutExtension(path)
-        _capB.Text = $"第二張：{IO.Path.GetFileName(path)}（{img.Width}×{img.Height}）"
+        _capB.Text = Lang.F("第二張：{0}（{1}×{2}）", IO.Path.GetFileName(path), img.Width, img.Height)
         _editB.SetImage(_imageB, _pointsB)
         ResetPointsB()
     End Sub
 
     Private Sub SavePoints()
         If _imageB Is Nothing Then Return
-        Using dlg As New SaveFileDialog With {.Title = "存點位", .Filter = "變形點位|*.morph.json", .FileName = $"{_nameA}_{_nameB}.morph.json"}
+        Using dlg As New SaveFileDialog With {.Title = Lang.T("存點位"), .Filter = Lang.T("變形點位|*.morph.json"), .FileName = $"{_nameA}_{_nameB}.morph.json"}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Dim data As New Dictionary(Of String, Object) From {{"a", _pointsA}, {"b", _pointsB}, {"sizeA", {_imageA.Width, _imageA.Height}}, {"sizeB", {_imageB.Width, _imageB.Height}}}
             File.WriteAllText(dlg.FileName, JsonSerializer.Serialize(data, New JsonSerializerOptions With {.WriteIndented = True, .Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping}))
-            _status.Text = "已存點位：" & dlg.FileName
+            _status.Text = Lang.T("已存點位：") & dlg.FileName
         End Using
     End Sub
 
     Private Sub LoadPoints()
         If _imageB Is Nothing Then
-            _status.Text = "先選第二張圖再讀點位。"
+            _status.Text = Lang.T("先選第二張圖再讀點位。")
             Return
         End If
-        Using dlg As New OpenFileDialog With {.Title = "讀點位", .Filter = "變形點位|*.morph.json|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("讀點位"), .Filter = Lang.T("變形點位|*.morph.json|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
                 LoadPointsFile(dlg.FileName)
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is JsonException OrElse TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is KeyNotFoundException
-                MessageBox.Show(Me, "無法讀取：" & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("無法讀取：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
         End Using
     End Sub
@@ -459,14 +459,14 @@ Friend Class frmMorph
                                New PointF(CSng(e.GetProperty("X").GetDouble() * kx), CSng(e.GetProperty("Y").GetDouble() * ky)))).ToList()
                        End Function
             Dim a = read("a", "sizeA", _imageA.Width, _imageA.Height), b = read("b", "sizeB", _imageB.Width, _imageB.Height)
-            If a.Count <> b.Count Then Throw New InvalidOperationException("兩張圖的點數不同。")
+            If a.Count <> b.Count Then Throw New InvalidOperationException(Lang.T("兩張圖的點數不同。"))
             PushUndo()
             _pointsA = a : _pointsB = b
             _editB.KeyMode = False : _editB.KeyMarks.Clear() : _keys.Clear()
             _editA.SetPoints(_pointsA) : _editB.SetPoints(_pointsB)
             UpdateGuide()
             Rebuild()
-            _status.Text = $"已讀點位（{a.Count} 點）。"
+            _status.Text = Lang.F("已讀點位（{0} 點）。", a.Count)
         End Using
     End Sub
 
@@ -507,10 +507,10 @@ Friend Class frmMorph
     Private Sub TogglePlay()
         If _playTimer.Enabled Then
             _playTimer.Stop()
-            _play.Text = "播放"
+            _play.Text = Lang.T("播放")
         ElseIf _morph IsNot Nothing Then
             _playTimer.Start()
-            _play.Text = "停止"
+            _play.Text = Lang.T("停止")
         End If
     End Sub
 
@@ -537,13 +537,13 @@ Friend Class frmMorph
 
     Private Sub Export(gif As Boolean)
         If Not Ready() Then
-            _status.Text = "先選第二張圖、標好點位。"
+            _status.Text = Lang.T("先選第二張圖、標好點位。")
             Return
         End If
         Directory.CreateDirectory(OutputFolder)
         Dim ext = If(gif, ".gif", ".mp4")
-        Using dlg As New SaveFileDialog With {.Title = If(gif, "存成 GIF", "存成 MP4"), .Filter = If(gif, "GIF 動畫|*.gif", "MP4 影片|*.mp4"),
-                                              .InitialDirectory = OutputFolder, .FileName = $"{_nameA}_變成_{_nameB}{ext}"}
+        Using dlg As New SaveFileDialog With {.Title = If(gif, Lang.T("存成 GIF"), Lang.T("存成 MP4")), .Filter = If(gif, Lang.T("GIF 動畫|*.gif"), Lang.T("MP4 影片|*.mp4")),
+                                              .InitialDirectory = OutputFolder, .FileName = Lang.F("{0}_變成_{1}{2}", _nameA, _nameB, ext)}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             ExportTo(dlg.FileName, gif)
         End Using
@@ -558,7 +558,7 @@ Friend Class frmMorph
         _cts = New CancellationTokenSource()
         Dim ct = _cts.Token
         SetExporting(True)
-        _status.Text = "產生中…"
+        _status.Text = Lang.T("產生中…")
         Dim imgA = CType(_imageA.Clone(), Bitmap), imgB = CType(_imageB.Clone(), Bitmap)
         Dim t0 = Environment.TickCount
         Threading.Tasks.Task.Run(Sub()
@@ -571,16 +571,16 @@ Friend Class frmMorph
                                              Else
                                                  m.WriteMp4(file, tm, prog, ct)
                                              End If
-                                             msg = $"完成（{(Environment.TickCount - t0) / 1000.0:0.0} 秒、{New FileInfo(file).Length / 1048576.0:0.0} MB）：{file}"
+                                             msg = Lang.F("完成（{0:0.0} 秒、{1:0.0} MB）：{2}", (Environment.TickCount - t0) / 1000.0, New FileInfo(file).Length / 1048576.0, file)
                                          End Using
                                      Catch ex As OperationCanceledException
-                                         msg = "已停止。"
+                                         msg = Lang.T("已停止。")
                                          Try
                                              IO.File.Delete(file)
                                          Catch ex2 As IOException
                                          End Try
                                      Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is IOException OrElse TypeOf ex Is OpenCvSharp.OpenCVException OrElse TypeOf ex Is UnauthorizedAccessException
-                                         msg = "輸出失敗：" & ex.Message
+                                         msg = Lang.T("輸出失敗：") & ex.Message
                                      Finally
                                          imgA.Dispose() : imgB.Dispose()
                                      End Try

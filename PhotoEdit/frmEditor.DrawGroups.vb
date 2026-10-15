@@ -35,9 +35,9 @@ Partial Friend Class frmEditor
 
     ''' <summary>上方操作列裡的「群組、解散群組、目前所在的群組、離開群組」。</summary>
     Private Function BuildGroupBar() As Control
-        _btnGroup = MakeButton("群組", "draw.group")
-        _btnUngroup = MakeButton("解散群組", "draw.ungroup")
-        _btnExitGroup = MakeButton("離開群組", "draw.exitgroup")
+        _btnGroup = MakeButton(Lang.T("群組"), "draw.group")
+        _btnUngroup = MakeButton(Lang.T("解散群組"), "draw.ungroup")
+        _btnExitGroup = MakeButton(Lang.T("離開群組"), "draw.exitgroup")
         For Each b In {_btnGroup, _btnUngroup, _btnExitGroup}
             b.Height = 28
             b.Width = If(b Is _btnGroup, 64, 92)
@@ -51,18 +51,18 @@ Partial Friend Class frmEditor
         _crumb.ForeColor = Color.FromArgb(83, 74, 183)
         _groupBar.Controls.AddRange({_btnGroup, _btnUngroup, _crumb, _btnExitGroup})
 
-        _addMenu.Items.Add("新增點陣圖層", Nothing, Sub() LayerCommand(0))
-        _addMenu.Items.Add("新增群組", Nothing, Sub() NewEmptyGroup())
-        _layerMenu.Items.Add("群組（Ctrl+G）", Nothing, Sub() GroupSelected())
-        _layerMenu.Items.Add("解散群組（Ctrl+Shift+G）", Nothing, Sub() UngroupSelected())
+        _addMenu.Items.Add(Lang.T("新增點陣圖層"), Nothing, Sub() LayerCommand(0))
+        _addMenu.Items.Add(Lang.T("新增群組"), Nothing, Sub() NewEmptyGroup())
+        _layerMenu.Items.Add(Lang.T("群組（Ctrl+G）"), Nothing, Sub() GroupSelected())
+        _layerMenu.Items.Add(Lang.T("解散群組（Ctrl+Shift+G）"), Nothing, Sub() UngroupSelected())
         _layerMenu.Items.Add("-")
-        _layerMenu.Items.Add("移到最上層", Nothing, Sub() MoveSelectedItem(True, True))
-        _layerMenu.Items.Add("上移", Nothing, Sub() MoveSelectedItem(True, False))
-        _layerMenu.Items.Add("下移", Nothing, Sub() MoveSelectedItem(False, False))
-        _layerMenu.Items.Add("移到最下層", Nothing, Sub() MoveSelectedItem(False, True))
+        _layerMenu.Items.Add(Lang.T("移到最上層"), Nothing, Sub() MoveSelectedItem(True, True))
+        _layerMenu.Items.Add(Lang.T("上移"), Nothing, Sub() MoveSelectedItem(True, False))
+        _layerMenu.Items.Add(Lang.T("下移"), Nothing, Sub() MoveSelectedItem(False, False))
+        _layerMenu.Items.Add(Lang.T("移到最下層"), Nothing, Sub() MoveSelectedItem(False, True))
         _layerMenu.Items.Add("-")
-        _layerMenu.Items.Add("重新命名", Nothing, Sub() RenameDrawLayer())
-        _layerMenu.Items.Add("刪除", Nothing, Sub() DeleteSelectedLayers())
+        _layerMenu.Items.Add(Lang.T("重新命名"), Nothing, Sub() RenameDrawLayer())
+        _layerMenu.Items.Add(Lang.T("刪除"), Nothing, Sub() DeleteSelectedLayers())
         AddHandler _layerMenu.Opening, Sub()
                                            _layerMenu.Items(0).Enabled = CanGroup()
                                            _layerMenu.Items(1).Enabled = SelectedTopGroups().Count > 0
@@ -91,12 +91,12 @@ Partial Friend Class frmEditor
         If entered IsNot Nothing Then
             Dim chain = DrawGroups.ChainFromGroup(_recipe, entered)
             chain.Reverse()
-            _crumb.Text = "群組：" & String.Join(" › ", chain.Select(Function(id) GroupName(DrawGroups.Find(_recipe, id))))
+            _crumb.Text = Lang.T("群組：") & String.Join(" › ", chain.Select(Function(id) GroupName(DrawGroups.Find(_recipe, id))))
         End If
     End Sub
 
     Private Shared Function GroupName(g As DrawGroup) As String
-        Return If(g Is Nothing, "", If(String.IsNullOrEmpty(g.Name), "群組", g.Name))
+        Return If(g Is Nothing, "", If(String.IsNullOrEmpty(g.Name), Lang.T("群組"), g.Name))
     End Function
 
     '---------------------------------------------------------------------
@@ -148,14 +148,14 @@ Partial Friend Class frmEditor
         If Not CanGroup() Then Return
         Dim layers = SelectedIndices().Select(Function(i) _recipe.Drawings(i)).ToList()
         Dim entered = EnteredGroup()
-        Dim name = "群組 " & (If(_recipe.DrawGroups?.Count, 0) + 1)
+        Dim name = Lang.T("群組 ") & (If(_recipe.DrawGroups?.Count, 0) + 1)
         ApplyChange(Sub(r)
                         Dim mine = layers
                         DrawGroups.Create(r, mine, entered, name)
                     End Sub)
         Dim idx = layers.Select(Function(d) _recipe.Drawings.IndexOf(d)).ToList()
         SetMultiSelection(idx, idx.Max())
-        SetStatusMessage($"已組成「{name}」：點一下選整個群組，雙擊進去編輯裡面的物件；Ctrl+Shift+G 解散。")
+        SetStatusMessage(Lang.F("已組成「{0}」：點一下選整個群組，雙擊進去編輯裡面的物件；Ctrl+Shift+G 解散。", name))
     End Sub
 
     Private Sub UngroupSelected()
@@ -196,12 +196,12 @@ Partial Friend Class frmEditor
     Private Sub NewEmptyGroup()
         If _photo Is Nothing Then Return
         Dim parent = EnteredGroup()
-        Dim name = "群組 " & (If(_recipe.DrawGroups?.Count, 0) + 1)
+        Dim name = Lang.T("群組 ") & (If(_recipe.DrawGroups?.Count, 0) + 1)
         Dim created As DrawGroup = Nothing
         ApplyChange(Sub(r) created = DrawGroups.CreateEmpty(r, parent, name))
         If _drawStrip.SelectedTool = DrawIcons.SelectTool Then _drawStrip.SelectedTool = CInt(DrawShape.Rectangle)
         EnterGroup(created.Id)
-        SetStatusMessage($"已新增「{name}」並進入：接著畫的圖形都會放在這個群組裡；Esc 或「離開群組」回到上一層。")
+        SetStatusMessage(Lang.F("已新增「{0}」並進入：接著畫的圖形都會放在這個群組裡；Esc 或「離開群組」回到上一層。", name))
     End Sub
 
     ''' <summary>新圖層加進正在編輯的群組：放在群組最上面的成員正上方（群組的成員保持相鄰）。</summary>
@@ -337,10 +337,10 @@ Partial Friend Class frmEditor
                 g.DrawLines(pen, {New PointF(fx, fy + 12), New PointF(fx, fy + 1), New PointF(fx + 6, fy + 1), New PointF(fx + 8, fy + 3), New PointF(fx + 18, fy + 3), New PointF(fx + 18, fy + 12), New PointF(fx, fy + 12)})
             End Using
             Dim n = DrawGroups.MemberIndices(_recipe, grp.Id).Count
-            Dim label = GroupName(grp) & If(grp.Id = EnteredGroup(), "（編輯中）", "")
+            Dim label = GroupName(grp) & If(grp.Id = EnteredGroup(), Lang.T("（編輯中）"), "")
             TextRenderer.DrawText(g, label, _layerList.Font, New Rectangle(x0 + 40, r.Y, r.Right - x0 - 40 - 46, r.Height), fg,
                                   TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
-            TextRenderer.DrawText(g, n & " 個", _layerList.Font, New Rectangle(r.Right - 46, r.Y, 42, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
+            TextRenderer.DrawText(g, n & Lang.T(" 個"), _layerList.Font, New Rectangle(r.Right - 46, r.Y, 42, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
                                   TextFormatFlags.VerticalCenter Or TextFormatFlags.Right)
         ElseIf row.LayerIndex < LayerCount() Then
             Dim d = _recipe.Drawings(row.LayerIndex)
@@ -510,7 +510,7 @@ Partial Friend Class frmEditor
             newParent = anchor.GroupId
         End If
         If s.Group IsNot Nothing AndAlso DrawGroups.ChainFromGroup(_recipe, newParent).Contains(s.Group.Id) Then
-            SetStatusMessage("不能把群組放進它自己裡面。")
+            SetStatusMessage(Lang.T("不能把群組放進它自己裡面。"))
             Return
         End If
         If anchor IsNot Nothing AndAlso movingLayers.Contains(anchor) Then Return
@@ -551,7 +551,7 @@ Partial Friend Class frmEditor
             Using br As New SolidBrush(Color.FromArgb(150, 255, 255, 255))
                 g.FillRectangle(br, img0)
             End Using
-            Dim label0 = "群組：" & GroupName(DrawGroups.Find(_recipe, entered)) & "（空的，畫的圖形會放進來）"
+            Dim label0 = Lang.T("群組：") & GroupName(DrawGroups.Find(_recipe, entered)) & Lang.T("（空的，畫的圖形會放進來）")
             Using f As New Font(_panelFont.FontFamily, 9), bb As New SolidBrush(Color.FromArgb(230, 238, 237, 254)), tb As New SolidBrush(Color.FromArgb(60, 52, 137)),
                   pen As New Pen(Color.FromArgb(127, 119, 221), 1.4F) With {.DashStyle = DashStyle.Dash}
                 g.DrawRectangle(pen, img0.X + 4, img0.Y + 4, img0.Width - 8, img0.Height - 8)
@@ -599,7 +599,7 @@ Partial Friend Class frmEditor
         Using pen As New Pen(Color.FromArgb(127, 119, 221), 1.4F) With {.DashStyle = DashStyle.Dash}
             g.DrawRectangle(pen, rect.X, rect.Y, rect.Width, rect.Height)
         End Using
-        Dim label = "群組：" & GroupName(DrawGroups.Find(_recipe, entered))
+        Dim label = Lang.T("群組：") & GroupName(DrawGroups.Find(_recipe, entered))
         Using f As New Font(_panelFont.FontFamily, 9), br As New SolidBrush(Color.FromArgb(220, 238, 237, 254)), tb As New SolidBrush(Color.FromArgb(60, 52, 137))
             Dim sz = g.MeasureString(label, f)
             g.FillRectangle(br, rect.X, rect.Y - sz.Height - 2, sz.Width + 6, sz.Height + 2)

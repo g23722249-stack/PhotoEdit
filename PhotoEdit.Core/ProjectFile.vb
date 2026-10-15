@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Imaging
 Imports System.IO
@@ -138,10 +139,10 @@ Public NotInheritable Class ProjectFile
         Directory.CreateDirectory(workDir)
         Using zip = ZipFile.OpenRead(projectPath)
             Dim manifestEntry = zip.GetEntry("manifest.json")
-            If manifestEntry Is Nothing Then Throw New InvalidDataException("不是 PhotoEdit 專案檔（缺少 manifest.json）。")
+            If manifestEntry Is Nothing Then Throw New InvalidDataException(Lang.T("不是 PhotoEdit 專案檔（缺少 manifest.json）。"))
             Dim manifest = JsonSerializer.Deserialize(Of ProjectManifest)(ReadText(manifestEntry), JsonOptions)
-            If manifest Is Nothing OrElse manifest.Format <> ProjectManifest.FormatName Then Throw New InvalidDataException("不是 PhotoEdit 專案檔。")
-            If manifest.Version > ProjectManifest.CurrentVersion Then Throw New InvalidDataException("這個專案檔是用較新版的 PhotoEdit 存的，請更新程式。")
+            If manifest Is Nothing OrElse manifest.Format <> ProjectManifest.FormatName Then Throw New InvalidDataException(Lang.T("不是 PhotoEdit 專案檔。"))
+            If manifest.Version > ProjectManifest.CurrentVersion Then Throw New InvalidDataException(Lang.T("這個專案檔是用較新版的 PhotoEdit 存的，請更新程式。"))
 
             Dim photoPath = IO.Path.Combine(workDir, SafeName(If(manifest.OriginalName, "original.png")))
             Extract(zip, manifest.OriginalEntry, photoPath)

@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.IO
 
 ''' <summary>
@@ -37,17 +38,17 @@ Partial Friend Class frmEditor
         _recentMenu.Clear()
         Dim list = RecentFiles()
         If list.Count = 0 Then
-            _recentMenu.AddItem(New Aqua.MenuItem("（沒有）") With {.Enabled = False})
+            _recentMenu.AddItem(New Aqua.MenuItem(Lang.T("（沒有）")) With {.Enabled = False})
             Return
         End If
         For i = 0 To list.Count - 1
             Dim folder = Path.GetDirectoryName(list(i))
             If folder IsNot Nothing AndAlso folder.Length > 40 Then folder = "…" & folder.Substring(folder.Length - 39)
             Dim number = If(i < 9, (i + 1).ToString(), "0")
-            _recentMenu.AddItem(Item("recent:" & i, $"{number}. {Path.GetFileName(list(i))}　　{folder}"))
+            _recentMenu.AddItem(Item("recent:" & i, Lang.F("{0}. {1}　　{2}", number, Path.GetFileName(list(i)), folder)))
         Next
         _recentMenu.AddItem(New Aqua.MenuItem("-"))
-        _recentMenu.AddItem(Item("recentclear", "清除清單"))
+        _recentMenu.AddItem(Item("recentclear", Lang.T("清除清單")))
     End Sub
 
     ''' <summary>處理「recent:N」與「recentclear」；不是這兩個指令時回傳 False。</summary>
@@ -56,7 +57,7 @@ Partial Friend Class frmEditor
             RecentFiles().Clear()
             _appSettings.Save()
             RebuildRecentMenu()
-            SetStatusMessage("已清除最近開啟的檔案清單。")
+            SetStatusMessage(Lang.T("已清除最近開啟的檔案清單。"))
             Return True
         End If
         If Not name.StartsWith("recent:", StringComparison.Ordinal) Then Return False
@@ -66,7 +67,7 @@ Partial Friend Class frmEditor
         If index < 0 OrElse index >= list.Count Then Return True
         Dim file = list(index)
         If Not IO.File.Exists(file) Then
-            MessageBox.Show(Me, $"找不到「{Path.GetFileName(file)}」，可能已經移動或刪除：" & vbCrLf & file & vbCrLf & vbCrLf & "已從最近開啟的檔案移除。",
+            MessageBox.Show(Me, Lang.F("找不到「{0}」，可能已經移動或刪除：", Path.GetFileName(file)) & vbCrLf & file & vbCrLf & vbCrLf & Lang.T("已從最近開啟的檔案移除。"),
                             AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
             list.RemoveAt(index)
             _appSettings.Save()

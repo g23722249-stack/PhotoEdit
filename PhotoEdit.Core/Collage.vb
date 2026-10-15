@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
@@ -13,16 +14,16 @@ Public Class CollageLayout
     End Sub
 
     Public Shared ReadOnly BuiltIn As IReadOnlyList(Of CollageLayout) = New List(Of CollageLayout) From {
-        New CollageLayout("2 張：左右", R(0, 0, 0.5, 1), R(0.5, 0, 0.5, 1)),
-        New CollageLayout("2 張：上下", R(0, 0, 1, 0.5), R(0, 0.5, 1, 0.5)),
-        New CollageLayout("3 張：左大右二", R(0, 0, 0.6, 1), R(0.6, 0, 0.4, 0.5), R(0.6, 0.5, 0.4, 0.5)),
-        New CollageLayout("3 張：上大下二", R(0, 0, 1, 0.6), R(0, 0.6, 0.5, 0.4), R(0.5, 0.6, 0.5, 0.4)),
-        New CollageLayout("3 張：直排", R(0, 0, 1 / 3.0, 1), R(1 / 3.0, 0, 1 / 3.0, 1), R(2 / 3.0, 0, 1 / 3.0, 1)),
-        New CollageLayout("4 張：田字", R(0, 0, 0.5, 0.5), R(0.5, 0, 0.5, 0.5), R(0, 0.5, 0.5, 0.5), R(0.5, 0.5, 0.5, 0.5)),
-        New CollageLayout("4 張：一大三小", R(0, 0, 1, 0.65), R(0, 0.65, 1 / 3.0, 0.35), R(1 / 3.0, 0.65, 1 / 3.0, 0.35), R(2 / 3.0, 0.65, 1 / 3.0, 0.35)),
-        New CollageLayout("5 張：二上三下", R(0, 0, 0.5, 0.55), R(0.5, 0, 0.5, 0.55), R(0, 0.55, 1 / 3.0, 0.45), R(1 / 3.0, 0.55, 1 / 3.0, 0.45), R(2 / 3.0, 0.55, 1 / 3.0, 0.45)),
-        New CollageLayout("6 張：3×2", Grid(3, 2)),
-        New CollageLayout("9 張：3×3", Grid(3, 3))
+        New CollageLayout(Lang.T("2 張：左右"), R(0, 0, 0.5, 1), R(0.5, 0, 0.5, 1)),
+        New CollageLayout(Lang.T("2 張：上下"), R(0, 0, 1, 0.5), R(0, 0.5, 1, 0.5)),
+        New CollageLayout(Lang.T("3 張：左大右二"), R(0, 0, 0.6, 1), R(0.6, 0, 0.4, 0.5), R(0.6, 0.5, 0.4, 0.5)),
+        New CollageLayout(Lang.T("3 張：上大下二"), R(0, 0, 1, 0.6), R(0, 0.6, 0.5, 0.4), R(0.5, 0.6, 0.5, 0.4)),
+        New CollageLayout(Lang.T("3 張：直排"), R(0, 0, 1 / 3.0, 1), R(1 / 3.0, 0, 1 / 3.0, 1), R(2 / 3.0, 0, 1 / 3.0, 1)),
+        New CollageLayout(Lang.T("4 張：田字"), R(0, 0, 0.5, 0.5), R(0.5, 0, 0.5, 0.5), R(0, 0.5, 0.5, 0.5), R(0.5, 0.5, 0.5, 0.5)),
+        New CollageLayout(Lang.T("4 張：一大三小"), R(0, 0, 1, 0.65), R(0, 0.65, 1 / 3.0, 0.35), R(1 / 3.0, 0.65, 1 / 3.0, 0.35), R(2 / 3.0, 0.65, 1 / 3.0, 0.35)),
+        New CollageLayout(Lang.T("5 張：二上三下"), R(0, 0, 0.5, 0.55), R(0.5, 0, 0.5, 0.55), R(0, 0.55, 1 / 3.0, 0.45), R(1 / 3.0, 0.55, 1 / 3.0, 0.45), R(2 / 3.0, 0.55, 1 / 3.0, 0.45)),
+        New CollageLayout(Lang.T("6 張：3×2"), Grid(3, 2)),
+        New CollageLayout(Lang.T("9 張：3×3"), Grid(3, 3))
     }
 
     Private Shared Function R(x As Double, y As Double, w As Double, h As Double) As RectangleF

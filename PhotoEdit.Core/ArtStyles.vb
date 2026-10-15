@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
@@ -34,12 +35,12 @@ Public NotInheritable Class ArtStyles
     Public Const MaxWorkSize As Integer = 2400
 
     Public Shared ReadOnly Names As String() = {
-        "無", "黑白漫畫", "彩色漫畫", "水彩畫", "油畫", "水墨畫", "銅版畫", "素描", "點描", "浮世繪", "彩色鉛筆", "木刻版畫", "普普藝術", "像素藝術"}
+        Lang.T("無"), Lang.T("黑白漫畫"), Lang.T("彩色漫畫"), Lang.T("水彩畫"), Lang.T("油畫"), Lang.T("水墨畫"), Lang.T("銅版畫"), Lang.T("素描"), Lang.T("點描"), Lang.T("浮世繪"), Lang.T("彩色鉛筆"), Lang.T("木刻版畫"), Lang.T("普普藝術"), Lang.T("像素藝術")}
 
     ''' <summary>效果分頁選單的分類（依序列出）。</summary>
     Public Shared ReadOnly Categories As (Name As String, Styles As ArtStyle())() = {
-        ("繪畫", {ArtStyle.Watercolor, ArtStyle.OilPainting, ArtStyle.InkWash, ArtStyle.Sketch, ArtStyle.ColoredPencil, ArtStyle.Pointillism}),
-        ("漫畫／版畫", {ArtStyle.MangaBW, ArtStyle.MangaColor, ArtStyle.Ukiyoe, ArtStyle.Etching, ArtStyle.Woodcut, ArtStyle.PopArt, ArtStyle.PixelArt})}
+        (Lang.T("繪畫"), {ArtStyle.Watercolor, ArtStyle.OilPainting, ArtStyle.InkWash, ArtStyle.Sketch, ArtStyle.ColoredPencil, ArtStyle.Pointillism}),
+        (Lang.T("漫畫／版畫"), {ArtStyle.MangaBW, ArtStyle.MangaColor, ArtStyle.Ukiyoe, ArtStyle.Etching, ArtStyle.Woodcut, ArtStyle.PopArt, ArtStyle.PixelArt})}
 
     ''' <summary>處理中的影像：0..1 的 R、G、B。</summary>
     Private NotInheritable Class Img

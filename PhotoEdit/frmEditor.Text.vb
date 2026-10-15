@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports PhotoEdit
 
 ''' <summary>
@@ -24,13 +24,13 @@ Partial Friend Class frmEditor
     Private Shared ReadOnly TextFonts As (Name As String, Family As String)() = {
         ("微軟正黑體", "Microsoft JhengHei"), ("標楷體", "DFKai-SB"), ("新細明體", "PMingLiU"), ("微軟雅黑", "Microsoft YaHei"),
         ("Arial", "Arial"), ("Georgia", "Georgia"), ("Impact", "Impact"), ("Segoe Script", "Segoe Script"),
-        ("Comic Sans MS", "Comic Sans MS"), ("七段數字（日期戳記）", TextRender.SevenSegmentFont)}
-    Private Shared ReadOnly EffectNames As String() = {"排版", "外框", "底色", "陰影", "發光", "立體", "填色"}
+        ("Comic Sans MS", "Comic Sans MS"), (Lang.T("七段數字（日期戳記）"), TextRender.SevenSegmentFont)}
+    Private Shared ReadOnly EffectNames As String() = {Lang.T("排版"), Lang.T("外框"), Lang.T("底色"), Lang.T("陰影"), Lang.T("發光"), Lang.T("立體"), Lang.T("填色")}
 
     Private Sub BuildTextPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "文字", reserveRight:=ValueWidth + 40)
-        Dim del = MakeButton("刪除", "text.delete")
+        AddHeading(L, Lang.T("文字"), reserveRight:=ValueWidth + 40)
+        Dim del = MakeButton(Lang.T("刪除"), "text.delete")
         del.SetBounds(L.Width - ValueWidth - 30, 6, ValueWidth + 30, 26)
         AddHandler del.Click, Sub()
                                   If SelText(_recipe) IsNot Nothing Then DeleteOverlay()
@@ -40,14 +40,14 @@ Partial Friend Class frmEditor
 
         ' ＋文字｜日期戳記｜插入資訊
         Dim third = (L.Width - 8 - 12) \ 3
-        Dim add = MakeButton("＋ 文字", "text.add")
+        Dim add = MakeButton(Lang.T("＋ 文字"), "text.add")
         add.SetBounds(8, L.Y + 2, third, 30)
         AddHandler add.Click, Sub() AddOverlay(OverlayKind.Text, Nothing)
-        Dim stamp = MakeButton("日期戳記", "text.stamp")
+        Dim stamp = MakeButton(Lang.T("日期戳記"), "text.stamp")
         stamp.SetBounds(8 + third + 6, L.Y + 2, third, 30)
         AddHandler stamp.Click, Sub() AddDateStamp()
         _insertInfo.DropDownStyle = ComboBoxStyle.DropDownList
-        _insertInfo.Items.AddRange({"插入資訊…", "拍攝日期", "日期與時間", "相機型號", "檔名", "GPS 座標"})
+        _insertInfo.Items.AddRange({Lang.T("插入資訊…"), Lang.T("拍攝日期"), Lang.T("日期與時間"), Lang.T("相機型號"), Lang.T("檔名"), Lang.T("GPS 座標")})
         _insertInfo.SelectedIndex = 0
         _insertInfo.SetBounds(8 + (third + 6) * 2, L.Y + 5, L.Width - 8 - (third + 6) * 2, 24)
         _help.SetHelp("text.info", _insertInfo)
@@ -76,7 +76,7 @@ Partial Friend Class frmEditor
         L.Add(_overlayText)
         L.Y += 62
 
-        _help.SetHelpLinked("text.font", _overlayFont, AddCaption(L, "字型", L.Y), _overlayFont)
+        _help.SetHelpLinked("text.font", _overlayFont, AddCaption(L, Lang.T("字型"), L.Y), _overlayFont)
         _overlayFont.DropDownStyle = ComboBoxStyle.DropDownList
         _overlayFont.Items.AddRange(TextFonts.Select(Function(f) CObj(f.Name)).ToArray())
         _overlayFont.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
@@ -91,22 +91,22 @@ Partial Friend Class frmEditor
         L.Y += RowHeight
 
         ' 粗體｜直排｜對齊
-        _overlayBold.Text = "粗體"
+        _overlayBold.Text = Lang.T("粗體")
         _overlayBold.BackColor = Color.Transparent
         _overlayBold.SetBounds(8, L.Y + 6, 64, 22)
         AddHandler _overlayBold.CheckedChanged, Sub() SetTextProp(Sub(o) o.Bold = _overlayBold.Checked)
-        _textVertical.Text = "直排"
+        _textVertical.Text = Lang.T("直排")
         _textVertical.BackColor = Color.Transparent
         _textVertical.SetBounds(76, L.Y + 6, 64, 22)
         AddHandler _textVertical.CheckedChanged, Sub() SetTextProp(Sub(o) o.Vertical = _textVertical.Checked)
         _help.SetHelp("text.bold", _overlayBold)
         _help.SetHelp("text.vertical", _textVertical)
         L.Add(_overlayBold) : L.Add(_textVertical)
-        Dim alignX = 8 + CaptionWidth + 64
+        Dim alignX = 8 + 84 + 64   ' 不跟英文放寬的名稱欄，三個按鈕才放得下
         Dim alignW = (L.Width - alignX - 4) \ 3
         For i = 0 To 2
             Dim index = i
-            Dim rb As New RadioButton With {.Text = {"靠左", "置中", "靠右"}(i), .Appearance = Appearance.Button, .FlatStyle = FlatStyle.Flat,
+            Dim rb As New RadioButton With {.Text = {Lang.T("靠左"), Lang.T("置中"), Lang.T("靠右")}(i), .Appearance = Appearance.Button, .FlatStyle = FlatStyle.Flat,
                                             .TextAlign = ContentAlignment.MiddleCenter, .BackColor = Color.White}
             rb.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
             rb.SetBounds(alignX + i * (alignW + 2), L.Y + 3, alignW, 26)
@@ -120,7 +120,7 @@ Partial Friend Class frmEditor
         L.Y += RowHeight
 
         ' 樣式預設集
-        AddHeading(L, "樣式")
+        AddHeading(L, Lang.T("樣式"))
         _textPresetBar.SetBounds(8, L.Y, L.Width - 8, 4 * 50)
         _textPresetBar.WrapContents = True
         _textPresetBar.BackColor = Color.Transparent
@@ -128,12 +128,12 @@ Partial Friend Class frmEditor
             For Each p In TextPreset.BuiltIn
                 Dim tile As New Button With {.Size = New Size(76, 44), .Margin = New Padding(0, 0, 4, 4), .FlatStyle = FlatStyle.Flat,
                                              .Text = "", .Tag = p, .Cursor = Cursors.Hand,
-                                             .BackgroundImage = Creative.TextPreview(p.Style, If(p.Style.FontName = TextRender.SevenSegmentFont, "'05 7 12", "字Aa"), bg),
+                                             .BackgroundImage = Creative.TextPreview(p.Style, If(p.Style.FontName = TextRender.SevenSegmentFont, "'05 7 12", Lang.T("字Aa")), bg),
                                              .BackgroundImageLayout = ImageLayout.Stretch}
                 tile.FlatAppearance.BorderColor = Color.FromArgb(190, 200, 215)
                 Dim presetHelp = HelpTexts.Get("text.preset")?.Clone()
                 If presetHelp IsNot Nothing Then
-                    presetHelp.Title = "樣式：" & p.Name
+                    presetHelp.Title = Lang.T("樣式：") & p.Name
                     presetHelp.Icon = tile.BackgroundImage
                     _help.SetHelp(tile, presetHelp)
                 End If
@@ -182,52 +182,52 @@ Partial Friend Class frmEditor
         Dim degrees As Func(Of Integer, String) = Function(v) v & "°"
         Select Case index
             Case 0 ' 排版（大小、旋轉、透明度與貼圖共用，其餘只限文字）
-                AddRow(G, OverlayRow("ov_size", "大小", 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0))
-                AddRow(G, OverlayRow("ov_rot", "旋轉", -180, 180, degrees, Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v))
-                AddRow(G, OverlayRow("ov_opacity", "透明度", 0, 100, Function(v) v & "%", Function(o) o.Opacity, Sub(o, v) o.Opacity = v))
-                AddRow(G, OverlayRow("tx_spacing", "字距", -20, 100, num, Function(o) o.LetterSpacing, Sub(o, v) o.LetterSpacing = v))
-                AddRow(G, OverlayRow("tx_line", "行距", 50, 300, Function(v) v & "%", Function(o) o.LineSpacing, Sub(o, v) o.LineSpacing = v))
-                AddRow(G, OverlayRow("tx_arc", "弧形", -360, 360, degrees, Function(o) o.Arc, Sub(o, v) o.Arc = v))
+                AddRow(G, OverlayRow("ov_size", Lang.T("大小"), 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0))
+                AddRow(G, OverlayRow("ov_rot", Lang.T("旋轉"), -180, 180, degrees, Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v))
+                AddRow(G, OverlayRow("ov_opacity", Lang.TC("opacity", "透明度"), 0, 100, Function(v) v & "%", Function(o) o.Opacity, Sub(o, v) o.Opacity = v))
+                AddRow(G, OverlayRow("tx_spacing", Lang.T("字距"), -20, 100, num, Function(o) o.LetterSpacing, Sub(o, v) o.LetterSpacing = v))
+                AddRow(G, OverlayRow("tx_line", Lang.T("行距"), 50, 300, Function(v) v & "%", Function(o) o.LineSpacing, Sub(o, v) o.LineSpacing = v))
+                AddRow(G, OverlayRow("tx_arc", Lang.T("弧形"), -360, 360, degrees, Function(o) o.Arc, Sub(o, v) o.Arc = v))
             Case 1 ' 外框
-                AddColorRow(G, "color.outline", "外框色", Function(o) o.OutlineColorArgb, Sub(o, v) o.OutlineColorArgb = v)
-                AddRow(G, OverlayRow("tx_outline", "粗細", 0, 100, num, Function(o) o.OutlineWidth, Sub(o, v) o.OutlineWidth = v))
-                AddColorRow(G, "color.outline2", "外層色", Function(o) o.Outline2ColorArgb, Sub(o, v) o.Outline2ColorArgb = v)
-                AddRow(G, OverlayRow("tx_outline2", "外層粗細", 0, 100, num, Function(o) o.Outline2Width, Sub(o, v) o.Outline2Width = v))
+                AddColorRow(G, "color.outline", Lang.T("外框色"), Function(o) o.OutlineColorArgb, Sub(o, v) o.OutlineColorArgb = v)
+                AddRow(G, OverlayRow("tx_outline", Lang.T("粗細"), 0, 100, num, Function(o) o.OutlineWidth, Sub(o, v) o.OutlineWidth = v))
+                AddColorRow(G, "color.outline2", Lang.T("外層色"), Function(o) o.Outline2ColorArgb, Sub(o, v) o.Outline2ColorArgb = v)
+                AddRow(G, OverlayRow("tx_outline2", Lang.T("外層粗細"), 0, 100, num, Function(o) o.Outline2Width, Sub(o, v) o.Outline2Width = v))
             Case 2 ' 底色
-                AddComboRow(G, "text.bgstyle", "樣式", _bgStyleCombo, {"無", "圓角方塊", "字幕條（整列）", "壓暗照片", "印章框"},
+                AddComboRow(G, "text.bgstyle", Lang.T("樣式"), _bgStyleCombo, {Lang.T("無"), Lang.T("圓角方塊"), Lang.T("字幕條（整列）"), Lang.T("壓暗照片"), Lang.T("印章框")},
                             Sub(i) SetTextProp(Sub(o) o.BackgroundStyle = CType(i, TextBackground)))
-                AddColorRow(G, "color.bg", "顏色", Function(o) o.BackgroundColorArgb, Sub(o, v) o.BackgroundColorArgb = v)
-                AddRow(G, OverlayRow("tx_bgopacity", "不透明度", 0, 100, Function(v) v & "%", Function(o) o.BackgroundOpacity, Sub(o, v) o.BackgroundOpacity = v))
-                AddRow(G, OverlayRow("tx_bgradius", "圓角", 0, 100, num, Function(o) o.BackgroundRadius, Sub(o, v) o.BackgroundRadius = v))
-                AddRow(G, OverlayRow("tx_bgpadding", "留白", 0, 100, num, Function(o) o.BackgroundPadding, Sub(o, v) o.BackgroundPadding = v))
+                AddColorRow(G, "color.bg", Lang.T("顏色"), Function(o) o.BackgroundColorArgb, Sub(o, v) o.BackgroundColorArgb = v)
+                AddRow(G, OverlayRow("tx_bgopacity", Lang.T("不透明度"), 0, 100, Function(v) v & "%", Function(o) o.BackgroundOpacity, Sub(o, v) o.BackgroundOpacity = v))
+                AddRow(G, OverlayRow("tx_bgradius", Lang.T("圓角"), 0, 100, num, Function(o) o.BackgroundRadius, Sub(o, v) o.BackgroundRadius = v))
+                AddRow(G, OverlayRow("tx_bgpadding", Lang.T("留白"), 0, 100, num, Function(o) o.BackgroundPadding, Sub(o, v) o.BackgroundPadding = v))
             Case 3 ' 陰影
-                Dim btn = AddColorRow(G, "color.shadow", "顏色", Function(o) o.ShadowColorArgb, Sub(o, v) o.ShadowColorArgb = v)
+                Dim btn = AddColorRow(G, "color.shadow", Lang.T("顏色"), Function(o) o.ShadowColorArgb, Sub(o, v) o.ShadowColorArgb = v)
                 btn.Width -= ValueWidth + 4
-                _textShadowOn.Text = "開啟"
+                _textShadowOn.Text = Lang.T("開啟")
                 _textShadowOn.BackColor = Color.Transparent
                 _textShadowOn.SetBounds(G.Width - ValueWidth, btn.Top + 3, ValueWidth, 22)
                 _help.SetHelp("text.shadowon", _textShadowOn)
                 AddHandler _textShadowOn.CheckedChanged, Sub() SetTextProp(Sub(o) o.Shadow = _textShadowOn.Checked)
                 G.Add(_textShadowOn)
-                AddRow(G, OverlayRow("tx_shdist", "距離", 0, 100, num, Function(o) o.ShadowDistance, Sub(o, v) o.ShadowDistance = v))
-                AddRow(G, OverlayRow("tx_shangle", "方向", 0, 359, degrees, Function(o) o.ShadowAngle, Sub(o, v) o.ShadowAngle = v))
-                AddRow(G, OverlayRow("tx_shblur", "模糊", 0, 100, num, Function(o) o.ShadowBlur, Sub(o, v) o.ShadowBlur = v))
-                AddRow(G, OverlayRow("tx_shopacity", "不透明度", 0, 100, Function(v) v & "%", Function(o) o.ShadowOpacity, Sub(o, v) o.ShadowOpacity = v))
+                AddRow(G, OverlayRow("tx_shdist", Lang.T("距離"), 0, 100, num, Function(o) o.ShadowDistance, Sub(o, v) o.ShadowDistance = v))
+                AddRow(G, OverlayRow("tx_shangle", Lang.T("方向"), 0, 359, degrees, Function(o) o.ShadowAngle, Sub(o, v) o.ShadowAngle = v))
+                AddRow(G, OverlayRow("tx_shblur", Lang.T("模糊"), 0, 100, num, Function(o) o.ShadowBlur, Sub(o, v) o.ShadowBlur = v))
+                AddRow(G, OverlayRow("tx_shopacity", Lang.T("不透明度"), 0, 100, Function(v) v & "%", Function(o) o.ShadowOpacity, Sub(o, v) o.ShadowOpacity = v))
             Case 4 ' 發光
-                AddColorRow(G, "color.glow", "顏色", Function(o) o.GlowColorArgb, Sub(o, v) o.GlowColorArgb = v)
-                AddRow(G, OverlayRow("tx_glow", "大小", 0, 100, num, Function(o) o.GlowSize, Sub(o, v) o.GlowSize = v))
-                AddHint(G, "搭配深色照片或「霓虹」樣式效果最好。貼圖也可以發光。")
+                AddColorRow(G, "color.glow", Lang.T("顏色"), Function(o) o.GlowColorArgb, Sub(o, v) o.GlowColorArgb = v)
+                AddRow(G, OverlayRow("tx_glow", Lang.T("大小"), 0, 100, num, Function(o) o.GlowSize, Sub(o, v) o.GlowSize = v))
+                AddHint(G, Lang.T("搭配深色照片或「霓虹」樣式效果最好。貼圖也可以發光。"))
             Case 5 ' 立體
-                AddColorRow(G, "color.extrude", "側面色", Function(o) o.ExtrudeColorArgb, Sub(o, v) o.ExtrudeColorArgb = v)
-                AddRow(G, OverlayRow("tx_extrude", "厚度", 0, 100, num, Function(o) o.ExtrudeDepth, Sub(o, v) o.ExtrudeDepth = v))
-                AddRow(G, OverlayRow("tx_exangle", "方向", 0, 359, degrees, Function(o) o.ExtrudeAngle, Sub(o, v) o.ExtrudeAngle = v))
+                AddColorRow(G, "color.extrude", Lang.T("側面色"), Function(o) o.ExtrudeColorArgb, Sub(o, v) o.ExtrudeColorArgb = v)
+                AddRow(G, OverlayRow("tx_extrude", Lang.T("厚度"), 0, 100, num, Function(o) o.ExtrudeDepth, Sub(o, v) o.ExtrudeDepth = v))
+                AddRow(G, OverlayRow("tx_exangle", Lang.T("方向"), 0, 359, degrees, Function(o) o.ExtrudeAngle, Sub(o, v) o.ExtrudeAngle = v))
             Case 6 ' 填色
-                AddComboRow(G, "text.fillmode", "方式", _fillModeCombo, {"單色", "漸層", "彩虹", "圖片", "照片本身（鏤空）"},
+                AddComboRow(G, "text.fillmode", Lang.T("方式"), _fillModeCombo, {Lang.T("單色"), Lang.T("漸層"), Lang.T("彩虹"), Lang.T("圖片"), Lang.T("照片本身（鏤空）")},
                             Sub(i) SetTextProp(Sub(o) o.FillMode = CType(i, TextFill)))
-                AddColorRow(G, "color.main", "主色", Function(o) o.ColorArgb, Sub(o, v) o.ColorArgb = v)
-                AddColorRow(G, "color.second", "第二色", Function(o) o.Color2Argb, Sub(o, v) o.Color2Argb = v)
-                AddRow(G, OverlayRow("tx_gradangle", "方向", 0, 359, degrees, Function(o) o.GradientAngle, Sub(o, v) o.GradientAngle = v))
-                _textureButton.Text = "選擇填字圖片…"
+                AddColorRow(G, "color.main", Lang.T("主色"), Function(o) o.ColorArgb, Sub(o, v) o.ColorArgb = v)
+                AddColorRow(G, "color.second", Lang.T("第二色"), Function(o) o.Color2Argb, Sub(o, v) o.Color2Argb = v)
+                AddRow(G, OverlayRow("tx_gradangle", Lang.T("方向"), 0, 359, degrees, Function(o) o.GradientAngle, Sub(o, v) o.GradientAngle = v))
+                _textureButton.Text = Lang.T("選擇填字圖片…")
                 _textureButton.UseVisualStyleBackColor = True
                 _textureButton.SetBounds(8 + CaptionWidth, G.Y + 2, G.Width - CaptionWidth - 8, 28)
                 _help.SetHelp("text.texture", _textureButton)
@@ -323,7 +323,7 @@ Partial Friend Class frmEditor
         ApplyChange(Sub(r) p.ApplyTo(r.Overlays(index)))
         SyncSliders()
         UpdateCreativeControls()
-        SetStatusMessage($"已套用「{p.Name}」樣式。")
+        SetStatusMessage(Lang.F("已套用「{0}」樣式。", p.Name))
     End Sub
 
     ''' <summary>日期戳記：拍攝日期（沒有時用檔案修改日期），橘色七段數字放在右下角。</summary>
@@ -336,9 +336,9 @@ Partial Friend Class frmEditor
         o.X = 0.86 : o.Y = 0.92 : o.Size = 0.05
         ExitCropMode(apply:=True)
         AddOverlayObject(o, switchTab:=TabText)
-        Dim note = If(Not info.TakenDate.HasValue, "這張照片沒有拍攝日期，改用檔案日期。",
-                      If(d > DateTime.Now.AddDays(1), $"相機記錄的日期是 {d:yyyy/MM/dd}，可能是相機時鐘設錯了。", "已加入拍攝日期。"))
-        SetStatusMessage(note & "可以直接修改文字，或拖曳到其他位置。")
+        Dim note = If(Not info.TakenDate.HasValue, Lang.T("這張照片沒有拍攝日期，改用檔案日期。"),
+                      If(d > DateTime.Now.AddDays(1), Lang.F("相機記錄的日期是 {0:yyyy/MM/dd}，可能是相機時鐘設錯了。", d), Lang.T("已加入拍攝日期。")))
+        SetStatusMessage(note & Lang.T("可以直接修改文字，或拖曳到其他位置。"))
     End Sub
 
     Private Sub InsertPhotoInfo(index As Integer)
@@ -353,7 +353,7 @@ Partial Friend Class frmEditor
             Case 5 : value = info.Gps
         End Select
         If String.IsNullOrEmpty(value) Then
-            SetStatusMessage("這張照片沒有這項資訊。")
+            SetStatusMessage(Lang.T("這張照片沒有這項資訊。"))
             Return
         End If
         If SelText(_recipe) Is Nothing Then
@@ -367,7 +367,7 @@ Partial Friend Class frmEditor
 
     Private Sub PickTexture()
         If SelText(_recipe) Is Nothing Then Return
-        Using dlg As New OpenFileDialog With {.Title = "選擇填字圖片", .Filter = "圖片檔|*.png;*.jpg;*.jpeg;*.bmp;*.gif"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇填字圖片"), .Filter = Lang.T("圖片檔|*.png;*.jpg;*.jpeg;*.bmp;*.gif")}
             If StickerLibrary.RootExists Then dlg.InitialDirectory = StickerLibrary.Root
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             ' stick 資料夾裡的圖存相對路徑，其他存完整路徑。
@@ -403,7 +403,7 @@ Partial Friend Class frmEditor
         _fillModeCombo.Enabled = isText
         _fillModeCombo.SelectedIndex = If(isText, CInt(t.FillMode), -1)
         _textureButton.Enabled = isText
-        _textureButton.Text = If(isText AndAlso Not String.IsNullOrEmpty(t.TexturePath), "填字圖片：" & Path.GetFileName(t.TexturePath), "選擇填字圖片…")
+        _textureButton.Text = If(isText AndAlso Not String.IsNullOrEmpty(t.TexturePath), Lang.T("填字圖片：") & Path.GetFileName(t.TexturePath), Lang.T("選擇填字圖片…"))
         ' 陰影、發光文字和貼圖都能用；其餘只限文字。
         _textShadowOn.Enabled = o IsNot Nothing
         _textShadowOn.Checked = o IsNot Nothing AndAlso o.Shadow

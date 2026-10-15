@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>選取分頁「填滿…」的選擇結果。</summary>
 Friend NotInheritable Class FillChoice
@@ -37,14 +37,14 @@ End Enum
 Friend Class frmFillSelection
     Inherits Aqua.AquaForm
 
-    Public Shared ReadOnly DirectionNames As String() = {"左 → 右", "右 → 左", "上 → 下", "下 → 上", "左上 → 右下", "右下 → 左上"}
+    Public Shared ReadOnly DirectionNames As String() = {Lang.T("左 → 右"), Lang.T("右 → 左"), Lang.T("上 → 下"), Lang.T("下 → 上"), Lang.T("左上 → 右下"), Lang.T("右下 → 左上")}
 
     Private ReadOnly _choice As FillChoice
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
-    Private ReadOnly _rbColor As New RadioButton With {.Text = "顏色"}
-    Private ReadOnly _rbGradient As New RadioButton With {.Text = "漸層"}
-    Private ReadOnly _rbMaterial As New RadioButton With {.Text = "材質"}
-    Private ReadOnly _rbAware As New RadioButton With {.Text = "內容感知"}
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
+    Private ReadOnly _rbColor As New RadioButton With {.Text = Lang.T("顏色")}
+    Private ReadOnly _rbGradient As New RadioButton With {.Text = Lang.T("漸層")}
+    Private ReadOnly _rbMaterial As New RadioButton With {.Text = Lang.T("材質")}
+    Private ReadOnly _rbAware As New RadioButton With {.Text = Lang.T("內容感知")}
     Private ReadOnly _swatch As New Button With {.FlatStyle = FlatStyle.Flat, .Tag = ThemeManager.SkipTag}
     Private ReadOnly _gradKind As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _gradDir As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
@@ -53,9 +53,9 @@ Friend Class frmFillSelection
     Private ReadOnly _opacity As New NumericUpDown With {.Minimum = 0, .Maximum = 100}
     Private ReadOnly _blend As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _targetPanel As New Panel With {.BackColor = Color.Transparent}
-    Private ReadOnly _rbNewLayer As New RadioButton With {.Text = "新圖層"}
+    Private ReadOnly _rbNewLayer As New RadioButton With {.Text = Lang.T("新圖層")}
     Private ReadOnly _rbIntoLayer As New RadioButton()
-    Private ReadOnly _keepAlpha As New CheckBox With {.Text = "保留透明度（只改有內容的地方）"}
+    Private ReadOnly _keepAlpha As New CheckBox With {.Text = Lang.T("保留透明度（只改有內容的地方）")}
     Private ReadOnly _swatch2 As New Button With {.FlatStyle = FlatStyle.Flat, .Tag = ThemeManager.SkipTag}
     Private ReadOnly _name As New TextBox()
     Private ReadOnly _layerMode As Boolean
@@ -65,7 +65,7 @@ Friend Class frmFillSelection
     Public Sub New(choice As FillChoice, targetName As String, help As HelpTip, Optional layerMode As Boolean = False)
         _choice = choice.Clone()
         _layerMode = layerMode
-        Text = If(layerMode, "填滿圖層", "填滿選取範圍")
+        Text = If(layerMode, Lang.T("填滿圖層"), Lang.T("填滿選取範圍"))
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -84,13 +84,13 @@ Friend Class frmFillSelection
                           Return l
                       End Function
         If layerMode Then
-            Dim nameCap As New Label With {.Text = "名稱", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(26, y + 4)}
+            Dim nameCap As New Label With {.Text = Lang.T("名稱"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(26, y + 4)}
             _name.SetBounds(126, y + 1, 240, 24)
             Controls.AddRange({nameCap, _name})
             help?.SetHelpLinked("fill.name", _name, nameCap, _name)
             y += 36
         End If
-        heading("內容", y) : y += 28
+        heading(Lang.T("內容"), y) : y += 28
         Dim row = Sub(rb As RadioButton, top As Integer)
                       rb.AutoSize = False
                       rb.BackColor = Color.Transparent
@@ -103,7 +103,7 @@ Friend Class frmFillSelection
         AddHandler _swatch.Click, Sub() PickColor()
         Controls.Add(_swatch)
         ' 第二色：漸層的終點顏色
-        Dim c2Cap As New Label With {.Text = "第二色（漸層的終點）", .AutoSize = True, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120),
+        Dim c2Cap As New Label With {.Text = Lang.T("第二色（漸層的終點）"), .AutoSize = True, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120),
                                      .Location = New Point(220, y + 4)}
         _swatch2.SetBounds(380, y, 80, 26)
         _swatch2.FlatAppearance.BorderColor = Color.FromArgb(120, 126, 138)
@@ -112,23 +112,23 @@ Friend Class frmFillSelection
         help?.SetHelpLinked("fill.color2", _swatch2, c2Cap, _swatch2)
         y += 34
         row(_rbGradient, y)
-        _gradKind.Items.AddRange({"線性", "放射", "角度", "反射", "菱形", "四色"})
+        _gradKind.Items.AddRange({Lang.T("線性"), Lang.T("放射"), Lang.T("角度"), Lang.T("反射"), Lang.T("菱形"), Lang.T("四色")})
         _gradDir.Items.AddRange(DirectionNames)
-        _gradColors.Items.AddRange({"顏色 → 第二色", "顏色 → 透明", "彩虹"})
+        _gradColors.Items.AddRange({Lang.T("顏色 → 第二色"), Lang.T("顏色 → 透明"), Lang.T("彩虹")})
         _gradKind.SetBounds(126, y + 1, 70, 24)
         _gradDir.SetBounds(202, y + 1, 112, 24)
         _gradColors.SetBounds(320, y + 1, 180, 24)
         Controls.AddRange({_gradKind, _gradDir, _gradColors})
         y += 34
         row(_rbMaterial, y)
-        _material.Items.AddRange(EffectCatalog.MaterialCategories.SelectMany(Function(c) c.Items.Select(Function(i) c.Name & "：" & i.Name)).Cast(Of Object)().ToArray())
+        _material.Items.AddRange(EffectCatalog.MaterialCategories.SelectMany(Function(c) c.Items.Select(Function(i) c.Name & Lang.T("：") & i.Name)).Cast(Of Object)().ToArray())
         _material.SetBounds(126, y + 1, 374, 24)
         _material.MaxDropDownItems = 16
         Controls.Add(_material)
         y += 34
         If Not layerMode Then
             row(_rbAware, y)
-            Dim awareHint As New Label With {.Text = "用附近的照片補滿，適合移除雜物、電線、路人。", .AutoSize = False, .BackColor = Color.Transparent,
+            Dim awareHint As New Label With {.Text = Lang.T("用附近的照片補滿，適合移除雜物、電線、路人。"), .AutoSize = False, .BackColor = Color.Transparent,
                                              .ForeColor = Color.FromArgb(105, 110, 120), .TextAlign = ContentAlignment.MiddleLeft}
             awareHint.SetBounds(126, y, 380, 26)
             Controls.Add(awareHint)
@@ -136,24 +136,24 @@ Friend Class frmFillSelection
         End If
         y += 6
 
-        heading("混合", y) : y += 28
+        heading(Lang.T("混合"), y) : y += 28
         Dim cap = Function(t As String, x As Integer, top As Integer) As Label
                       Dim l As New Label With {.Text = t, .AutoSize = True, .BackColor = Color.Transparent}
                       l.Location = New Point(x, top + 4)
                       Controls.Add(l)
                       Return l
                   End Function
-        Dim opCap = cap("不透明度", 26, y)
+        Dim opCap = cap(Lang.T("不透明度"), 26, y)
         _opacity.SetBounds(100, y + 1, 60, 24)
         Dim pct = cap("%", 162, y)
-        Dim blendCap = cap("混合模式", 200, y)
+        Dim blendCap = cap(Lang.T("混合模式"), 200, y)
         _blend.Items.AddRange(LayerBlend.Names)
         _blend.SetBounds(274, y + 1, 150, 24)
         Controls.AddRange({_opacity, _blend})
         y += 40
 
         If Not layerMode Then
-            heading("填在", y) : y += 28
+            heading(Lang.T("填在"), y) : y += 28
             _targetPanel.SetBounds(20, y, 490, 30)
             For Each rb In {_rbNewLayer, _rbIntoLayer}
                 rb.AutoSize = False
@@ -161,7 +161,7 @@ Friend Class frmFillSelection
             Next
             _rbNewLayer.SetBounds(6, 0, 100, 26)
             _rbIntoLayer.SetBounds(110, 0, 380, 26)
-            _rbIntoLayer.Text = If(targetName Is Nothing, "選取的點陣圖層（目前沒有）", $"選取的點陣圖層「{targetName}」")
+            _rbIntoLayer.Text = If(targetName Is Nothing, Lang.T("選取的點陣圖層（目前沒有）"), Lang.F("選取的點陣圖層「{0}」", targetName))
             _rbIntoLayer.Enabled = targetName IsNot Nothing
             _targetPanel.Controls.AddRange({_rbNewLayer, _rbIntoLayer})
             Controls.Add(_targetPanel)
@@ -174,8 +174,8 @@ Friend Class frmFillSelection
         End If
         ClientSize = New Size(520, y + 52)
 
-        Dim ok As New Button With {.Text = "確定", .DialogResult = DialogResult.OK, .UseVisualStyleBackColor = True}
-        Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel, .UseVisualStyleBackColor = True}
+        Dim ok As New Button With {.Text = Lang.T("確定"), .DialogResult = DialogResult.OK, .UseVisualStyleBackColor = True}
+        Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel, .UseVisualStyleBackColor = True}
         ok.SetBounds(306, ClientSize.Height - 42, 96, 30)
         cancel.SetBounds(408, ClientSize.Height - 42, 96, 30)
         AcceptButton = ok

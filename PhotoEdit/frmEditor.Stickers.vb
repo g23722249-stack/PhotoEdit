@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports PhotoEdit
 
 ''' <summary>
@@ -26,13 +26,13 @@ Partial Friend Class frmEditor
     Private Sub BuildStickerPage(page As Aqua.TabPage)
         _stickerPage = page
         Dim L = NewLayout(page, autoScroll:=False)
-        AddHeading(L, "貼圖", reserveRight:=ValueWidth + 40 + 122)
-        Dim refresh = MakeButton("重新整理", "btn.stickrefresh")
+        AddHeading(L, Lang.T("貼圖"), reserveRight:=ValueWidth + 40 + 122)
+        Dim refresh = MakeButton(Lang.T("重新整理"), "btn.stickrefresh")
         refresh.SetBounds(L.Width - ValueWidth - 30, 6, ValueWidth + 30, 26)
         AddHandler refresh.Click, Sub() ReloadStickers()
         L.Add(refresh)
         refresh.BringToFront() ' 標題標籤橫跨整列，不移到上層會蓋住按鈕文字
-        Dim helper = MakeButton("貼圖小幫手…", "btn.stickhelper")
+        Dim helper = MakeButton(Lang.T("貼圖小幫手…"), "btn.stickhelper")
         helper.SetBounds(L.Width - ValueWidth - 30 - 6 - 116, 6, 116, 26)
         AddHandler helper.Click, Sub() OpenStickerHelper()
         L.Add(helper)
@@ -75,7 +75,7 @@ Partial Friend Class frmEditor
         _stickerEmpty.BackColor = Color.Transparent
         _stickerEmpty.SetBounds(8, L.Y + 60, L.Width - 8, 90)
         L.Add(_stickerEmpty)
-        _createStick.Text = "建立 stick 資料夾"
+        _createStick.Text = Lang.T("建立 stick 資料夾")
         _createStick.UseVisualStyleBackColor = True
         _createStick.SetBounds(8 + CaptionWidth, L.Y + 160, L.Width - CaptionWidth * 2, 32)
         AddHandler _createStick.Click, Sub() CreateStickFolder()
@@ -87,7 +87,7 @@ Partial Friend Class frmEditor
         _stickerCount.TextAlign = ContentAlignment.MiddleLeft
         _stickerCount.SetBounds(8, 0, CaptionWidth, 24)
         L.Add(_stickerCount)
-        _openStick.Text = "開啟 stick 資料夾"
+        _openStick.Text = Lang.T("開啟 stick 資料夾")
         _openStick.TextAlign = ContentAlignment.MiddleRight
         _openStick.BackColor = Color.Transparent
         _openStick.SetBounds(8 + CaptionWidth, 0, L.Width - CaptionWidth - 8, 24)
@@ -99,24 +99,24 @@ Partial Friend Class frmEditor
         _stickerSelPanel.SetBounds(8, 400, L.Width - 8, SelPanelHeight)
         L.Add(_stickerSelPanel)
         Dim S As New PageLayout(_stickerSelPanel, L.Width - 8, rightMargin:=0) With {.Y = 0}
-        _overlayDelete.Text = "刪除"
+        _overlayDelete.Text = Lang.T("刪除")
         _overlayDelete.UseVisualStyleBackColor = True
         _overlayDelete.SetBounds(S.Width - ValueWidth - 30, 2, ValueWidth + 30, 26)
         _help.SetHelp("sticker.delete", _overlayDelete)
         AddHandler _overlayDelete.Click, Sub() DeleteOverlay()
-        AddHeading(S, "選取的貼圖", reserveRight:=ValueWidth + 40)
+        AddHeading(S, Lang.T("選取的貼圖"), reserveRight:=ValueWidth + 40)
         S.Add(_overlayDelete)
         _overlayDelete.BringToFront()
-        AddRow(S, OverlayRow("ov_size", "大小", 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0))
-        AddRow(S, OverlayRow("ov_rot", "旋轉", -180, 180, Function(v) v & "°", Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v))
-        AddRow(S, OverlayRow("ov_opacity", "透明度", 0, 100, Function(v) v & "%", Function(o) o.Opacity, Sub(o, v) o.Opacity = v))
+        AddRow(S, OverlayRow("ov_size", Lang.T("大小"), 2, 50, Function(v) v & "%", Function(o) CInt(Math.Round(o.Size * 100)), Sub(o, v) o.Size = v / 100.0))
+        AddRow(S, OverlayRow("ov_rot", Lang.T("旋轉"), -180, 180, Function(v) v & "°", Function(o) CInt(Math.Round(o.Rotation)), Sub(o, v) o.Rotation = v))
+        AddRow(S, OverlayRow("ov_opacity", Lang.TC("opacity", "透明度"), 0, 100, Function(v) v & "%", Function(o) o.Opacity, Sub(o, v) o.Opacity = v))
         Dim half = (S.Width - 16) \ 2
-        _overlayColor.Text = "顏色…"
+        _overlayColor.Text = Lang.T("顏色…")
         _overlayColor.UseVisualStyleBackColor = True
         _overlayColor.SetBounds(8, S.Y + 2, half, 28)
         _help.SetHelp("overlay.color", _overlayColor)
         AddHandler _overlayColor.Click, Sub() PickOverlayColor()
-        _overlayShadow.Text = "陰影"
+        _overlayShadow.Text = Lang.T("陰影")
         _overlayShadow.BackColor = Color.Transparent
         _overlayShadow.SetBounds(8 + half + 16, S.Y + 6, half - 8, 22)
         _help.SetHelp("overlay.shadow", _overlayShadow)
@@ -162,7 +162,7 @@ Partial Friend Class frmEditor
 
         _themeNames.Clear()
         _themeNames.AddRange(themes)
-        Dim items = themes.Select(Function(t) CObj(If(t = StickerLibrary.BuiltInTheme, $"{t}（{Creative.StickerNames.Count}）", $"{t}（{StickerLibrary.Stickers(t).Count}）"))).ToArray()
+        Dim items = themes.Select(Function(t) CObj(If(t = StickerLibrary.BuiltInTheme, Lang.F("{0}（{1}）", Lang.T(t), Creative.StickerNames.Count), Lang.F("{0}（{1}）", t, StickerLibrary.Stickers(t).Count)))).ToArray()
         Dim wasSyncing = _syncing
         _syncing = True
         _themeCombo.Items.Clear()
@@ -202,13 +202,13 @@ Partial Friend Class frmEditor
                 AddHandler tile.DoubleClick, Sub(s, e) AddStickerAt(DirectCast(s, StickerTile).Key, New PointF(0.5F, 0.5F))
                 _stickerGrid.Controls.Add(tile)
             Next
-            _stickerCount.Text = $"{keys.Count} 張"
+            _stickerCount.Text = Lang.F("{0} 張", keys.Count)
 
             Dim message As String = Nothing
             If keys.Count = 0 Then
                 message = If(StickerLibrary.RootExists,
-                             $"「{theme}」裡還沒有貼圖。{vbCrLf}把 PNG 圖片放進{vbCrLf}stick\{theme}\ 後按「重新整理」。",
-                             "找不到 stick 資料夾。")
+                             Lang.F("「{0}」裡還沒有貼圖。{1}把 PNG 圖片放進{2}stick\{3}\ 後按「重新整理」。", theme, vbCrLf, vbCrLf, theme),
+                             Lang.T("找不到 stick 資料夾。"))
             ElseIf theme = StickerLibrary.BuiltInTheme AndAlso Not StickerLibrary.RootExists Then
                 message = Nothing
             End If
@@ -238,7 +238,7 @@ Partial Friend Class frmEditor
         o.X = Math.Max(0, Math.Min(1, position.X))
         o.Y = Math.Max(0, Math.Min(1, position.Y))
         AddOverlayObject(o, switchTab:=-1)
-        SetStatusMessage("已貼上。拖曳可移動，角落可縮放，上方圓點可旋轉；大小、旋轉、陰影也可在「裝飾」分頁調整。")
+        SetStatusMessage(Lang.T("已貼上。拖曳可移動，角落可縮放，上方圓點可旋轉；大小、旋轉、陰影也可在「裝飾」分頁調整。"))
     End Sub
 
     '---------------------------------------------------------------------
@@ -257,11 +257,11 @@ Partial Friend Class frmEditor
         Try
             Directory.CreateDirectory(StickerLibrary.Root)
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
-            MessageBox.Show(Me, "無法建立 stick 資料夾：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法建立 stick 資料夾：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         ReloadStickers()
-        SetStatusMessage("已建立 " & StickerLibrary.Root & "：在裡面建立主題資料夾，再放入 PNG 貼圖。")
+        SetStatusMessage(Lang.T("已建立 ") & StickerLibrary.Root & Lang.T("：在裡面建立主題資料夾，再放入 PNG 貼圖。"))
     End Sub
 
     ''' <summary>貼圖格的說明：名稱、種類，圖示用貼圖本身。</summary>
@@ -270,8 +270,8 @@ Partial Friend Class frmEditor
         Dim isImage = o.Kind = OverlayKind.Image
         Return New HelpTip.Entry With {
             .Title = If(isImage, Path.GetFileNameWithoutExtension(o.ImagePath), Creative.StickerNames.First(Function(s) s.Key = o.Sticker).Name),
-            .Text = If(isImage, "圖片貼圖（stick\" & o.ImagePath & "），保留原本的顏色。", "內建向量貼圖，放大也很清楚，可以改顏色。"),
-            .Hint = "拖到照片上貼在那個位置；按兩下貼在照片中央。",
+            .Text = If(isImage, Lang.T("圖片貼圖（stick\") & o.ImagePath & Lang.T("），保留原本的顏色。"), Lang.T("內建向量貼圖，放大也很清楚，可以改顏色。")),
+            .Hint = Lang.T("拖到照片上貼在那個位置；按兩下貼在照片中央。"),
             .Icon = preview, .Glyph = If(baseHelp?.Glyph, "")}
     End Function
 

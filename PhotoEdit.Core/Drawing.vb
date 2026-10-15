@@ -1,4 +1,5 @@
-﻿Imports System.Drawing
+﻿Imports PhotoEdit
+Imports System.Drawing
 Imports System.Drawing.Drawing2D
 
 ''' <summary>繪圖圖層的種類（數值存進編輯檔，不可更動；工具列順序見 DrawToolStrip）。</summary>
@@ -520,13 +521,13 @@ Partial Public NotInheritable Class DrawGeometry
     End Sub
 
     Public Shared ReadOnly ShapeNames As String() = {
-        "自由繪製（向量）", "直線", "貝茲曲線", "矩形", "圓角矩形", "橢圓", "多邊形", "箭頭", "愛心",
-        "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製", "油漆桶", "漸層", "填滿圖層", "鋼筆", "文字"}
+        Lang.T("自由繪製（向量）"), Lang.T("直線"), Lang.T("貝茲曲線"), Lang.T("矩形"), Lang.T("圓角矩形"), Lang.T("橢圓"), Lang.T("多邊形"), Lang.T("箭頭"), Lang.T("愛心"),
+        Lang.T("四角星形"), Lang.T("五角星形"), Lang.T("六角星形"), Lang.T("圓角矩形圖說"), Lang.T("橢圓圖說"), Lang.T("雲朵圖說"), Lang.T("氣泡圖說"), Lang.T("吶喊框"), Lang.T("閃電"), Lang.T("直接繪製"), Lang.T("油漆桶"), Lang.T("漸層"), Lang.T("填滿圖層"), Lang.T("鋼筆"), Lang.T("文字")}
 
     Public Shared ReadOnly BrushNames As String() = {
-        "硬筆", "軟筆", "鉛筆", "炭筆", "粉筆", "蠟筆", "水彩", "油畫", "壓克力", "墨水", "毛筆", "麥克筆", "噴槍", "乾刷", "紋理筆", "特效筆",
-        "混色筆", "塗抹筆", "粒子筆", "仿製筆", "貼圖噴槍",
-        "模糊", "銳利化", "加亮", "加深", "海綿（降低飽和）", "海綿（增加飽和）", "修復筆"}
+        Lang.T("硬筆"), Lang.T("軟筆"), Lang.T("鉛筆"), Lang.T("炭筆"), Lang.T("粉筆"), Lang.T("蠟筆"), Lang.T("水彩"), Lang.T("油畫"), Lang.T("壓克力"), Lang.T("墨水"), Lang.T("毛筆"), Lang.T("麥克筆"), Lang.T("噴槍"), Lang.T("乾刷"), Lang.T("紋理筆"), Lang.T("特效筆"),
+        Lang.T("混色筆"), Lang.T("塗抹筆"), Lang.T("粒子筆"), Lang.T("仿製筆"), Lang.T("貼圖噴槍"),
+        Lang.T("模糊"), Lang.T("銳利化"), Lang.T("加亮"), Lang.T("加深"), Lang.T("海綿（降低飽和）"), Lang.T("海綿（增加飽和）"), Lang.T("修復筆")}
 
     ''' <summary>特效與材質名稱（依列舉值）；分類與預設顏色見 EffectCatalog。</summary>
     Public Shared ReadOnly Property FxNames As String()

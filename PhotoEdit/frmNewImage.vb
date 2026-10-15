@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Runtime.InteropServices
 Imports PhotoEdit
 
@@ -32,9 +32,9 @@ Friend Class frmNewImage
     Private Shared _lastFit As PictureFit = PictureFit.Cover
 
     Private Shared ReadOnly DpiPresets As (Name As String, Dpi As Double)() = {
-        ("使用者定義", 0), ("72（網頁）", 72), ("96（螢幕）", 96), ("150（一般列印）", 150),
-        ("300（相片列印）", 300), ("350（印刷）", 350), ("600（高品質）", 600)}
-    Private Shared ReadOnly FitNames As String() = {"填滿（裁掉多餘）", "完整顯示（留邊）", "延展（可能變形）", "原尺寸置中", "原尺寸並排"}
+        (Lang.T("使用者定義"), 0), (Lang.T("72（網頁）"), 72), (Lang.T("96（螢幕）"), 96), (Lang.T("150（一般列印）"), 150),
+        (Lang.T("300（相片列印）"), 300), (Lang.T("350（印刷）"), 350), (Lang.T("600（高品質）"), 600)}
+    Private Shared ReadOnly FitNames As String() = {Lang.T("填滿（裁掉多餘）"), Lang.T("完整顯示（留邊）"), Lang.T("延展（可能變形）"), Lang.T("原尺寸置中"), Lang.T("原尺寸並排")}
 
     Private ReadOnly _currentSize As Size?
     Private ReadOnly _clipboardSize As Size?
@@ -51,42 +51,42 @@ Friend Class frmNewImage
     Private _boldFont As Font
 
     ' 底色
-    Private ReadOnly _rbWhite As New RadioButton With {.Text = "白色(&W)"}
-    Private ReadOnly _rbBlack As New RadioButton With {.Text = "黑色(&K)"}
-    Private ReadOnly _rbColor As New RadioButton With {.Text = "自訂色彩(&M)"}
-    Private ReadOnly _rbTransparent As New RadioButton With {.Text = "透明(&T)"}
-    Private ReadOnly _rbPaper As New RadioButton With {.Text = "紙張(&P)"}
+    Private ReadOnly _rbWhite As New RadioButton With {.Text = Lang.T("白色(&W)")}
+    Private ReadOnly _rbBlack As New RadioButton With {.Text = Lang.T("黑色(&K)")}
+    Private ReadOnly _rbColor As New RadioButton With {.Text = Lang.T("自訂色彩(&M)")}
+    Private ReadOnly _rbTransparent As New RadioButton With {.Text = Lang.T("透明(&T)")}
+    Private ReadOnly _rbPaper As New RadioButton With {.Text = Lang.T("紙張(&P)")}
     Private ReadOnly _paperBox As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _colorButton As New Button With {.FlatStyle = FlatStyle.Flat}
     ' 底圖
     Private ReadOnly _pictureLabel As New Label With {.AutoEllipsis = True}
-    Private ReadOnly _pickFile As New Button With {.Text = "選擇檔案…"}
-    Private ReadOnly _pickCurrent As New Button With {.Text = "使用中影像"}
-    Private ReadOnly _pickClipboard As New Button With {.Text = "剪貼簿"}
-    Private ReadOnly _clearPicture As New Button With {.Text = "移除"}
+    Private ReadOnly _pickFile As New Button With {.Text = Lang.T("選擇檔案…")}
+    Private ReadOnly _pickCurrent As New Button With {.Text = Lang.T("使用中影像")}
+    Private ReadOnly _pickClipboard As New Button With {.Text = Lang.T("剪貼簿")}
+    Private ReadOnly _clearPicture As New Button With {.Text = Lang.T("移除")}
     Private ReadOnly _fit As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     ' 影像大小
     Private ReadOnly _sizeGroup As New GroupBox()
-    Private ReadOnly _rbStandard As New RadioButton With {.Text = "標準(&S)"}
+    Private ReadOnly _rbStandard As New RadioButton With {.Text = Lang.T("標準(&S)")}
     Private ReadOnly _category As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _presetBox As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _rbCurrent As New RadioButton()
     Private ReadOnly _rbClipboard As New RadioButton()
     Private ReadOnly _rbPicture As New RadioButton()
-    Private ReadOnly _rbCustom As New RadioButton With {.Text = "使用者自訂(&U)"}
+    Private ReadOnly _rbCustom As New RadioButton With {.Text = Lang.T("使用者自訂(&U)")}
     Private ReadOnly _width As New NumericUpDown With {.Maximum = 1000000, .TextAlign = HorizontalAlignment.Right}
     Private ReadOnly _height As New NumericUpDown With {.Maximum = 1000000, .TextAlign = HorizontalAlignment.Right}
     Private ReadOnly _unit As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-    Private ReadOnly _portrait As New Button With {.Text = "直向"}
-    Private ReadOnly _landscapeButton As New Button With {.Text = "橫向"}
-    Private ReadOnly _lockRatio As New CheckBox With {.Text = "鎖定比例"}
+    Private ReadOnly _portrait As New Button With {.Text = Lang.T("直向")}
+    Private ReadOnly _landscapeButton As New Button With {.Text = Lang.T("橫向")}
+    Private ReadOnly _lockRatio As New CheckBox With {.Text = Lang.T("鎖定比例")}
     ' 解析度
     Private ReadOnly _dpiPreset As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _dpi As New NumericUpDown With {.Minimum = 1, .Maximum = 10000, .DecimalPlaces = 0, .TextAlign = HorizontalAlignment.Right}
     Private ReadOnly _dpiUnit As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _fileSize As New Label()
     Private ReadOnly _previewBox As New Panel()
-    Private ReadOnly _ok As New Button With {.Text = "確定", .DialogResult = DialogResult.OK}
+    Private ReadOnly _ok As New Button With {.Text = Lang.T("確定"), .DialogResult = DialogResult.OK}
 
     ''' <param name="currentSize">使用中影像的輸出大小；沒有開啟影像時為 Nothing。</param>
     ''' <param name="currentPicture">取得使用中影像（含編輯）當底圖；呼叫端產生新點陣圖，由本視窗釋放。</param>
@@ -97,8 +97,8 @@ Friend Class frmNewImage
         _clipboardSize = clipboardSize
         _clipboardPicture = clipboardPicture
 
-        Text = "新增影像"
-        Font = New Font("Microsoft JhengHei UI", 9.0F)
+        Text = Lang.T("新增影像")
+        Font = New Font(Lang.UiFont, 9.0F)
         FormBorderStyle = FormBorderStyle.FixedDialog
         MaximizeBox = False
         MinimizeBox = False
@@ -127,7 +127,7 @@ Friend Class frmNewImage
         Dim y = 10
 
         ' 底色
-        Dim fillGroup As New GroupBox With {.Text = "底色"}
+        Dim fillGroup As New GroupBox With {.Text = Lang.T("底色")}
         fillGroup.SetBounds(L, y, W, 104)
         _rbWhite.SetBounds(14, 22, 150, 22)
         _rbBlack.SetBounds(220, 22, 150, 22)
@@ -151,14 +151,14 @@ Friend Class frmNewImage
         y += 112
 
         ' 底圖
-        Dim pictureGroup As New GroupBox With {.Text = "底圖（可直接帶入一張圖當背景）"}
+        Dim pictureGroup As New GroupBox With {.Text = Lang.T("底圖（可直接帶入一張圖當背景）")}
         pictureGroup.SetBounds(L, y, W, 106)
         _pictureLabel.SetBounds(14, 22, W - 28, 20)
         _pickFile.SetBounds(14, 44, 100, 26)
         _pickCurrent.SetBounds(120, 44, 100, 26)
         _pickClipboard.SetBounds(226, 44, 100, 26)
         _clearPicture.SetBounds(332, 44, 94, 26)
-        Dim fitCaption As New Label With {.Text = "放置方式", .TextAlign = ContentAlignment.MiddleLeft}
+        Dim fitCaption As New Label With {.Text = Lang.T("放置方式"), .TextAlign = ContentAlignment.MiddleLeft}
         fitCaption.SetBounds(14, 76, 70, 22)
         _fit.Items.AddRange(FitNames)
         _fit.SetBounds(88, 76, 200, 24)
@@ -166,8 +166,8 @@ Friend Class frmNewImage
         _pickCurrent.Enabled = _currentPicture IsNot Nothing
         _pickClipboard.Enabled = _clipboardPicture IsNot Nothing
         AddHandler _pickFile.Click, Sub() PickPictureFile()
-        AddHandler _pickCurrent.Click, Sub() SetPicture(_currentPicture(), "使用中影像")
-        AddHandler _pickClipboard.Click, Sub() SetPicture(_clipboardPicture(), "剪貼簿")
+        AddHandler _pickCurrent.Click, Sub() SetPicture(_currentPicture(), Lang.T("使用中影像"))
+        AddHandler _pickClipboard.Click, Sub() SetPicture(_clipboardPicture(), Lang.T("剪貼簿"))
         AddHandler _clearPicture.Click, Sub() SetPicture(Nothing, Nothing)
         AddHandler _fit.SelectedIndexChanged, Sub() If Not _syncing Then UpdateAll()
         y += 114
@@ -185,7 +185,7 @@ Friend Class frmNewImage
         _rbClipboard.SetBounds(14, gy, W - 28, 22) : gy += 24
         _rbPicture.SetBounds(14, gy, W - 28, 22) : gy += 26
         _rbCustom.SetBounds(14, gy, 120, 22) : gy += 26
-        Dim wCaption As New Label With {.Text = "寬度(&W)", .TextAlign = ContentAlignment.MiddleLeft}
+        Dim wCaption As New Label With {.Text = Lang.T("寬度(&W)"), .TextAlign = ContentAlignment.MiddleLeft}
         wCaption.SetBounds(34, gy, 64, 22)
         _width.SetBounds(100, gy, 96, 24)
         _unit.SetBounds(206, gy, 80, 24)
@@ -194,7 +194,7 @@ Friend Class frmNewImage
         Next
         _lockRatio.SetBounds(298, gy, 100, 22)
         gy += 28
-        Dim hCaption As New Label With {.Text = "高度(&E)", .TextAlign = ContentAlignment.MiddleLeft}
+        Dim hCaption As New Label With {.Text = Lang.T("高度(&E)"), .TextAlign = ContentAlignment.MiddleLeft}
         hCaption.SetBounds(34, gy, 64, 22)
         _height.SetBounds(100, gy, 96, 24)
         _portrait.SetBounds(206, gy - 1, 60, 26)
@@ -220,12 +220,12 @@ Friend Class frmNewImage
         y += 230
 
         ' 解析度
-        Dim dpiCaption As New Label With {.Text = "解析度(&R)", .TextAlign = ContentAlignment.MiddleLeft}
+        Dim dpiCaption As New Label With {.Text = Lang.T("解析度(&R)"), .TextAlign = ContentAlignment.MiddleLeft}
         dpiCaption.SetBounds(L, y, 70, 24)
         _dpiPreset.Items.AddRange(DpiPresets.Select(Function(d) CObj(d.Name)).ToArray())
         _dpiPreset.SetBounds(L + 72, y, 136, 24)
         _dpi.SetBounds(L + 214, y, 80, 24)
-        _dpiUnit.Items.AddRange({"像素/英吋", "像素/公分"})
+        _dpiUnit.Items.AddRange({Lang.T("像素/英吋"), Lang.T("像素/公分")})
         _dpiUnit.SetBounds(L + 300, y, 100, 24)
         AddHandler _dpiPreset.SelectedIndexChanged, Sub()
                                                         If _syncing OrElse _dpiPreset.SelectedIndex <= 0 Then Return
@@ -241,7 +241,7 @@ Friend Class frmNewImage
         y += 30
 
         ' 預覽
-        Dim previewCaption As New Label With {.Text = "預覽", .ForeColor = Color.FromArgb(90, 95, 105)}
+        Dim previewCaption As New Label With {.Text = Lang.T("預覽"), .ForeColor = Color.FromArgb(90, 95, 105)}
         previewCaption.SetBounds(468, 14, 220, 18)
         _previewBox.SetBounds(468, 34, 220, 220)
         _previewBox.BorderStyle = BorderStyle.FixedSingle
@@ -249,11 +249,11 @@ Friend Class frmNewImage
         EnableDoubleBuffer(_previewBox)
         AddHandler _previewBox.Paint, AddressOf PaintPreview
         Dim hint As New Label With {.ForeColor = Color.FromArgb(90, 95, 105),
-            .Text = "新影像會存成 PNG（圖片\PhotoEdit\新影像），之後就和一般照片一樣編輯、加文字貼圖、匯出。" & vbCrLf & vbCrLf &
-                    "列印用的版面（相片、證件照、紙張）依解析度換算像素；解析度也會寫進匯出的檔案。"}
+            .Text = Lang.T("新影像會存成 PNG（圖片\PhotoEdit\新影像），之後就和一般照片一樣編輯、加文字貼圖、匯出。") & vbCrLf & vbCrLf &
+                    Lang.T("列印用的版面（相片、證件照、紙張）依解析度換算像素；解析度也會寫進匯出的檔案。")}
         hint.SetBounds(468, 264, 220, 150)
 
-        Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel}
+        Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel}
         _ok.SetBounds(ClientSize.Width - 200, ClientSize.Height - 40, 90, 28)
         cancel.SetBounds(ClientSize.Width - 102, ClientSize.Height - 40, 90, 28)
         AddHandler _ok.Click, AddressOf OnOk
@@ -447,8 +447,8 @@ Friend Class frmNewImage
     End Sub
 
     Private Sub PickPictureFile()
-        Using dlg As New OpenFileDialog With {.Title = "選擇底圖",
-            .Filter = "圖片檔|" & String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x)) & "|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇底圖"),
+            .Filter = Lang.T("圖片檔|") & String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x)) & Lang.T("|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
                 Using photo = PhotoFile.Open(dlg.FileName) ' 依 EXIF 轉正
@@ -457,7 +457,7 @@ Friend Class frmNewImage
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                        TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                        TypeOf ex Is ExternalException
-                MessageBox.Show(Me, $"無法開啟「{Path.GetFileName(dlg.FileName)}」：{ex.Message}", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.F("無法開啟「{0}」：{1}", Path.GetFileName(dlg.FileName), ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
         End Using
     End Sub
@@ -553,14 +553,14 @@ Friend Class frmNewImage
             _portrait.Font = If(Not isLandscape AndAlso _spec.Width <> _spec.Height, _boldFont, Font)
             _landscapeButton.Font = If(isLandscape, _boldFont, Font)
 
-            _rbCurrent.Text = "使用中影像(&A)" & If(_currentSize.HasValue, $"（{_currentSize.Value.Width} x {_currentSize.Value.Height}）", "")
+            _rbCurrent.Text = Lang.T("使用中影像(&A)") & If(_currentSize.HasValue, Lang.F("（{0} x {1}）", _currentSize.Value.Width, _currentSize.Value.Height), "")
             _rbCurrent.Enabled = _currentSize.HasValue
-            _rbClipboard.Text = "和剪貼簿內的影像相同(&C)" & If(_clipboardSize.HasValue, $"（{_clipboardSize.Value.Width} x {_clipboardSize.Value.Height}）", "")
+            _rbClipboard.Text = Lang.T("和剪貼簿內的影像相同(&C)") & If(_clipboardSize.HasValue, Lang.F("（{0} x {1}）", _clipboardSize.Value.Width, _clipboardSize.Value.Height), "")
             _rbClipboard.Enabled = _clipboardSize.HasValue
-            _rbPicture.Text = "和底圖相同(&P)" & If(_picture IsNot Nothing, $"（{_picture.Width} x {_picture.Height}）", "")
+            _rbPicture.Text = Lang.T("和底圖相同(&P)") & If(_picture IsNot Nothing, Lang.F("（{0} x {1}）", _picture.Width, _picture.Height), "")
             _rbPicture.Enabled = _picture IsNot Nothing
 
-            _pictureLabel.Text = If(_picture Is Nothing, "（無）— 只用底色", $"{_pictureName}　{_picture.Width} x {_picture.Height}")
+            _pictureLabel.Text = If(_picture Is Nothing, Lang.T("（無）— 只用底色"), Lang.F("{0}　{1} x {2}", _pictureName, _picture.Width, _picture.Height))
             _clearPicture.Enabled = _picture IsNot Nothing
             _fit.Enabled = _picture IsNot Nothing
 
@@ -571,11 +571,11 @@ Friend Class frmNewImage
             Dim match = Array.FindIndex(DpiPresets, Function(d) d.Dpi > 0 AndAlso Math.Abs(d.Dpi - _spec.Dpi) < 0.01)
             _dpiPreset.SelectedIndex = Math.Max(0, match)
 
-            _sizeGroup.Text = $"影像大小 {_spec.Width} x {_spec.Height} 像素"
+            _sizeGroup.Text = Lang.F("影像大小 {0} x {1} 像素", _spec.Width, _spec.Height)
             Dim inchW = _spec.Width / _spec.Dpi, inchH = _spec.Height / _spec.Dpi
             Dim problem = NewImage.Validate(_spec)
             _fileSize.ForeColor = If(problem Is Nothing, SystemColors.ControlText, Color.Firebrick)
-            _fileSize.Text = If(problem, $"檔案大小：{NewImage.FormatFileSize(_spec.UncompressedBytes)}　｜　列印 {inchW * 2.54:0.0} x {inchH * 2.54:0.0} 公分（{inchW:0.##} x {inchH:0.##} 英吋）")
+            _fileSize.Text = If(problem, Lang.F("檔案大小：{0}　｜　列印 {1:0.0} x {2:0.0} 公分（{3:0.##} x {4:0.##} 英吋）", NewImage.FormatFileSize(_spec.UncompressedBytes), inchW * 2.54, inchH * 2.54, inchW, inchH))
             _ok.Enabled = problem Is Nothing
         Finally
             _syncing = False

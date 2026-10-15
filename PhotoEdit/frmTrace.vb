@@ -13,7 +13,7 @@ Friend Class frmTrace
     Private ReadOnly _colors As New TrackBar With {.Minimum = 2, .Maximum = 24, .Value = 8, .TickFrequency = 2}
     Private ReadOnly _detail As New TrackBar With {.Minimum = 1, .Maximum = 10, .Value = 6}
     Private ReadOnly _speckle As New TrackBar With {.Minimum = 0, .Maximum = 100, .Value = 12, .TickFrequency = 10}
-    Private ReadOnly _removeBg As New CheckBox With {.Text = "去掉背景（最大的那個顏色）", .AutoSize = True}
+    Private ReadOnly _removeBg As New CheckBox With {.Text = Lang.T("去掉背景（最大的那個顏色）"), .AutoSize = True}
     Private ReadOnly _info As New Label With {.AutoSize = False, .Height = 40, .ForeColor = Color.FromArgb(90, 96, 106)}
     Private ReadOnly _colorsLabel As New Label With {.AutoSize = True}
     Private ReadOnly _detailLabel As New Label With {.AutoSize = True}
@@ -31,13 +31,13 @@ Friend Class frmTrace
 
     Public Sub New(source As Bitmap)
         _source = source
-        Text = "影像描圖（轉成向量）"
+        Text = Lang.T("影像描圖（轉成向量）")
         StartPosition = FormStartPosition.CenterParent
         Size = New Size(980, 640)
         MinimumSize = New Size(760, 480)
         ShowInTaskbar = False
         MaximizeBox = False
-        Font = New Font("Microsoft JhengHei UI", 9.5F)
+        Font = New Font(Lang.UiFont, 9.5F)
         Dim side As New Panel With {.Dock = DockStyle.Right, .Width = 280, .Padding = New Padding(14, 12, 14, 12)}
         Dim y = 12
         Dim add = Sub(c As Control, h As Integer)
@@ -45,8 +45,8 @@ Friend Class frmTrace
                       side.Controls.Add(c)
                       y += h + 6
                   End Sub
-        add(New Label With {.Text = "模式", .AutoSize = True}, 20)
-        _mode.Items.AddRange({"黑白線稿", "彩色"})
+        add(New Label With {.Text = Lang.T("模式"), .AutoSize = True}, 20)
+        _mode.Items.AddRange({Lang.T("黑白線稿"), Lang.T("彩色")})
         _mode.SelectedIndex = 1
         add(_mode, 26)
         add(_colorsLabel, 20) : add(_colors, 34)
@@ -55,8 +55,8 @@ Friend Class frmTrace
         add(_removeBg, 24)
         y += 6
         add(_info, 60)
-        Dim ok As New Button With {.Text = "描圖", .DialogResult = DialogResult.OK}
-        Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel}
+        Dim ok As New Button With {.Text = Lang.T("描圖"), .DialogResult = DialogResult.OK}
+        Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel}
         ok.Size = New Size(84, 30) : cancel.Size = New Size(84, 30)
         ok.Margin = New Padding(6, 0, 0, 0) : cancel.Margin = New Padding(6, 0, 0, 0)
         Dim buttons As New FlowLayoutPanel With {.Dock = DockStyle.Bottom, .Height = 40, .FlowDirection = FlowDirection.RightToLeft, .WrapContents = False}
@@ -81,10 +81,10 @@ Friend Class frmTrace
 
     Private Sub UpdateLabels()
         _colors.Enabled = _mode.SelectedIndex = 1
-        _colorsLabel.Text = $"顏色數：{_colors.Value}"
-        _detailLabel.Text = $"細節：{_detail.Value}（越高越像照片、節點越多）"
-        _speckleLabel.Text = $"去雜點：{_speckle.Value}（小於這麼多像素的小塊併掉）"
-        _removeBg.Text = If(_mode.SelectedIndex = 0, "去掉背景（只留黑色）", "去掉背景（最大的那個顏色）")
+        _colorsLabel.Text = Lang.F("顏色數：{0}", _colors.Value)
+        _detailLabel.Text = Lang.F("細節：{0}（越高越像照片、節點越多）", _detail.Value)
+        _speckleLabel.Text = Lang.F("去雜點：{0}（小於這麼多像素的小塊併掉）", _speckle.Value)
+        _removeBg.Text = If(_mode.SelectedIndex = 0, Lang.T("去掉背景（只留黑色）"), Lang.T("去掉背景（最大的那個顏色）"))
     End Sub
 
     Private Sub Changed()
@@ -100,7 +100,7 @@ Friend Class frmTrace
         Dim opt = Options
         opt.Resolution = 420
         Dim src = _source
-        _info.Text = "描圖中…"
+        _info.Text = Lang.T("描圖中…")
         Threading.Tasks.Task.Run(Function()
                                      Dim layers As List(Of DrawLayer)
                                      SyncLock src
@@ -127,7 +127,7 @@ Friend Class frmTrace
                                                                 Dim old = _preview.Image
                                                                 _preview.Image = t.Result.bmp
                                                                 old?.Dispose()
-                                                                _info.Text = $"{t.Result.Item2} 個圖形、{t.Result.nodes} 個節點（預覽是較低的解析度，描圖時會更細）。"
+                                                                _info.Text = Lang.F("{0} 個圖形、{1} 個節點（預覽是較低的解析度，描圖時會更細）。", t.Result.Item2, t.Result.nodes)
                                                             End Sub, Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext())
     End Sub
 

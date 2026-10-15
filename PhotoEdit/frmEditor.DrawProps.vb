@@ -23,8 +23,8 @@ Partial Friend Class frmEditor
     Private ReadOnly _arrowStart As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .DrawMode = DrawMode.OwnerDrawFixed, .ItemHeight = 18}
     Private ReadOnly _arrowEnd As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .DrawMode = DrawMode.OwnerDrawFixed, .ItemHeight = 18}
 
-    Private Shared ReadOnly DashNames As String() = {"實線", "虛線", "點線", "點虛線", "長虛線"}
-    Private Shared ReadOnly ArrowNames As String() = {"無", "三角", "開放", "圓點", "方塊", "菱形"}
+    Private Shared ReadOnly DashNames As String() = {Lang.T("實線"), Lang.T("虛線"), Lang.T("點線"), Lang.T("點虛線"), Lang.T("長虛線")}
+    Private Shared ReadOnly ArrowNames As String() = {Lang.T("無"), Lang.T("三角"), Lang.T("開放"), Lang.T("圓點"), Lang.T("方塊"), Lang.T("菱形")}
 
     '---------------------------------------------------------------------
     ' 右側面板：線條樣式
@@ -33,7 +33,7 @@ Partial Friend Class frmEditor
     Private Sub BuildLineStyleRows(L As PageLayout)
         Dim half = (L.Width - CaptionWidth - 8 - 6) \ 2
         ' 樣式
-        _help.SetHelpLinked("draw.line.dash", _lineDash, AddCaption(L, "線條樣式", L.Y), _lineDash)
+        _help.SetHelpLinked("draw.line.dash", _lineDash, AddCaption(L, Lang.T("線條樣式"), L.Y), _lineDash)
         _lineDash.Items.AddRange(DashNames.Cast(Of Object)().ToArray())
         _lineDash.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
         AddHandler _lineDash.DrawItem, Sub(s, e) DrawLineItem(e, isArrow:=False, atStart:=False)
@@ -41,10 +41,10 @@ Partial Friend Class frmEditor
         L.Add(_lineDash)
         L.Y += RowHeight
         ' 端點、轉角
-        _help.SetHelpLinked("draw.line.cap", _lineCap, AddCaption(L, "端點／轉角", L.Y), _lineCap)
+        _help.SetHelpLinked("draw.line.cap", _lineCap, AddCaption(L, Lang.T("端點／轉角"), L.Y), _lineCap)
         _help.SetHelp("draw.line.join", _lineJoin)
-        _lineCap.Items.AddRange({"圓頭", "平頭", "方頭"})
-        _lineJoin.Items.AddRange({"圓角", "尖角", "斜角"})
+        _lineCap.Items.AddRange({Lang.T("圓頭"), Lang.T("平頭"), Lang.T("方頭")})
+        _lineJoin.Items.AddRange({Lang.T("圓角"), Lang.T("尖角"), Lang.T("斜角")})
         _lineCap.SetBounds(8 + CaptionWidth, L.Y + 3, half, 24)
         _lineJoin.SetBounds(8 + CaptionWidth + half + 6, L.Y + 3, half, 24)
         AddHandler _lineCap.SelectedIndexChanged, Sub() If Not _syncing AndAlso _lineCap.SelectedIndex >= 0 Then SetDrawProp(Sub(d) d.Cap = CType(_lineCap.SelectedIndex, LineCapKind))
@@ -52,7 +52,7 @@ Partial Friend Class frmEditor
         L.Add(_lineCap) : L.Add(_lineJoin)
         L.Y += RowHeight
         ' 箭頭
-        _help.SetHelpLinked("draw.line.arrow", _arrowStart, AddCaption(L, "起點／終點", L.Y), _arrowStart)
+        _help.SetHelpLinked("draw.line.arrow", _arrowStart, AddCaption(L, Lang.T("起點／終點"), L.Y), _arrowStart)
         _help.SetHelp("draw.line.arrow", _arrowEnd)
         For Each cb In {_arrowStart, _arrowEnd}
             cb.Items.AddRange(ArrowNames.Cast(Of Object)().ToArray())
@@ -111,7 +111,7 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private Function BuildPropBar() As Control
-        For Each f In {("x", "X"), ("y", "Y"), ("w", "寬"), ("lock", ""), ("h", "高"), ("angle", "∠")}
+        For Each f In {("x", "X"), ("y", "Y"), ("w", Lang.T("寬")), ("lock", ""), ("h", Lang.T("高")), ("angle", "∠")}
             If f.Item1 = "lock" Then
                 _propLock.FlatAppearance.BorderSize = 0
                 _propLock.FlatAppearance.CheckedBackColor = Color.Transparent
@@ -295,16 +295,16 @@ Partial Friend Class frmEditor
     Private Sub ClipIntoShape()
         Dim c = ClipCandidate()
         If Not c.HasValue Then
-            SetStatusMessage("放進形狀：選要放進去的東西，加上最上面的一個封閉圖形（當框）。")
+            SetStatusMessage(Lang.T("放進形狀：選要放進去的東西，加上最上面的一個封閉圖形（當框）。"))
             Return
         End If
         Dim frame = c.Value.Frame, contents = c.Value.Contents
         Dim entered = EnteredGroup()
-        Dim name = If(String.IsNullOrEmpty(frame.Name), "PowerClip", frame.Name & "（PowerClip）")
+        Dim name = If(String.IsNullOrEmpty(frame.Name), "PowerClip", frame.Name & Lang.T("（PowerClip）"))
         ApplyChange(Sub(r) DrawGroups.CreateClip(r, frame, contents, entered, name))
         Dim idx = {frame}.Concat(contents).Select(Function(d) _recipe.Drawings.IndexOf(d)).Where(Function(i) i >= 0).ToList()
         SetMultiSelection(idx, idx.Max())
-        SetStatusMessage($"已放進「{frame.Name}」：移動、縮放框時內容跟著動；雙擊進去可以單獨移動內容，「取出內容」還原。")
+        SetStatusMessage(Lang.F("已放進「{0}」：移動、縮放框時內容跟著動；雙擊進去可以單獨移動內容，「取出內容」還原。", frame.Name))
         UpdateDrawControls()
     End Sub
 
@@ -320,7 +320,7 @@ Partial Friend Class frmEditor
                     End Sub)
         Dim idx = sel.Select(Function(d) _recipe.Drawings.IndexOf(d)).Where(Function(i) i >= 0).ToList()
         SetMultiSelection(idx, If(idx.Count > 0, idx.Max(), -1))
-        SetStatusMessage("已取出內容：框和內容變回各自的圖層。")
+        SetStatusMessage(Lang.T("已取出內容：框和內容變回各自的圖層。"))
         UpdateDrawControls()
     End Sub
 
@@ -339,7 +339,7 @@ Partial Friend Class frmEditor
                         End If
                     End Sub)
         UpdateCutoutControls() ' 透明的地方顯示棋盤格
-        SetStatusMessage(If(turnOff, "已取消照片放進形狀。", $"照片只留「{d.Name}」裡面，外面變透明（匯出時預設存 PNG）；再按一次取消。"))
+        SetStatusMessage(If(turnOff, Lang.T("已取消照片放進形狀。"), Lang.F("照片只留「{0}」裡面，外面變透明（匯出時預設存 PNG）；再按一次取消。", d.Name)))
         UpdateDrawControls()
     End Sub
 
@@ -348,11 +348,11 @@ Partial Friend Class frmEditor
         Dim src = _recipe.Drawings(index)
         Dim outs = DrawGeometry.TextOutlines(src)
         If outs.Count = 0 Then
-            SetStatusMessage("沒有文字可以轉。")
+            SetStatusMessage(Lang.T("沒有文字可以轉。"))
             Return
         End If
         Dim entered = EnteredGroup()
-        Dim name = If(String.IsNullOrEmpty(src.Name), "文字", src.Name) & "（外框）"
+        Dim name = If(String.IsNullOrEmpty(src.Name), Lang.T("文字"), src.Name) & Lang.T("（外框）")
         ApplyChange(Sub(r)
                         Dim keepId = r.Drawings(index).Id
                         r.Drawings.RemoveAt(index)
@@ -361,7 +361,7 @@ Partial Friend Class frmEditor
                     End Sub)
         Dim idx = outs.Select(Function(o) _recipe.Drawings.IndexOf(o)).Where(Function(i) i >= 0).ToList()
         If idx.Count >= 2 Then SetMultiSelection(idx, idx.Max()) Else SelectDrawLayer(idx.FirstOrDefault(-1))
-        SetStatusMessage("已轉成外框：每個字都是鋼筆路徑（不能再改字）；可以改節點、焊接、放進形狀當框。")
+        SetStatusMessage(Lang.T("已轉成外框：每個字都是鋼筆路徑（不能再改字）；可以改節點、焊接、放進形狀當框。"))
         UpdateDrawControls()
     End Sub
 End Class

@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -17,8 +17,8 @@ Partial Friend Class frmEditor
     Private ReadOnly _gradCorners(3) As Button
     Private _syncingGradient As Boolean
 
-    Private Shared ReadOnly GradientKindNames As String() = {"線性", "放射", "角度", "反射", "菱形", "四色"}
-    Private Shared ReadOnly GradientColorNames As String() = {"線條色 → 填色", "線條色 → 透明", "彩虹"}
+    Private Shared ReadOnly GradientKindNames As String() = {Lang.T("線性"), Lang.T("放射"), Lang.T("角度"), Lang.T("反射"), Lang.T("菱形"), Lang.T("四色")}
+    Private Shared ReadOnly GradientColorNames As String() = {Lang.T("線條色 → 填色"), Lang.T("線條色 → 透明"), Lang.T("彩虹")}
 
     ''' <summary>油漆桶或漸層（畫在點陣圖層上的填色工具）。</summary>
     Private Function IsFillTool() As Boolean
@@ -53,20 +53,20 @@ Partial Friend Class frmEditor
             cb.Margin = New Padding(6, 6, 0, 0)
             cb.BackColor = Color.Transparent
         Next
-        _gradReverse.Text = "反轉"
-        _gradDither.Text = "防色階"
-        _gradColorsCaption.Text = "顏色"
+        _gradReverse.Text = Lang.T("反轉")
+        _gradDither.Text = Lang.T("防色階")
+        _gradColorsCaption.Text = Lang.T("顏色")
         _gradColorsCaption.AutoSize = True
         _gradColorsCaption.Margin = New Padding(5, 7, 1, 0)
         _gradColorsCaption.BackColor = Color.Transparent
-        Dim kindCaption = caption("類型")
+        Dim kindCaption = caption(Lang.T("類型"))
         _gradientBar.Controls.AddRange({kindCaption, _gradKind, _gradColorsCaption, _gradColors})
         ' 四色漸層的四個角（左上、右上、左下、右下）
-        Dim cornerTips = {"左上", "右上", "左下", "右下"}
+        Dim cornerTips = {Lang.T("左上"), Lang.T("右上"), Lang.T("左下"), Lang.T("右下")}
         For i = 0 To 3
             Dim k = i
             Dim b As New Button With {.Width = 24, .Height = 22, .Margin = New Padding(If(i = 0, 0, 2), 3, 0, 0), .FlatStyle = FlatStyle.Flat,
-                                      .Tag = ThemeManager.SkipTag, .Visible = False, .AccessibleName = "四色漸層" & cornerTips(i)}
+                                      .Tag = ThemeManager.SkipTag, .Visible = False, .AccessibleName = Lang.T("四色漸層") & cornerTips(i)}
             b.FlatAppearance.BorderColor = Color.FromArgb(120, 126, 138)
             AddHandler b.Click, Sub() PickGradientCorner(k)
             _help.SetHelp("gradient.corner", b)
@@ -110,7 +110,7 @@ Partial Friend Class frmEditor
         Dim g = GradientOptions()
         Dim four = g.Kind = GradientKind.FourColor
         _gradColors.Visible = Not four
-        _gradColorsCaption.Text = If(four, "四角", "顏色")
+        _gradColorsCaption.Text = If(four, Lang.T("四角"), Lang.T("顏色"))
         Dim corners = {g.Corner1, g.Corner2, g.Corner3, g.Corner4}
         For i = 0 To 3
             _gradCorners(i).Visible = four
@@ -170,11 +170,11 @@ Partial Friend Class frmEditor
     Private Sub EndGradientDrag()
         Dim a = _ddStart, b = _ddCur
         If ScreenDist(UnitToScreen(a), UnitToScreen(b)) < 4 Then
-            SetStatusMessage("漸層：在照片上拖一條線，起點是第一個顏色、終點是第二個顏色。")
+            SetStatusMessage(Lang.T("漸層：在照片上拖一條線，起點是第一個顏色、終點是第二個顏色。"))
             Return
         End If
         Dim sel As DrawLayer = Nothing
-        If Not PixelToolTarget("畫漸層", sel) Then Return
+        If Not PixelToolTarget(Lang.T("畫漸層"), sel) Then Return
         Dim op As New DrawLayer With {.Shape = DrawShape.Gradient, .Seed = _drawRandom.Next(1, 100000), .Param1 = Math.Round(PhotoAspect(), 5)}
         op.CopyStyleFrom(_drawStyle)
         op.Shadow = False
@@ -185,7 +185,7 @@ Partial Friend Class frmEditor
         op.Gradient = g
         If HasSelection Then op.Region = _recipe.Selection.Clone() ' 有選取範圍：只畫在範圍裡
         AddPixelOp(op, sel)
-        SetStatusMessage($"已畫上{GradientKindNames(CInt(g.Kind))}漸層{If(op.Region IsNot Nothing, "（只在選取範圍裡）", "")}。")
+        SetStatusMessage(Lang.F("已畫上{0}漸層{1}。", GradientKindNames(CInt(g.Kind)), If(op.Region IsNot Nothing, Lang.T("（只在選取範圍裡）"), "")))
     End Sub
 
     ''' <summary>拖曳中：起點、終點與連線（四色漸層畫成方框）。</summary>
@@ -225,7 +225,7 @@ Partial Friend Class frmEditor
         If sel Is Nothing Then Return True
         Dim name = If(String.IsNullOrEmpty(sel.Name), DrawGeometry.ShapeNames(CInt(sel.Shape)), sel.Name)
         If Not sel.Visible OrElse sel.Locked Then
-            SetStatusMessage($"「{name}」{If(sel.Locked, "已鎖定", "已隱藏")}，不能在上面{verb}。")
+            SetStatusMessage(Lang.F("「{0}」{1}，不能在上面{2}。", name, If(sel.Locked, Lang.T("已鎖定"), Lang.T("已隱藏")), verb))
             Return False
         End If
         If sel.Shape <> DrawShape.Raster Then

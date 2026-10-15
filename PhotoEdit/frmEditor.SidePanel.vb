@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 右側工作面板：上方固定直方圖，中間是「調整／效果／人像／修補／局部／裝飾／貼圖／文字／去背／繪圖／圖層」分頁（Aqua.TabControl），
@@ -7,7 +7,8 @@ Imports PhotoEdit
 Partial Friend Class frmEditor
 
     Private Const RowHeight As Integer = 34
-    Private Const CaptionWidth As Integer = 84
+    ''' <summary>名稱欄寬度；英文名稱比較長（Temperature、Saturation…），放寬一點。</summary>
+    Private Shared ReadOnly CaptionWidth As Integer = If(Lang.Current = UiLanguage.English, 100, 84)
     Private Const ValueWidth As Integer = 62
 
     Private ReadOnly _tabs As New Aqua.TabControl()
@@ -15,7 +16,7 @@ Partial Friend Class frmEditor
     Private ReadOnly _brushSize As New Aqua.Slider()
     Private ReadOnly _brushSizeLabel As New Label()
     Private ReadOnly _help As New HelpTip()
-    Private ReadOnly _panelFont As New Font("Microsoft JhengHei UI", 10.5F)
+    Private ReadOnly _panelFont As New Font(Lang.UiFont, 10.5F)
 
     ''' <summary>
     ''' 在分頁上由上往下排列控制項，並在面板變寬時重新排版：
@@ -59,6 +60,27 @@ Partial Friend Class frmEditor
         End Sub
     End Class
 
+
+    ''' <summary>分頁標題：英文的完整單字放不下 12 個分頁，改用短名稱（簡體照一般翻譯）。</summary>
+    Private Shared Function TabTitle(zh As String) As String
+        If Lang.Current = UiLanguage.English Then
+            Select Case zh
+                Case "調整" : Return "Adj"
+                Case "效果" : Return "FX"
+                Case "人像" : Return "Face"
+                Case "修補" : Return "Fix"
+                Case "局部" : Return "Local"
+                Case "裝飾" : Return "Deco"
+                Case "貼圖" : Return "Stick"
+                Case "文字" : Return "Text"
+                Case "去背" : Return "Cut"
+                Case "繪圖" : Return "Draw"
+                Case "圖層" : Return "Layer"
+                Case "選取" : Return "Select"
+            End Select
+        End If
+        Return Lang.T(zh)
+    End Function
     Private Sub BuildSidePanel()
         _sidePanel.Dock = DockStyle.Right
         _sidePanel.Width = SideWidth
@@ -84,10 +106,10 @@ Partial Friend Class frmEditor
                                                  .Padding = New Padding(0, 6, 0, 0)}
         bottom.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
         bottom.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
-        Dim reset = MakeButton("重設調整", "btn.resetadj")
+        Dim reset = MakeButton(Lang.T("重設調整"), "btn.resetadj")
         reset.Dock = DockStyle.Fill
         AddHandler reset.Click, Sub() RunCommand("resetadj")
-        Dim compare = MakeButton("按住看原圖", "btn.compare")
+        Dim compare = MakeButton(Lang.T("按住看原圖"), "btn.compare")
         compare.Dock = DockStyle.Fill
         AddHandler compare.MouseDown, Sub() ShowOriginal(True)
         AddHandler compare.MouseUp, Sub() ShowOriginal(False)
@@ -97,18 +119,19 @@ Partial Friend Class frmEditor
 
         ' 中：分頁
         _tabs.Dock = DockStyle.Fill
-        BuildAdjustPage(_tabs.AddTab("調整"))
-        BuildEffectsPage(_tabs.AddTab("效果"))
-        BuildPortraitPage(_tabs.AddTab("人像"))
-        BuildRepairPage(_tabs.AddTab("修補"))
-        BuildLocalPage(_tabs.AddTab("局部"))
-        BuildDecorPage(_tabs.AddTab("裝飾"))
-        BuildStickerPage(_tabs.AddTab("貼圖"))
-        BuildTextPage(_tabs.AddTab("文字"))
-        BuildCutoutPage(_tabs.AddTab("去背"))
-        BuildDrawPage(_tabs.AddTab("繪圖"))
-        BuildLayersPage(_tabs.AddTab("圖層"))
-        BuildSelectPage(_tabs.AddTab("選取"))
+        BuildAdjustPage(_tabs.AddTab(TabTitle("調整")))
+        BuildEffectsPage(_tabs.AddTab(TabTitle("效果")))
+        BuildPortraitPage(_tabs.AddTab(TabTitle("人像")))
+        BuildRepairPage(_tabs.AddTab(TabTitle("修補")))
+        BuildLocalPage(_tabs.AddTab(TabTitle("局部")))
+        BuildDecorPage(_tabs.AddTab(TabTitle("裝飾")))
+        BuildStickerPage(_tabs.AddTab(TabTitle("貼圖")))
+        BuildTextPage(_tabs.AddTab(TabTitle("文字")))
+        BuildCutoutPage(_tabs.AddTab(TabTitle("去背")))
+        BuildDrawPage(_tabs.AddTab(TabTitle("繪圖")))
+        BuildLayersPage(_tabs.AddTab(TabTitle("圖層")))
+        BuildSelectPage(_tabs.AddTab(TabTitle("選取")))
+        If Lang.Current = UiLanguage.English Then FitButtonTexts(_tabs)
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
         _help.SetDynamicHelp(_tabs, Function(p) HelpTexts.Get("tab." & _tabs.TabIndexAt(p)))
@@ -147,56 +170,56 @@ Partial Friend Class frmEditor
 
     Private Sub BuildAdjustPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddButtonPair(L, "自動增強", "btn.auto", Sub() RunCommand("auto"),
-                         "自動白平衡", "btn.autowb", Sub() RunCommand("autowb"))
+        AddButtonPair(L, Lang.T("自動增強"), "btn.auto", Sub() RunCommand("auto"),
+                         Lang.T("自動白平衡"), "btn.autowb", Sub() RunCommand("autowb"))
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddHeading(L, "光線與色彩")
-        AddRow(L, New SliderRow With {.Key = "exposure", .Caption = "曝光", .Minimum = -30, .Maximum = 30,
+        AddHeading(L, Lang.T("光線與色彩"))
+        AddRow(L, New SliderRow With {.Key = "exposure", .Caption = Lang.T("曝光"), .Minimum = -30, .Maximum = 30,
             .Format = Function(v) (v / 10.0).ToString("+0.0;-0.0;0.0") & " EV",
             .GetValue = Function(r) CInt(Math.Round(r.Exposure * 10)), .SetValue = Sub(r, v) r.Exposure = v / 10.0})
-        AddRow(L, MakeRow("contrast", "對比", -100, 100, signed, Function(r) r.Contrast, Sub(r, v) r.Contrast = v))
-        AddRow(L, MakeRow("highlights", "亮部", -100, 100, signed, Function(r) r.Highlights, Sub(r, v) r.Highlights = v))
-        AddRow(L, MakeRow("shadows", "暗部", -100, 100, signed, Function(r) r.Shadows, Sub(r, v) r.Shadows = v))
-        AddRow(L, MakeRow("temperature", "色溫", -100, 100, signed, Function(r) r.Temperature, Sub(r, v) r.Temperature = v))
-        AddRow(L, MakeRow("tint", "色調", -100, 100, signed, Function(r) r.Tint, Sub(r, v) r.Tint = v))
-        AddRow(L, MakeRow("saturation", "飽和度", -100, 100, signed, Function(r) r.Saturation, Sub(r, v) r.Saturation = v))
-        AddHeading(L, "細節")
-        AddRow(L, MakeRow("sharpness", "銳利度", 0, 100, AddressOf Plain, Function(r) r.Sharpness, Sub(r, v) r.Sharpness = v))
+        AddRow(L, MakeRow("contrast", Lang.T("對比"), -100, 100, signed, Function(r) r.Contrast, Sub(r, v) r.Contrast = v))
+        AddRow(L, MakeRow("highlights", Lang.T("亮部"), -100, 100, signed, Function(r) r.Highlights, Sub(r, v) r.Highlights = v))
+        AddRow(L, MakeRow("shadows", Lang.T("暗部"), -100, 100, signed, Function(r) r.Shadows, Sub(r, v) r.Shadows = v))
+        AddRow(L, MakeRow("temperature", Lang.T("色溫"), -100, 100, signed, Function(r) r.Temperature, Sub(r, v) r.Temperature = v))
+        AddRow(L, MakeRow("tint", Lang.TC("tint", "色調"), -100, 100, signed, Function(r) r.Tint, Sub(r, v) r.Tint = v))
+        AddRow(L, MakeRow("saturation", Lang.T("飽和度"), -100, 100, signed, Function(r) r.Saturation, Sub(r, v) r.Saturation = v))
+        AddHeading(L, Lang.T("細節"))
+        AddRow(L, MakeRow("sharpness", Lang.T("銳利度"), 0, 100, AddressOf Plain, Function(r) r.Sharpness, Sub(r, v) r.Sharpness = v))
     End Sub
 
     Private Sub BuildEffectsPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddHeading(L, "效果")
-        AddRow(L, MakeRow("vignette", "暗角", -100, 100, signed, Function(r) r.Vignette, Sub(r, v) r.Vignette = v))
-        AddRow(L, MakeRow("fade", "褪色", 0, 100, AddressOf Plain, Function(r) r.Fade, Sub(r, v) r.Fade = v))
-        AddRow(L, MakeRow("grain", "顆粒", 0, 100, AddressOf Plain, Function(r) r.Grain, Sub(r, v) r.Grain = v))
-        AddHeading(L, "色彩濾鏡")
-        AddRow(L, MakeRow("toninghue", "色相", 0, 359, Function(v) v & "°", Function(r) r.ToningHue, Sub(r, v) r.ToningHue = v))
-        AddRow(L, MakeRow("toningstrength", "強度", 0, 100, AddressOf Plain, Function(r) r.ToningStrength, Sub(r, v) r.ToningStrength = v))
-        AddHint(L, "例如：飽和度 -100 + 色相 35° = 褐色老照片。" & vbCrLf & "下方濾鏡列可一次套用整組風格。")
+        AddHeading(L, Lang.T("效果"))
+        AddRow(L, MakeRow("vignette", Lang.T("暗角"), -100, 100, signed, Function(r) r.Vignette, Sub(r, v) r.Vignette = v))
+        AddRow(L, MakeRow("fade", Lang.T("褪色"), 0, 100, AddressOf Plain, Function(r) r.Fade, Sub(r, v) r.Fade = v))
+        AddRow(L, MakeRow("grain", Lang.T("顆粒"), 0, 100, AddressOf Plain, Function(r) r.Grain, Sub(r, v) r.Grain = v))
+        AddHeading(L, Lang.T("色彩濾鏡"))
+        AddRow(L, MakeRow("toninghue", Lang.T("色相"), 0, 359, Function(v) v & "°", Function(r) r.ToningHue, Sub(r, v) r.ToningHue = v))
+        AddRow(L, MakeRow("toningstrength", Lang.T("強度"), 0, 100, AddressOf Plain, Function(r) r.ToningStrength, Sub(r, v) r.ToningStrength = v))
+        AddHint(L, Lang.T("例如：飽和度 -100 + 色相 35° = 褐色老照片。") & vbCrLf & Lang.T("下方濾鏡列可一次套用整組風格。"))
         BuildArtSection(L)
         BuildPaperSection(L)
     End Sub
 
     Private Sub BuildRepairPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "污點／雜物移除")
+        AddHeading(L, Lang.T("污點／雜物移除"))
         _healToggle.Appearance = Appearance.Button
-        _healToggle.Text = "修補筆刷 (H)"
+        _healToggle.Text = Lang.T("修補筆刷 (H)")
         _healToggle.TextAlign = ContentAlignment.MiddleCenter
         _healToggle.SetBounds(8, L.Y, (L.Width - 16) \ 2, 30)
         _help.SetHelp("heal", _healToggle)
         AddHandler _healToggle.CheckedChanged, Sub() SetHealMode(_healToggle.Checked)
         L.Add(_healToggle)
-        Dim clear = MakeButton("清除全部修補", "btn.clearspots")
+        Dim clear = MakeButton(Lang.T("清除全部修補"), "btn.clearspots")
         clear.SetBounds(8 + (L.Width - 16) \ 2 + 8, L.Y, (L.Width - 16) \ 2, 30)
         AddHandler clear.Click, Sub() RunCommand("clearspots")
         L.Add(clear)
         L.Y += 38
 
         ' 筆刷大小是工具設定，不存進配方。
-        _help.SetHelp("brushsize", AddCaption(L, "筆刷大小", L.Y), _brushSize, _brushSizeLabel)
+        _help.SetHelp("brushsize", AddCaption(L, Lang.T("筆刷大小"), L.Y), _brushSize, _brushSizeLabel)
         _brushSize.Minimum = 4
         _brushSize.Maximum = 120
         _brushSize.Value = 18
@@ -214,23 +237,23 @@ Partial Friend Class frmEditor
         L.Add(_brushSize)
         L.Add(_brushSizeLabel)
         L.Y += RowHeight
-        AddHint(L, "[ ] 鍵調整筆刷大小，右鍵拖曳可平移。")
+        AddHint(L, Lang.T("[ ] 鍵調整筆刷大小，右鍵拖曳可平移。"))
 
-        AddHeading(L, "降噪")
-        AddRow(L, MakeRow("denoise", "明度", 0, 100, AddressOf Plain, Function(r) r.Denoise, Sub(r, v) r.Denoise = v))
-        AddRow(L, MakeRow("colornoise", "色彩", 0, 100, AddressOf Plain, Function(r) r.ColorNoise, Sub(r, v) r.ColorNoise = v))
+        AddHeading(L, Lang.T("降噪"))
+        AddRow(L, MakeRow("denoise", Lang.T("明度"), 0, 100, AddressOf Plain, Function(r) r.Denoise, Sub(r, v) r.Denoise = v))
+        AddRow(L, MakeRow("colornoise", Lang.T("色彩"), 0, 100, AddressOf Plain, Function(r) r.ColorNoise, Sub(r, v) r.ColorNoise = v))
 
-        AddHeading(L, "透視校正")
+        AddHeading(L, Lang.T("透視校正"))
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddRow(L, MakeRow("perspv", "垂直", -100, 100, signed, Function(r) r.PerspectiveVertical, Sub(r, v) r.PerspectiveVertical = v))
-        AddRow(L, MakeRow("persph", "水平", -100, 100, signed, Function(r) r.PerspectiveHorizontal, Sub(r, v) r.PerspectiveHorizontal = v))
+        AddRow(L, MakeRow("perspv", Lang.T("垂直"), -100, 100, signed, Function(r) r.PerspectiveVertical, Sub(r, v) r.PerspectiveVertical = v))
+        AddRow(L, MakeRow("persph", Lang.T("水平"), -100, 100, signed, Function(r) r.PerspectiveHorizontal, Sub(r, v) r.PerspectiveHorizontal = v))
 
-        AddHeading(L, "拉直與裁切")
-        AddRow(L, New SliderRow With {.Key = "straighten", .Caption = "拉直", .Minimum = -90, .Maximum = 90,
+        AddHeading(L, Lang.T("拉直與裁切"))
+        AddRow(L, New SliderRow With {.Key = "straighten", .Caption = Lang.T("拉直"), .Minimum = -90, .Maximum = 90,
             .Format = Function(v) (v / 2.0).ToString("+0.0;-0.0;0.0") & "°",
             .GetValue = Function(r) CInt(Math.Round(r.Straighten * 2)), .SetValue = Sub(r, v) r.Straighten = v / 2.0})
-        AddButtonPair(L, "自動拉直", "btn.autostraighten", Sub() RunCommand("autostraighten"),
-                         "裁切… (Ctrl+K)", "btn.crop", Sub() RunCommand("crop"))
+        AddButtonPair(L, Lang.T("自動拉直"), "btn.autostraighten", Sub() RunCommand("autostraighten"),
+                         Lang.T("裁切… (Ctrl+K)"), "btn.crop", Sub() RunCommand("crop"))
     End Sub
 
     '---------------------------------------------------------------------
@@ -312,6 +335,27 @@ Partial Friend Class frmEditor
     End Sub
 
     ''' <param name="helpKey">HelpTexts 的鍵。</param>
+    ''' <summary>英文比中文長：按鈕（含按鈕樣式的選項）放不下時把字縮小（最小 7.5pt），不改按鈕大小與排版。</summary>
+    Friend Shared Sub FitButtonTexts(root As Control)
+        For Each c As Control In root.Controls
+            Dim b = TryCast(c, ButtonBase)
+            If b IsNot Nothing AndAlso b.Width > 20 AndAlso Not String.IsNullOrEmpty(b.Text) Then
+                Dim plain = (TypeOf b Is CheckBox AndAlso CType(b, CheckBox).Appearance = Appearance.Normal) OrElse
+                            (TypeOf b Is RadioButton AndAlso CType(b, RadioButton).Appearance = Appearance.Normal)
+                Dim avail = b.Width - If(plain, 22, 18) - If(b.Image IsNot Nothing, b.Image.Width + 4, 0)
+                Dim f = b.Font, size = f.Size
+                Do While size > 7.5F
+                    Using test As New Font(f.FontFamily, size, f.Style)
+                        If TextRenderer.MeasureText(b.Text, test).Width <= avail Then Exit Do
+                    End Using
+                    size -= 0.5F
+                Loop
+                If size < f.Size Then b.Font = New Font(f.FontFamily, size, f.Style)
+            End If
+            FitButtonTexts(c)
+        Next
+    End Sub
+
     Private Function MakeButton(text As String, helpKey As String) As Button
         Dim b As New Button With {.Text = text, .UseVisualStyleBackColor = True}
         If helpKey IsNot Nothing Then _help.SetHelp(helpKey, b)

@@ -35,7 +35,7 @@ Partial Friend Class frmEditor
 
     Private Sub BuildCutoutPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "自動去背")
+        AddHeading(L, Lang.T("自動去背"))
         Dim half = (L.Width - 16) \ 2
         For Each rb In {_modelGeneral, _modelHuman}
             rb.Appearance = Appearance.Button
@@ -45,15 +45,15 @@ Partial Friend Class frmEditor
             rb.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
             rb.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
         Next
-        _modelGeneral.Text = "一般（人像／動物／物品）"
+        _modelGeneral.Text = Lang.T("一般（人像／動物／物品）")
         _modelGeneral.Checked = True
-        _modelHuman.Text = "人像"
+        _modelHuman.Text = Lang.T("人像")
         _help.SetHelp("cutout.general", _modelGeneral)
         _help.SetHelp("cutout.human", _modelHuman)
         ' 兩組選項各放一個容器，才不會和下面「合成結果／檢查遮罩」互斥。
         L.Add(PairPanel(_modelGeneral, _modelHuman, 8, L.Y + 2, L.Width - 8, 60))
         L.Y += 36
-        _autoCutout.Text = "自動去背"
+        _autoCutout.Text = Lang.T("自動去背")
         _autoCutout.UseVisualStyleBackColor = True
         _autoCutout.Font = New Font(_panelFont, FontStyle.Bold)
         _autoCutout.SetBounds(8, L.Y + 2, L.Width - 8, 34)
@@ -68,7 +68,7 @@ Partial Friend Class frmEditor
         L.Add(_cutoutStatus)
         L.Y += 26
 
-        AddHeading(L, "修正")
+        AddHeading(L, Lang.T("修正"))
         For Each cb In {_keepBrush, _eraseBrush}
             cb.Appearance = Appearance.Button
             cb.TextAlign = ContentAlignment.MiddleCenter
@@ -76,10 +76,10 @@ Partial Friend Class frmEditor
             cb.BackColor = Color.White
             cb.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
         Next
-        _keepBrush.Text = "保留筆刷（綠）"
+        _keepBrush.Text = Lang.T("保留筆刷（綠）")
         _keepBrush.FlatAppearance.CheckedBackColor = Color.FromArgb(200, 240, 200)
         _keepBrush.SetBounds(8, L.Y + 2, half, 30)
-        _eraseBrush.Text = "擦除筆刷（紅）"
+        _eraseBrush.Text = Lang.T("擦除筆刷（紅）")
         _eraseBrush.FlatAppearance.CheckedBackColor = Color.FromArgb(250, 210, 210)
         _eraseBrush.SetBounds(8 + half + 8, L.Y + 2, half, 30)
         _help.SetHelp("cutout.keep", _keepBrush)
@@ -88,7 +88,7 @@ Partial Friend Class frmEditor
         AddHandler _eraseBrush.CheckedChanged, Sub() OnMaskBrushToggled(_eraseBrush)
         L.Add(_keepBrush) : L.Add(_eraseBrush)
         L.Y += 38
-        _help.SetHelpLinked("cutout.brushsize", _maskBrushSize, AddCaption(L, "筆刷大小", L.Y), _maskBrushSize)
+        _help.SetHelpLinked("cutout.brushsize", _maskBrushSize, AddCaption(L, Lang.T("筆刷大小"), L.Y), _maskBrushSize)
         _maskBrushSize.Minimum = 4 : _maskBrushSize.Maximum = 150 : _maskBrushSize.Value = 24 : _maskBrushSize.ShowTicks = False
         _maskBrushSize.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 24)
         AddHandler _maskBrushSize.ValueChanged, Sub()
@@ -96,20 +96,20 @@ Partial Friend Class frmEditor
                                                 End Sub
         L.Add(_maskBrushSize)
         L.Y += RowHeight
-        AddButtonPair(L, "清除修正", "btn.clearmask", Sub() ApplyChange(Sub(r)
+        AddButtonPair(L, Lang.T("清除修正"), "btn.clearmask", Sub() ApplyChange(Sub(r)
                                                                                  If r.Cutout IsNot Nothing Then r.Cutout.Strokes.Clear() : r.Cutout.Wand.Clear()
                                                                              End Sub),
-                         "取消去背", "btn.uncutout", Sub() ApplyChange(Sub(r) r.Cutout = Nothing))
+                         Lang.T("取消去背"), "btn.uncutout", Sub() ApplyChange(Sub(r) r.Cutout = Nothing))
         BuildWandSection(L)
 
-        AddHeading(L, "邊緣")
-        AddRow(L, CutoutRow("co_feather", "羽化", 0, 100, Function(c) c.Feather, Sub(c, v) c.Feather = v))
-        AddRow(L, CutoutRow("co_shift", "內縮外擴", -50, 50, Function(c) c.Shift, Sub(c, v) c.Shift = v))
+        AddHeading(L, Lang.T("邊緣"))
+        AddRow(L, CutoutRow("co_feather", Lang.T("羽化"), 0, 100, Function(c) c.Feather, Sub(c, v) c.Feather = v))
+        AddRow(L, CutoutRow("co_shift", Lang.T("內縮外擴"), -50, 50, Function(c) c.Shift, Sub(c, v) c.Shift = v))
 
-        AddHeading(L, "背景")
-        _help.SetHelpLinked("cutout.bg", _cutoutBgCombo, AddCaption(L, "換成", L.Y), _cutoutBgCombo)
+        AddHeading(L, Lang.T("背景"))
+        _help.SetHelpLinked("cutout.bg", _cutoutBgCombo, AddCaption(L, Lang.T("換成"), L.Y), _cutoutBgCombo)
         _cutoutBgCombo.DropDownStyle = ComboBoxStyle.DropDownList
-        _cutoutBgCombo.Items.AddRange({"原背景", "透明", "純色", "模糊（景深）", "圖片"})
+        _cutoutBgCombo.Items.AddRange({Lang.T("原背景"), Lang.T("透明"), Lang.T("純色"), Lang.T("模糊（景深）"), Lang.T("圖片")})
         _cutoutBgCombo.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
         AddHandler _cutoutBgCombo.SelectedIndexChanged, Sub()
                                                              If _syncing OrElse _cutoutBgCombo.SelectedIndex < 0 Then Return
@@ -124,14 +124,14 @@ Partial Friend Class frmEditor
                                                          End Sub
         L.Add(_cutoutBgCombo)
         L.Y += RowHeight
-        _help.SetHelpLinked("cutout.bgcolor", _cutoutBgColor, AddCaption(L, "顏色", L.Y), _cutoutBgColor)
+        _help.SetHelpLinked("cutout.bgcolor", _cutoutBgColor, AddCaption(L, Lang.T("顏色"), L.Y), _cutoutBgColor)
         _cutoutBgColor.FlatStyle = FlatStyle.Flat
         _cutoutBgColor.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 26)
         AddHandler _cutoutBgColor.Click, Sub() PickCutoutBackgroundColor()
         L.Add(_cutoutBgColor)
         L.Y += RowHeight
-        AddRow(L, CutoutRow("co_blur", "模糊", 0, 100, Function(c) c.BackgroundBlur, Sub(c, v) c.BackgroundBlur = v))
-        _cutoutBgImage.Text = "選擇背景圖片…"
+        AddRow(L, CutoutRow("co_blur", Lang.T("模糊"), 0, 100, Function(c) c.BackgroundBlur, Sub(c, v) c.BackgroundBlur = v))
+        _cutoutBgImage.Text = Lang.T("選擇背景圖片…")
         _cutoutBgImage.UseVisualStyleBackColor = True
         _cutoutBgImage.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 28)
         AddHandler _cutoutBgImage.Click, Sub() PickCutoutBackgroundImage()
@@ -139,7 +139,7 @@ Partial Friend Class frmEditor
         L.Add(_cutoutBgImage)
         L.Y += RowHeight + 2
 
-        AddHeading(L, "檢視與輸出")
+        AddHeading(L, Lang.T("檢視與輸出"))
         For Each rb In {_viewResult, _viewMask}
             rb.Appearance = Appearance.Button
             rb.FlatStyle = FlatStyle.Flat
@@ -147,9 +147,9 @@ Partial Friend Class frmEditor
             rb.BackColor = Color.White
             rb.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
         Next
-        _viewResult.Text = "合成結果"
+        _viewResult.Text = Lang.T("合成結果")
         _viewResult.Checked = True
-        _viewMask.Text = "檢查遮罩（紅＝去掉）"
+        _viewMask.Text = Lang.T("檢查遮罩（紅＝去掉）")
         _help.SetHelp("cutout.viewresult", _viewResult)
         _help.SetHelp("cutout.viewmask", _viewMask)
         AddHandler _viewMask.CheckedChanged, Sub()
@@ -159,13 +159,13 @@ Partial Friend Class frmEditor
                                              End Sub
         L.Add(PairPanel(_viewResult, _viewMask, 8, L.Y + 2, L.Width - 8, 50))
         L.Y += 36
-        Dim sticker = MakeButton("存成貼圖…", "btn.cutoutsticker")
+        Dim sticker = MakeButton(Lang.T("存成貼圖…"), "btn.cutoutsticker")
         sticker.Font = New Font(_panelFont, FontStyle.Bold)
         sticker.SetBounds(8, L.Y + 2, L.Width - 8, 34)
         AddHandler sticker.Click, Sub() SaveCutoutAsSticker()
         L.Add(sticker)
         L.Y += 40
-        AddHint(L, "透明背景可以在「匯出」時存成 PNG。")
+        AddHint(L, Lang.T("透明背景可以在「匯出」時存成 PNG。"))
 
         _cutoutControls.AddRange({_keepBrush, _eraseBrush, _maskBrushSize, _cutoutBgCombo, _cutoutBgColor, _cutoutBgImage, _viewResult, _viewMask, sticker})
     End Sub
@@ -207,13 +207,13 @@ Partial Friend Class frmEditor
         If _photo Is Nothing OrElse _cutoutBusy Then Return
         Dim model = SelectedCutoutModel
         If Not BackgroundRemover.ModelAvailable(model) Then
-            MessageBox.Show(Me, "找不到去背模型：" & BackgroundRemover.ModelPath(model), AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("找不到去背模型：") & BackgroundRemover.ModelPath(model), AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
         ExitCropMode(apply:=True)
         _cutoutBusy = True
         _autoCutout.Enabled = False
-        _cutoutStatus.Text = "去背計算中…（第一次載入模型會久一點）"
+        _cutoutStatus.Text = Lang.T("去背計算中…（第一次載入模型會久一點）")
         Cursor = Cursors.AppStarting
         Dim copy = DirectCast(_previewBase.Clone(), Bitmap)
         Dim photo = _photo
@@ -232,11 +232,11 @@ Partial Friend Class frmEditor
                                         Return
                                     End If
                                     If mask Is Nothing Then
-                                        _cutoutStatus.Text = "去背失敗：" & err
+                                        _cutoutStatus.Text = Lang.T("去背失敗：") & err
                                         Return
                                     End If
                                     SetAiMask(mask, model, dirty:=True)
-                                    _cutoutStatus.Text = $"完成（{watch.Elapsed.TotalSeconds:0.0} 秒，{If(model = CutoutModel.Human, "人像", "一般")}模型）"
+                                    _cutoutStatus.Text = Lang.F("完成（{0:0.0} 秒，{1}模型）", watch.Elapsed.TotalSeconds, If(model = CutoutModel.Human, Lang.T("人像"), Lang.T("一般")))
                                     ApplyChange(Sub(r)
                                                     If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings()
                                                     r.Cutout.Model = model
@@ -263,7 +263,7 @@ Partial Friend Class frmEditor
         _cutoutShowMask = False
         _viewResult.Checked = True
         If _recipe.Cutout Is Nothing Then
-            _cutoutStatus.Text = "按「自動去背」開始。"
+            _cutoutStatus.Text = Lang.T("按「自動去背」開始。")
             Return
         End If
         _modelHuman.Checked = _recipe.Cutout.Model = CutoutModel.Human
@@ -271,9 +271,9 @@ Partial Friend Class frmEditor
         Dim mask = MaskStore.Load(_photo.Path, _recipe.Cutout.Model)
         If mask IsNot Nothing Then
             SetAiMask(mask, _recipe.Cutout.Model, dirty:=False)
-            _cutoutStatus.Text = "已載入先前的去背結果。"
+            _cutoutStatus.Text = Lang.T("已載入先前的去背結果。")
         Else
-            _cutoutStatus.Text = "找不到先前的去背遮罩，請再按一次「自動去背」。"
+            _cutoutStatus.Text = Lang.T("找不到先前的去背遮罩，請再按一次「自動去背」。")
         End If
     End Sub
 
@@ -300,7 +300,7 @@ Partial Friend Class frmEditor
             other.Checked = False
             _syncing = False
             If _recipe.Cutout Is Nothing Then
-                SetStatusMessage("請先按「自動去背」。")
+                SetStatusMessage(Lang.T("請先按「自動去背」。"))
             End If
         End If
         UpdateToolFromTab()
@@ -333,7 +333,7 @@ Partial Friend Class frmEditor
 
     Private Sub PickCutoutBackgroundImage()
         If _recipe.Cutout Is Nothing Then Return
-        Using dlg As New OpenFileDialog With {.Title = "選擇背景圖片", .Filter = "圖片檔|*.jpg;*.jpeg;*.png;*.bmp;*.gif"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇背景圖片"), .Filter = Lang.T("圖片檔|*.jpg;*.jpeg;*.png;*.bmp;*.gif")}
             If _photo IsNot Nothing Then dlg.InitialDirectory = Path.GetDirectoryName(_photo.Path)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then
                 UpdateCutoutControls()
@@ -355,7 +355,7 @@ Partial Friend Class frmEditor
         Next
         _cutoutBgCombo.SelectedIndex = If(has, CInt(c.Background), -1)
         _cutoutBgColor.BackColor = If(has, Color.FromArgb(255, Color.FromArgb(c.BackgroundColorArgb)), SystemColors.Control)
-        _cutoutBgImage.Text = If(has AndAlso Not String.IsNullOrEmpty(c.BackgroundImagePath), "背景：" & Path.GetFileName(c.BackgroundImagePath), "選擇背景圖片…")
+        _cutoutBgImage.Text = If(has AndAlso Not String.IsNullOrEmpty(c.BackgroundImagePath), Lang.T("背景：") & Path.GetFileName(c.BackgroundImagePath), Lang.T("選擇背景圖片…"))
         For Each row In _rows.Where(Function(r) CutoutKeys.Contains(r.Key))
             row.Slider.Enabled = has
         Next
@@ -390,7 +390,7 @@ Partial Friend Class frmEditor
             Using rendered = ImagePipeline.Render(_photo.Image, r, 1400, Function(b) SourceFix.Apply(b, faces, r, mask)),
                   trimmed = TrimTransparent(rendered)
                 If trimmed Is Nothing Then
-                    SetStatusMessage("去背結果是空的，無法存成貼圖。")
+                    SetStatusMessage(Lang.T("去背結果是空的，無法存成貼圖。"))
                     Return
                 End If
                 Dim dir = Path.Combine(StickerLibrary.Root, theme)
@@ -404,10 +404,10 @@ Partial Friend Class frmEditor
                 trimmed.Save(file, Drawing.Imaging.ImageFormat.Png)
                 _currentTheme = theme
                 ReloadStickers()
-                SetStatusMessage($"已存成貼圖：stick\{theme}\{Path.GetFileName(file)}（在「貼圖」分頁可以拖到其他照片上）")
+                SetStatusMessage(Lang.F("已存成貼圖：stick\{0}\{1}（在「貼圖」分頁可以拖到其他照片上）", theme, Path.GetFileName(file)))
             End Using
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
-            MessageBox.Show(Me, "存成貼圖失敗：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("存成貼圖失敗：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
         Finally
             Cursor = Cursors.Default
         End Try
@@ -440,16 +440,16 @@ Partial Friend Class frmEditor
 
     ''' <summary>選主題（可輸入新主題）與檔名的小對話框。</summary>
     Private Function AskStickerName(ByRef theme As String, ByRef name As String) As Boolean
-        Using dlg As New Form With {.Text = "存成貼圖", .FormBorderStyle = FormBorderStyle.FixedDialog, .StartPosition = FormStartPosition.CenterParent,
+        Using dlg As New Form With {.Text = Lang.T("存成貼圖"), .FormBorderStyle = FormBorderStyle.FixedDialog, .StartPosition = FormStartPosition.CenterParent,
                                     .MinimizeBox = False, .MaximizeBox = False, .ClientSize = New Size(380, 150), .Font = _panelFont, .ShowInTaskbar = False}
-            Dim l1 As New Label With {.Text = "主題", .Location = New Point(16, 20), .AutoSize = True}
+            Dim l1 As New Label With {.Text = Lang.T("主題"), .Location = New Point(16, 20), .AutoSize = True}
             Dim themeBox As New ComboBox With {.Location = New Point(90, 16), .Width = 270, .DropDownStyle = ComboBoxStyle.DropDown}
             themeBox.Items.AddRange(StickerLibrary.Themes().Cast(Of Object)().ToArray())
-            themeBox.Text = If(_currentTheme <> StickerLibrary.BuiltInTheme, _currentTheme, "我的去背")
-            Dim l2 As New Label With {.Text = "名稱", .Location = New Point(16, 60), .AutoSize = True}
+            themeBox.Text = If(_currentTheme <> StickerLibrary.BuiltInTheme, _currentTheme, "我的去背") ' 主題資料夾的名字：不翻譯（換語言也找得到）
+            Dim l2 As New Label With {.Text = Lang.T("名稱"), .Location = New Point(16, 60), .AutoSize = True}
             Dim nameBox As New TextBox With {.Location = New Point(90, 56), .Width = 270, .Text = Path.GetFileNameWithoutExtension(_photo.Path)}
-            Dim ok As New Button With {.Text = "儲存", .DialogResult = DialogResult.OK, .Location = New Point(190, 102), .Size = New Size(80, 32)}
-            Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel, .Location = New Point(280, 102), .Size = New Size(80, 32)}
+            Dim ok As New Button With {.Text = Lang.T("儲存"), .DialogResult = DialogResult.OK, .Location = New Point(190, 102), .Size = New Size(80, 32)}
+            Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel, .Location = New Point(280, 102), .Size = New Size(80, 32)}
             dlg.Controls.AddRange(New Control() {l1, themeBox, l2, nameBox, ok, cancel})
             dlg.AcceptButton = ok
             dlg.CancelButton = cancel
@@ -458,7 +458,7 @@ Partial Friend Class frmEditor
             theme = New String(themeBox.Text.Trim().Where(Function(ch) Not bad.Contains(ch)).ToArray())
             name = New String(nameBox.Text.Trim().Where(Function(ch) Not bad.Contains(ch)).ToArray())
             If theme = "" OrElse theme = StickerLibrary.BuiltInTheme Then theme = "我的去背"
-            If name = "" Then name = "貼圖"
+            If name = "" Then name = Lang.T("貼圖")
             Return True
         End Using
     End Function

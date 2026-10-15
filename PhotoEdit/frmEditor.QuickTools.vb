@@ -41,7 +41,7 @@ Partial Friend Class frmEditor
         If _tabs Is Nothing OrElse _tabs.SelectedIndex <> TabDraw Then Return False
         If keyData = Keys.Escape AndAlso _pickOnce Then
             _pickOnce = False
-            SetStatusMessage("已取消吸管。")
+            SetStatusMessage(Lang.T("已取消吸管。"))
             Dim p = _canvas.PointToClient(_canvas.PointerPosition)
             If _canvas.ClientRectangle.Contains(p) Then UpdateDrawCursor(p, ScreenToUnit(p))
             Return True
@@ -100,7 +100,7 @@ Partial Friend Class frmEditor
                 _drawEraser.Checked = True
             Case QuickTool.Eyedropper
                 _pickOnce = True
-                SetStatusMessage("吸管：在畫布上點一下吸色（設成前景色）；按 Esc 取消。")
+                SetStatusMessage(Lang.T("吸管：在畫布上點一下吸色（設成前景色）；按 Esc 取消。"))
             Case QuickTool.Bucket : _drawStrip.SelectedTool = CInt(DrawShape.Bucket)
             Case QuickTool.Gradient : _drawStrip.SelectedTool = CInt(DrawShape.Gradient)
             Case QuickTool.SelectMove : _drawStrip.SelectedTool = DrawIcons.SelectTool
@@ -200,7 +200,7 @@ Partial Friend Class frmEditor
         For i = 0 To DrawGeometry.BrushNames.Length - 1
             Dim b = CType(i, BrushKind)
             If DrawLayer.IsToolOnlyBrush(b) Then Continue For ' 修飾筆只從工具列選
-            Dim mi = CType(menu.Items.Add("換成「" & DrawGeometry.BrushNames(i) & "」"), ToolStripMenuItem)
+            Dim mi = CType(menu.Items.Add(Lang.T("換成「") & DrawGeometry.BrushNames(i) & Lang.T("」")), ToolStripMenuItem)
             mi.Checked = b = current
             AddHandler mi.Click, Sub()
                                        SetQuickBrush(slot, b)
@@ -280,7 +280,7 @@ Partial Friend Class frmEditor
 
         Private Const HeaderH As Integer = 34
         Private ReadOnly _ed As frmEditor
-        Private ReadOnly _font As New Font("Microsoft JhengHei UI", 9.5F)
+        Private ReadOnly _font As New Font(Lang.UiFont, 9.5F)
         Private ReadOnly _wheel As New Aqua.ColorWheel()
         Private ReadOnly _fg As New ColorChip()
         Private ReadOnly _bg As New ColorChip()
@@ -377,15 +377,15 @@ Partial Friend Class frmEditor
             y += 116
 
             ' 吸管、橡皮擦、復原、重做
-            Dim actions = {("吸管取色", Sub() _ed.SelectQuickTool(QuickTool.Eyedropper)), ("橡皮擦", Sub() _ed.SelectQuickTool(QuickTool.Eraser)),
-                           ("↶ 復原", Sub() _ed.QuickCommand("undo")), ("↷ 重做", Sub() _ed.QuickCommand("redo"))}
+            Dim actions = {(Lang.T("吸管取色"), Sub() _ed.SelectQuickTool(QuickTool.Eyedropper)), (Lang.T("橡皮擦"), Sub() _ed.SelectQuickTool(QuickTool.Eraser)),
+                           (Lang.T("↶ 復原"), Sub() _ed.QuickCommand("undo")), (Lang.T("↷ 重做"), Sub() _ed.QuickCommand("redo"))}
             For i = 0 To actions.Length - 1
                 Dim act = actions(i).Item2
                 Dim b As New Button With {.Text = actions(i).Item1, .FlatStyle = FlatStyle.Flat}
                 b.SetBounds(16 + i * 106, y, 100, 32)
                 AddHandler b.Click, Sub()
                                         act()
-                                        If b.Text.StartsWith("吸管") OrElse b.Text = "橡皮擦" Then Hide() Else SyncFromEditor()
+                                        If b.Text.StartsWith(Lang.T("吸管")) OrElse b.Text = Lang.T("橡皮擦") Then Hide() Else SyncFromEditor()
                                     End Sub
                 Controls.Add(b)
             Next
@@ -504,21 +504,21 @@ Partial Friend Class frmEditor
                 g.FillRectangle(head, 0, 0, Width, HeaderH)
             End Using
             Using bold As New Font(_font, FontStyle.Bold), fg As New SolidBrush(ForeColor), s2 As New SolidBrush(sub2), small As New Font(_font.FontFamily, 8.5F)
-                g.DrawString("快速操作", bold, fg, 12, 8)
+                g.DrawString(Lang.T("快速操作"), bold, fg, 12, 8)
                 ' 關閉 ×
                 Using p As New Pen(ForeColor, 1.6F)
                     g.DrawLine(p, Width - 24, 12, Width - 14, 22)
                     g.DrawLine(p, Width - 14, 12, Width - 24, 22)
                 End Using
-                g.DrawString("前景色", small, s2, 18, HeaderH + 74)
-                g.DrawString("背景色", small, s2, 94, HeaderH + 74)
-                g.DrawString("近期色票", small, s2, 288, HeaderH + 6)
-                g.DrawString("常用色票", small, s2, 288, HeaderH + 52)
-                g.DrawString("筆刷大小", _font, fg, 16, HeaderH + 154)
-                g.DrawString("不透明度", _font, fg, 16, HeaderH + 186)
-                g.DrawString("常用筆刷（右鍵可換）", _font, fg, 16, HeaderH + 220)
-                g.DrawString("快速圖層", _font, fg, 16, _layers.Top + 4)
-                Dim hint = $"{_ed._appSettings.QuickPanelHotkey} 開關　｜　{_ed._appSettings.QuickRadialHotkey} 輪盤　｜　Esc 關閉　｜　按兩下色塊開完整選色器"
+                g.DrawString(Lang.T("前景色"), small, s2, 18, HeaderH + 74)
+                g.DrawString(Lang.T("背景色"), small, s2, 94, HeaderH + 74)
+                g.DrawString(Lang.T("近期色票"), small, s2, 288, HeaderH + 6)
+                g.DrawString(Lang.T("常用色票"), small, s2, 288, HeaderH + 52)
+                g.DrawString(Lang.T("筆刷大小"), _font, fg, 16, HeaderH + 154)
+                g.DrawString(Lang.T("不透明度"), _font, fg, 16, HeaderH + 186)
+                g.DrawString(Lang.T("常用筆刷（右鍵可換）"), _font, fg, 16, HeaderH + 220)
+                g.DrawString(Lang.T("快速圖層"), _font, fg, 16, _layers.Top + 4)
+                Dim hint = Lang.F("{0} 開關　｜　{1} 輪盤　｜　Esc 關閉　｜　按兩下色塊開完整選色器", _ed._appSettings.QuickPanelHotkey, _ed._appSettings.QuickRadialHotkey)
                 Using sf As New StringFormat With {.Alignment = StringAlignment.Center}
                     g.DrawString(hint, small, s2, New RectangleF(0, Height - 22, Width, 18), sf)
                 End Using
@@ -738,11 +738,11 @@ Partial Friend Class frmEditor
         Private Const RingIn As Single = 152, RingOut As Single = 236
         Private Const RingSlots As Integer = QuickBrushCount + 1 ' 最後一格「更多…」
         Private Shared ReadOnly Items As (Tool As QuickTool, Name As String)() = {
-            (QuickTool.Brush, "筆刷"), (QuickTool.Eraser, "橡皮擦"), (QuickTool.Eyedropper, "吸管"), (QuickTool.Bucket, "填色"),
-            (QuickTool.Gradient, "漸層"), (QuickTool.SelectMove, "選取"), (QuickTool.Text, "文字"), (QuickTool.Color, "色彩")}
+            (QuickTool.Brush, Lang.T("筆刷")), (QuickTool.Eraser, Lang.T("橡皮擦")), (QuickTool.Eyedropper, Lang.T("吸管")), (QuickTool.Bucket, Lang.T("填色")),
+            (QuickTool.Gradient, Lang.T("漸層")), (QuickTool.SelectMove, Lang.T("選取")), (QuickTool.Text, Lang.T("文字")), (QuickTool.Color, Lang.T("色彩"))}
         Private ReadOnly _ed As frmEditor
-        Private ReadOnly _font As New Font("Microsoft JhengHei UI", 9.5F)
-        Private ReadOnly _small As New Font("Microsoft JhengHei UI", 8.5F)
+        Private ReadOnly _font As New Font(Lang.UiFont, 9.5F)
+        Private ReadOnly _small As New Font(Lang.UiFont, 8.5F)
         Private _hot As Integer = -1
         Private _hotRing As Integer = -1
         Private _hotCenter As Boolean
@@ -905,7 +905,7 @@ Partial Friend Class frmEditor
                                 g.FillRectangle(b, ix - 10 + (k Mod 3) * 7, iy - 22 + (k \ 3) * 7, 5, 5)
                             Next
                         End Using
-                        TextRenderer.DrawText(g, "更多…", _small, New Rectangle(CInt(ix) - 45, CInt(iy) + 3, 90, 18), col, TextFormatFlags.HorizontalCenter)
+                        TextRenderer.DrawText(g, Lang.T("更多…"), _small, New Rectangle(CInt(ix) - 45, CInt(iy) + 3, 90, 18), col, TextFormatFlags.HorizontalCenter)
                     End If
                 Next
             End If
@@ -950,7 +950,7 @@ Partial Friend Class frmEditor
                     DrawItemIcon(g, QuickTool.Brush, New RectangleF(c - 14, c - 26, 28, 28), accent)
                 End If
                 TextRenderer.DrawText(g, DrawGeometry.BrushNames(CInt(_ed.CurrentBrush)), _font, New Rectangle(CInt(c) - 44, CInt(c) + 2, 88, 20), fore, TextFormatFlags.HorizontalCenter)
-                TextRenderer.DrawText(g, "滾輪換筆刷", _small, New Rectangle(CInt(c) - 44, CInt(c) + 22, 88, 16), If(dark, Color.FromArgb(150, 158, 172), Color.FromArgb(120, 126, 138)),
+                TextRenderer.DrawText(g, Lang.T("滾輪換筆刷"), _small, New Rectangle(CInt(c) - 44, CInt(c) + 22, 88, 16), If(dark, Color.FromArgb(150, 158, 172), Color.FromArgb(120, 126, 138)),
                                       TextFormatFlags.HorizontalCenter)
             Else
                 Dim cur = Items.First(Function(x) x.Tool = current)

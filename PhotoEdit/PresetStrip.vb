@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 濾鏡列：左邊是分類（色調、復古／黑白、繪畫、漫畫／版畫），右邊是該分類的濾鏡（「原色」永遠在第一格）。
@@ -133,7 +133,7 @@ Friend Class PresetStrip
             Me.Category = category
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer, True)
             Cursor = Cursors.Hand
-            Font = New Font("Microsoft JhengHei UI", 9.5F)
+            Font = New Font(Lang.UiFont, 9.5F)
             AccessibleRole = AccessibleRole.PageTab
             AccessibleName = category
         End Sub
@@ -162,7 +162,7 @@ Friend Class PresetStrip
                     g.FillRectangle(b, 0, 0, 3, Height)
                 End Using
             End If
-            TextRenderer.DrawText(g, Category, Font, New Rectangle(8, 0, Width - 8, Height),
+            TextRenderer.DrawText(g, Lang.T(Category), Font, New Rectangle(8, 0, Width - 8, Height),
                                   If(_selected, Color.FromArgb(255, 210, 90), Color.FromArgb(210, 210, 214)),
                                   TextFormatFlags.VerticalCenter Or TextFormatFlags.Left Or TextFormatFlags.EndEllipsis)
         End Sub
@@ -250,7 +250,7 @@ Friend Class PresetStrip
                     g.DrawRectangle(pen, 1, 1, Width - 3, Height - 23)
                 End Using
             End If
-            TextRenderer.DrawText(g, Preset.Name, Font, New Rectangle(0, Height - 21, Width, 20),
+            TextRenderer.DrawText(g, Lang.T(Preset.Name), Font, New Rectangle(0, Height - 21, Width, 20),
                                   If(_selected, Color.FromArgb(255, 210, 90), ForeColor),
                                   TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
         End Sub

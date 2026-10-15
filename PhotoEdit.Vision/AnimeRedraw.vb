@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.IO
 Imports System.Text.Json
@@ -51,12 +52,12 @@ Public NotInheritable Class AnimeRedraw
 
     ''' <summary>這個模型（與它要的生成程式、VAE、ControlNet）都在才能用；不能用時回傳原因。</summary>
     Public Shared Function Availability(model As AnimeRedrawModel) As String
-        If Not File.Exists(HelperPath) Then Return "找不到生成程式（Redraw\PhotoEdit.Redraw.exe）。"
+        If Not File.Exists(HelperPath) Then Return Lang.T("找不到生成程式（Redraw\PhotoEdit.Redraw.exe）。")
         Dim need = {Path.Combine(model.Dir, Common("unet").GetString()), Path.Combine(model.Dir, "text_encoder", "model.onnx"),
                     Path.Combine(model.Dir, "tokenizer", "vocab.json"), Path.Combine(model.VaeDir, "vae_encoder", "model.onnx"),
                     Path.Combine(model.VaeDir, "vae_decoder", "model.onnx"), Common("controlnet").GetString()}
         For Each f In need
-            If Not File.Exists(Path.Combine(ModelsRoot, f)) Then Return $"找不到模型 Models\{f.Replace("/"c, "\"c)}。"
+            If Not File.Exists(Path.Combine(ModelsRoot, f)) Then Return Lang.F("找不到模型 Models\{0}。", f.Replace("/"c, "\"c))
         Next
         Return Nothing
     End Function
@@ -312,7 +313,7 @@ Public NotInheritable Class AnimeRedraw
                 End If
             Loop
             p.WaitForExit()
-            If p.ExitCode <> 0 OrElse Not File.Exists(outFile) Then Throw New InvalidOperationException(If(err, $"生成失敗（代碼 {p.ExitCode}）。"))
+            If p.ExitCode <> 0 OrElse Not File.Exists(outFile) Then Throw New InvalidOperationException(If(err, Lang.F("生成失敗（代碼 {0}）。", p.ExitCode)))
         End Using
         Try
             Using gen As New Bitmap(outFile)

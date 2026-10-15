@@ -20,7 +20,7 @@ Partial Friend Class frmEditor
     ''' <summary>來源與第一筆起點的距離（對齊模式）；重新設定來源時清掉。</summary>
     Private _cloneOffset As PointF?
 
-    Private Shared ReadOnly SymmetryNames As String() = {"不對稱", "左右對稱", "上下對稱", "上下左右", "旋轉 N 等分", "萬花筒 N 等分"}
+    Private Shared ReadOnly SymmetryNames As String() = {Lang.T("不對稱"), Lang.T("左右對稱"), Lang.T("上下對稱"), Lang.T("上下左右"), Lang.T("旋轉 N 等分"), Lang.T("萬花筒 N 等分")}
 
     ''' <summary>筆畫上的一點：筆壓之外也記下繪圖筆的傾斜與旋轉。</summary>
     Private Function StrokePoint(u As PointF, p As Point, first As Boolean) As DrawPoint
@@ -66,6 +66,7 @@ Partial Friend Class frmEditor
             Dim pt = Point.Round(target)
             _freePoints.Add(StrokePoint(ScreenToUnit(pt), pt, False))
             _canvas.Invalidate()
+            KickStrokePreview() ' 由移動帶動預覽（畫的時候計時器常常輪不到）
         End If
     End Sub
 
@@ -98,7 +99,7 @@ Partial Friend Class frmEditor
     Private Sub SetCloneSource(u As PointF)
         _cloneSource = u
         _cloneOffset = Nothing
-        SetStatusMessage("已設定仿製來源；接著在要畫的地方拖曳，第一筆的起點對準來源。")
+        SetStatusMessage(Lang.T("已設定仿製來源；接著在要畫的地方拖曳，第一筆的起點對準來源。"))
         _canvas.Invalidate()
     End Sub
 
@@ -124,17 +125,17 @@ Partial Friend Class frmEditor
         _drawAdvPanel.Visible = False
         Dim A As New PageLayout(_drawAdvPanel, L.Width, rightMargin:=0) With {.Y = 0}
         Dim pct As Func(Of Integer, String) = Function(v) v & "%"
-        AddRow(A, DrawRow("dw_spacing", "間距", 0, 200, Function(v) If(v = 0, "自動", v & "%"), Function(d) d.SpacingPct, Sub(d, v) d.SpacingPct = v))
-        AddRow(A, DrawRow("dw_scatter", "散佈", 0, 100, pct, Function(d) d.Scatter, Sub(d, v) d.Scatter = v))
-        AddRow(A, DrawRow("dw_sizej", "大小變化", 0, 100, pct, Function(d) d.SizeJitter, Sub(d, v) d.SizeJitter = v))
-        AddRow(A, DrawRow("dw_huej", "色相變化", 0, 100, pct, Function(d) d.HueJitter, Sub(d, v) d.HueJitter = v))
-        AddRow(A, DrawRow("dw_lumj", "明暗變化", 0, 100, pct, Function(d) d.LumJitter, Sub(d, v) d.LumJitter = v))
-        AddRow(A, DrawRow("dw_presop", "筆壓濃淡", 0, 100, pct, Function(d) d.PressureOpacity, Sub(d, v) d.PressureOpacity = v))
-        AddRow(A, DrawRow("dw_wet", "濕度", 0, 100, pct, Function(d) d.Wet, Sub(d, v) d.Wet = v))
-        AddRow(A, DrawRow("dw_papergrain", "紙紋吃色", 0, 100, pct, Function(d) d.PaperGrain, Sub(d, v) d.PaperGrain = v))
+        AddRow(A, DrawRow("dw_spacing", Lang.T("間距"), 0, 200, Function(v) If(v = 0, Lang.T("自動"), v & "%"), Function(d) d.SpacingPct, Sub(d, v) d.SpacingPct = v))
+        AddRow(A, DrawRow("dw_scatter", Lang.T("散佈"), 0, 100, pct, Function(d) d.Scatter, Sub(d, v) d.Scatter = v))
+        AddRow(A, DrawRow("dw_sizej", Lang.T("大小變化"), 0, 100, pct, Function(d) d.SizeJitter, Sub(d, v) d.SizeJitter = v))
+        AddRow(A, DrawRow("dw_huej", Lang.T("色相變化"), 0, 100, pct, Function(d) d.HueJitter, Sub(d, v) d.HueJitter = v))
+        AddRow(A, DrawRow("dw_lumj", Lang.T("明暗變化"), 0, 100, pct, Function(d) d.LumJitter, Sub(d, v) d.LumJitter = v))
+        AddRow(A, DrawRow("dw_presop", Lang.T("筆壓濃淡"), 0, 100, pct, Function(d) d.PressureOpacity, Sub(d, v) d.PressureOpacity = v))
+        AddRow(A, DrawRow("dw_wet", Lang.T("濕度"), 0, 100, pct, Function(d) d.Wet, Sub(d, v) d.Wet = v))
+        AddRow(A, DrawRow("dw_papergrain", Lang.T("紙紋吃色"), 0, 100, pct, Function(d) d.PaperGrain, Sub(d, v) d.PaperGrain = v))
         ' 穩定器是手感設定，不存在圖層裡（記在 settings.json，換圖層、換文件都一樣）
-        AddRow(A, New SliderRow With {.Key = "dw_stabilizer", .Caption = "穩定器", .Minimum = 0, .Maximum = 100,
-                                      .Format = Function(v) If(v = 0, "關", v.ToString()),
+        AddRow(A, New SliderRow With {.Key = "dw_stabilizer", .Caption = Lang.T("穩定器"), .Minimum = 0, .Maximum = 100,
+                                      .Format = Function(v) If(v = 0, Lang.T("關"), v.ToString()),
                                       .GetValue = Function(r) _appSettings.Stabilizer,
                                       .SetValue = Sub(r, v)
                                                       If _appSettings.Stabilizer = v Then Return
@@ -143,8 +144,8 @@ Partial Friend Class frmEditor
                                                   End Sub})
 
         Dim half = (A.Width - 8 - 6) \ 2
-        _drawPenTilt.Text = "筆傾斜改變筆尖"
-        _drawPenRot.Text = "筆旋轉改變筆尖"
+        _drawPenTilt.Text = Lang.T("筆傾斜改變筆尖")
+        _drawPenRot.Text = Lang.T("筆旋轉改變筆尖")
         For Each chk In {(_drawPenTilt, 0, "draw.pentilt"), (_drawPenRot, 1, "draw.penrot")}
             Dim cb = chk.Item1
             cb.BackColor = Color.Transparent
@@ -156,7 +157,7 @@ Partial Friend Class frmEditor
         AddHandler _drawPenRot.CheckedChanged, Sub() If Not _syncing Then SetDrawProp(Sub(d) d.PenRotation = _drawPenRot.Checked)
         A.Y += 32
 
-        _help.SetHelpLinked("draw.sym", _drawSym, AddCaption(A, "對稱", A.Y), _drawSym)
+        _help.SetHelpLinked("draw.sym", _drawSym, AddCaption(A, Lang.T("對稱"), A.Y), _drawSym)
         _drawSym.DropDownStyle = ComboBoxStyle.DropDownList
         _drawSym.Items.AddRange(SymmetryNames.Cast(Of Object)().ToArray())
         _drawSym.SetBounds(8 + CaptionWidth, A.Y + 3, A.Width - CaptionWidth - 8, 24)
@@ -171,7 +172,7 @@ Partial Friend Class frmEditor
                                                    End Sub
         A.Add(_drawSym)
         A.Y += RowHeight
-        AddRow(A, DrawRow("dw_symcount", "等分", 2, 16, AddressOf Plain, Function(d) d.SymCount, Sub(d, v) d.SymCount = v))
+        AddRow(A, DrawRow("dw_symcount", Lang.T("等分"), 2, 16, AddressOf Plain, Function(d) d.SymCount, Sub(d, v) d.SymCount = v))
 
         _drawAdvPanel.SetBounds(0, L.Y, L.Width, A.Y + 4)
         L.Add(_drawAdvPanel)
@@ -179,7 +180,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub UpdateAdvToggleText()
-        _drawAdvToggle.Text = If(_drawAdvPanel.Visible, "▾ 進階", "▸ 進階") & "（間距、散佈、顏色變化、繪圖筆、對稱）"
+        _drawAdvToggle.Text = If(_drawAdvPanel.Visible, Lang.T("▾ 進階"), Lang.T("▸ 進階")) & Lang.T("（間距、散佈、顏色變化、繪圖筆、對稱）")
     End Sub
 
     ''' <summary>展開／收起「進階」：下面的控制項（字型、圖層清單…）跟著上下移。</summary>

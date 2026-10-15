@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 「局部」分頁（漸層濾鏡、局部筆刷、背景模糊、移軸）與「裝飾」分頁（邊框、文字、貼圖）。
@@ -35,9 +35,9 @@ Partial Friend Class frmEditor
 
     Private Sub BuildLocalPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "局部調整")
-        AddButtonPair(L, "＋ 漸層濾鏡", "btn.addgradient", Sub() AddLocal(LocalKind.Gradient),
-                         "＋ 局部筆刷", "btn.addbrush", Sub() AddLocal(LocalKind.Brush))
+        AddHeading(L, Lang.T("局部調整"))
+        AddButtonPair(L, Lang.T("＋ 漸層濾鏡"), "btn.addgradient", Sub() AddLocal(LocalKind.Gradient),
+                         Lang.T("＋ 局部筆刷"), "btn.addbrush", Sub() AddLocal(LocalKind.Brush))
         _localList.DropDownStyle = ComboBoxStyle.DropDownList
         _localList.SetBounds(8, L.Y + 2, L.Width - 8 - 70, 24)
         AddHandler _localList.SelectedIndexChanged, Sub()
@@ -47,7 +47,7 @@ Partial Friend Class frmEditor
                                                          UpdateCreativeControls()
                                                          UpdateToolFromTab()
                                                      End Sub
-        _localDelete.Text = "刪除"
+        _localDelete.Text = Lang.T("刪除")
         _localDelete.UseVisualStyleBackColor = True
         _localDelete.SetBounds(L.Width - 62, L.Y, 62, 28)
         AddHandler _localDelete.Click, Sub() DeleteLocal()
@@ -58,26 +58,26 @@ Partial Friend Class frmEditor
         L.Y += 36
 
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddRow(L, New SliderRow With {.Key = "l_exposure", .Caption = "曝光", .Minimum = -30, .Maximum = 30,
+        AddRow(L, New SliderRow With {.Key = "l_exposure", .Caption = Lang.T("曝光"), .Minimum = -30, .Maximum = 30,
             .Format = Function(v) (v / 10.0).ToString("+0.0;-0.0;0.0") & " EV",
             .GetValue = Function(r) If(SelLocal(r) Is Nothing, 0, CInt(Math.Round(SelLocal(r).Exposure * 10))),
             .SetValue = Sub(r, v)
                             If SelLocal(r) IsNot Nothing Then SelLocal(r).Exposure = v / 10.0
                         End Sub})
-        AddRow(L, MakeRow("l_contrast", "對比", -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Contrast),
+        AddRow(L, MakeRow("l_contrast", Lang.T("對比"), -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Contrast),
                           Sub(r, v)
                               If SelLocal(r) IsNot Nothing Then SelLocal(r).Contrast = v
                           End Sub))
-        AddRow(L, MakeRow("l_saturation", "飽和度", -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Saturation),
+        AddRow(L, MakeRow("l_saturation", Lang.T("飽和度"), -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Saturation),
                           Sub(r, v)
                               If SelLocal(r) IsNot Nothing Then SelLocal(r).Saturation = v
                           End Sub))
-        AddRow(L, MakeRow("l_temperature", "色溫", -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Temperature),
+        AddRow(L, MakeRow("l_temperature", Lang.T("色溫"), -100, 100, signed, Function(r) If(SelLocal(r) Is Nothing, 0, SelLocal(r).Temperature),
                           Sub(r, v)
                               If SelLocal(r) IsNot Nothing Then SelLocal(r).Temperature = v
                           End Sub))
 
-        _help.SetHelpLinked("local.brushsize", _localBrushSize, AddCaption(L, "筆刷大小", L.Y), _localBrushSize)
+        _help.SetHelpLinked("local.brushsize", _localBrushSize, AddCaption(L, Lang.T("筆刷大小"), L.Y), _localBrushSize)
         _localBrushSize.Minimum = 6
         _localBrushSize.Maximum = 200
         _localBrushSize.Value = 40
@@ -95,17 +95,17 @@ Partial Friend Class frmEditor
         L.Add(_localHint)
         L.Y += 40
 
-        AddHeading(L, "模糊特效")
-        AddRow(L, MakeRow("bgblur", "背景模糊", 0, 100, AddressOf Plain, Function(r) r.BackgroundBlur, Sub(r, v) r.BackgroundBlur = v))
-        AddRow(L, MakeRow("tiltshift", "移軸", 0, 100, AddressOf Plain, Function(r) r.TiltShift, Sub(r, v) r.TiltShift = v))
-        AddRow(L, MakeRow("tiltpos", "清楚帶位置", 0, 100, Function(v) v & "%", Function(r) r.TiltShiftPosition, Sub(r, v) r.TiltShiftPosition = v))
+        AddHeading(L, Lang.T("模糊特效"))
+        AddRow(L, MakeRow("bgblur", Lang.T("背景模糊"), 0, 100, AddressOf Plain, Function(r) r.BackgroundBlur, Sub(r, v) r.BackgroundBlur = v))
+        AddRow(L, MakeRow("tiltshift", Lang.T("移軸"), 0, 100, AddressOf Plain, Function(r) r.TiltShift, Sub(r, v) r.TiltShift = v))
+        AddRow(L, MakeRow("tiltpos", Lang.T("清楚帶位置"), 0, 100, Function(v) v & "%", Function(r) r.TiltShiftPosition, Sub(r, v) r.TiltShiftPosition = v))
     End Sub
 
     ''' <summary>「裝飾」分頁：邊框。</summary>
     Private Sub BuildDecorPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "邊框")
-        _help.SetHelpLinked("frame.style", _frameCombo, AddCaption(L, "樣式", L.Y), _frameCombo)
+        AddHeading(L, Lang.T("邊框"))
+        _help.SetHelpLinked("frame.style", _frameCombo, AddCaption(L, Lang.T("樣式"), L.Y), _frameCombo)
         _frameCombo.DropDownStyle = ComboBoxStyle.DropDownList
         _frameCombo.Items.AddRange(Creative.FrameNames.Cast(Of Object)().ToArray())
         _frameCombo.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 24)
@@ -116,8 +116,8 @@ Partial Friend Class frmEditor
                                                       End Sub
         L.Add(_frameCombo)
         L.Y += RowHeight + 4
-        AddRow(L, MakeRow("framesize", "寬度", 0, 100, AddressOf Plain, Function(r) r.FrameSize, Sub(r, v) r.FrameSize = v))
-        AddHint(L, "文字請到「文字」分頁，貼圖請到「貼圖」分頁；選取後的大小、旋轉、透明度也在各自的分頁調整。")
+        AddRow(L, MakeRow("framesize", Lang.T("寬度"), 0, 100, AddressOf Plain, Function(r) r.FrameSize, Sub(r, v) r.FrameSize = v))
+        AddHint(L, Lang.T("文字請到「文字」分頁，貼圖請到「貼圖」分頁；選取後的大小、旋轉、透明度也在各自的分頁調整。"))
     End Sub
 
     ''' <summary>綁定到「選取中的文字／貼圖」某個整數屬性的滑桿列。</summary>
@@ -275,7 +275,7 @@ Partial Friend Class frmEditor
         Dim wasSyncing = _syncing
         _syncing = True
         Try
-            Dim names = locals.Select(Function(a, i) $"{i + 1}. {If(a.Kind = LocalKind.Gradient, "漸層濾鏡", If(a.Kind = LocalKind.Selection, "選取區調整", "局部筆刷"))}").ToArray()
+            Dim names = locals.Select(Function(a, i) $"{i + 1}. {If(a.Kind = LocalKind.Gradient, Lang.T("漸層濾鏡"), If(a.Kind = LocalKind.Selection, Lang.T("選取區調整"), Lang.T("局部筆刷")))}").ToArray()
             If Not names.SequenceEqual(_localList.Items.Cast(Of String)()) Then
                 _localList.Items.Clear()
                 _localList.Items.AddRange(names.Cast(Of Object)().ToArray())
@@ -285,10 +285,10 @@ Partial Friend Class frmEditor
             _localList.Enabled = locals.Count > 0
             _localDelete.Enabled = sel IsNot Nothing
             _localBrushSize.Enabled = sel IsNot Nothing AndAlso sel.Kind = LocalKind.Brush
-            _localHint.Text = If(sel Is Nothing, "按上方按鈕新增漸層濾鏡或局部筆刷。",
-                              If(sel.Kind = LocalKind.Selection, "範圍是建立時的選取區；用下面的滑桿調整選取區裡面的曝光、對比、飽和度與色溫。",
-                              If(sel.Kind = LocalKind.Gradient, "在照片上從效果最強處拖曳到效果消失處。",
-                                 "在照片上塗抹要調整的區域（藍色）。右鍵拖曳可平移。")))
+            _localHint.Text = If(sel Is Nothing, Lang.T("按上方按鈕新增漸層濾鏡或局部筆刷。"),
+                              If(sel.Kind = LocalKind.Selection, Lang.T("範圍是建立時的選取區；用下面的滑桿調整選取區裡面的曝光、對比、飽和度與色溫。"),
+                              If(sel.Kind = LocalKind.Gradient, Lang.T("在照片上從效果最強處拖曳到效果消失處。"),
+                                 Lang.T("在照片上塗抹要調整的區域（藍色）。右鍵拖曳可平移。"))))
             For Each row In _rows.Where(Function(r) LocalKeys.Contains(r.Key))
                 row.Slider.Enabled = sel IsNot Nothing
             Next
@@ -383,7 +383,7 @@ Partial Friend Class frmEditor
         ExitCropMode(apply:=True)
         Dim o As New Overlay With {.Kind = kind}
         If kind = OverlayKind.Text Then
-            o.Text = "在這裡輸入文字"
+            o.Text = Lang.T("在這裡輸入文字")
             o.X = 0.5 : o.Y = 0.85 : o.Size = 0.08
         Else
             o.Sticker = sticker

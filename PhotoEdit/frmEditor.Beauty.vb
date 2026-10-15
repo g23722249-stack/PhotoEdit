@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -20,14 +20,14 @@ Partial Friend Class frmEditor
     Private ReadOnly _beautyGrid As New BeautyThumbGrid()
     Private ReadOnly _presetStrength As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .Value = 100, .ShowTicks = False}
     Private ReadOnly _presetStrengthLabel As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
-    Private ReadOnly _beautyManual As New Button With {.Text = "手動調整…"}
+    Private ReadOnly _beautyManual As New Button With {.Text = Lang.T("手動調整…")}
     Private _beautyCompare As Boolean
     Private _syncingBeauty As Boolean
     ''' <summary>小圖：背景算圖的代號（照片、對象、色調變了就重算）。</summary>
     Private _beautyThumbKey As String
     Private _beautyThumbGeneration As Integer
 
-    Private ReadOnly _liquifyToggle As New CheckBox With {.Appearance = Appearance.Button, .Text = "液化筆刷 (L)", .TextAlign = ContentAlignment.MiddleCenter}
+    Private ReadOnly _liquifyToggle As New CheckBox With {.Appearance = Appearance.Button, .Text = Lang.T("液化筆刷 (L)"), .TextAlign = ContentAlignment.MiddleCenter}
     Private ReadOnly _liquifyMode As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _liquifySize As New Aqua.Slider With {.Minimum = 10, .Maximum = 300, .Value = 70, .ShowTicks = False}
     Private ReadOnly _liquifyStrength As New Aqua.Slider With {.Minimum = 5, .Maximum = 100, .Value = 50, .ShowTicks = False}
@@ -36,14 +36,14 @@ Partial Friend Class frmEditor
 
     Private Sub BuildPortraitPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
-        AddHeading(L, "人像", _portraitHeading)
+        AddHeading(L, Lang.T("人像"), _portraitHeading)
 
         ' 套用到：全部的臉／某一張臉
-        _help.SetHelp("beauty.target", AddCaption(L, "套用到", L.Y), _beautyTarget)
+        _help.SetHelp("beauty.target", AddCaption(L, Lang.T("套用到"), L.Y), _beautyTarget)
         _beautyTarget.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8 - 86, 26)
         AddHandler _beautyTarget.SelectedIndexChanged, Sub() OnBeautyTargetChanged()
         L.Add(_beautyTarget)
-        _faceReset.Text = "跟隨全部"
+        _faceReset.Text = Lang.T("跟隨全部")
         _faceReset.SetBounds(L.Width - 82, L.Y + 1, 82, 28)
         _help.SetHelp("beauty.facereset", _faceReset)
         AddHandler _faceReset.Click, Sub() ResetFaceBeauty()
@@ -51,7 +51,7 @@ Partial Friend Class frmEditor
         L.Y += 34
 
         ' 一鍵美顏：小圖（第一張是原圖）
-        AddHeading(L, "一鍵美顏")
+        AddHeading(L, Lang.T("一鍵美顏"))
         LoadMyLooks()
         _beautyGrid.SetItems(BeautyGridNames())
         Dim gw = L.Width - 8
@@ -62,7 +62,7 @@ Partial Friend Class frmEditor
         L.Y += _beautyGrid.Height + 8
 
         ' 強度
-        _help.SetHelp("beauty.strength", AddCaption(L, "強度", L.Y), _presetStrength, _presetStrengthLabel)
+        _help.SetHelp("beauty.strength", AddCaption(L, Lang.T("強度"), L.Y), _presetStrength, _presetStrengthLabel)
         _presetStrength.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - ValueWidth - 8, 24)
         _presetStrengthLabel.SetBounds(L.Width - ValueWidth, L.Y + 2, ValueWidth, 24)
         _presetStrengthLabel.Text = "100%"
@@ -76,22 +76,22 @@ Partial Friend Class frmEditor
         AddHandler _beautyManual.Click, Sub() ShowBeautyAdjust()
         L.Add(_beautyManual)
         L.Y += 42
-        AddHint(L, "小圖是這張照片的臉套上各組的樣子，點一下套用，再用「強度」調濃淡。" & vbCrLf &
-                   "單項數值、妝容與光影在「手動調整…」裡。")
+        AddHint(L, Lang.T("小圖是這張照片的臉套上各組的樣子，點一下套用，再用「強度」調濃淡。") & vbCrLf &
+                   Lang.T("單項數值、妝容與光影在「手動調整…」裡。"))
 
         ' 液化
-        AddHeading(L, "液化")
+        AddHeading(L, Lang.T("液化"))
         _liquifyToggle.SetBounds(8, L.Y, (L.Width - 16) \ 2, 30)
         _help.SetHelp("liquify", _liquifyToggle)
         AddHandler _liquifyToggle.CheckedChanged, Sub() SetLiquifyMode(_liquifyToggle.Checked)
         L.Add(_liquifyToggle)
-        _liquifyMode.Items.AddRange({"推移", "膨脹（放大）", "縮攏（縮小）", "順時針旋轉", "逆時針旋轉"})
+        _liquifyMode.Items.AddRange({Lang.T("推移"), Lang.T("膨脹（放大）"), Lang.T("縮攏（縮小）"), Lang.T("順時針旋轉"), Lang.T("逆時針旋轉")})
         _liquifyMode.SelectedIndex = 0
         _liquifyMode.SetBounds(8 + (L.Width - 16) \ 2 + 8, L.Y + 2, (L.Width - 16) \ 2, 26)
         _help.SetHelp("liquify.mode", _liquifyMode)
         L.Add(_liquifyMode)
         L.Y += 38
-        For Each entry In {(_liquifySize, _liquifySizeLabel, "筆刷大小", "liquify.size"), (_liquifyStrength, _liquifyStrengthLabel, "力道", "liquify.strength")}
+        For Each entry In {(_liquifySize, _liquifySizeLabel, Lang.T("筆刷大小"), "liquify.size"), (_liquifyStrength, _liquifyStrengthLabel, Lang.T("力道"), "liquify.strength")}
             Dim s = entry.Item1, lbl = entry.Item2
             _help.SetHelp(entry.Item4, AddCaption(L, entry.Item3, L.Y), s, lbl)
             s.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - ValueWidth - 8, 24)
@@ -106,10 +106,10 @@ Partial Friend Class frmEditor
             L.Y += RowHeight
         Next
         Dim half = (L.Width - 16) \ 2
-        Dim clearLiq = MakeButton("清除液化", "liquify.clear")
+        Dim clearLiq = MakeButton(Lang.T("清除液化"), "liquify.clear")
         clearLiq.SetBounds(8, L.Y + 2, half, 30)
         AddHandler clearLiq.Click, Sub() ClearLiquify()
-        Dim compare = MakeButton("按住看未美顏", "beauty.compare")
+        Dim compare = MakeButton(Lang.T("按住看未美顏"), "beauty.compare")
         compare.SetBounds(8 + half + 8, L.Y + 2, half, 30)
         L.Add(clearLiq)
         L.Add(compare)
@@ -119,7 +119,7 @@ Partial Friend Class frmEditor
         AddHandler compare.MouseLeave, Sub() ShowBeautyCompare(False)
 
         L.Y += 4
-        Dim smart = MakeButton("智慧構圖", "btn.smartcrop")
+        Dim smart = MakeButton(Lang.T("智慧構圖"), "btn.smartcrop")
         smart.SetBounds(8, L.Y, L.Width - 8, 30)
         AddHandler smart.Click, Sub() RunCommand("smartcrop")
         L.Add(smart)
@@ -137,7 +137,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>小圖名稱：原圖＋內建＋我的妝容。</summary>
     Private Shared Function BeautyGridNames() As String()
-        Return {"原圖"}.Concat(Enumerable.Range(0, BeautySettings.PresetCount).Select(Function(i) BeautySettings.PresetName(i))).ToArray()
+        Return {Lang.T("原圖")}.Concat(Enumerable.Range(0, BeautySettings.PresetCount).Select(Function(i) BeautySettings.PresetName(i))).ToArray()
     End Function
 
     ''' <summary>手動調整視窗新增或刪除了我的妝容：存設定、重建小圖。</summary>
@@ -154,9 +154,9 @@ Partial Friend Class frmEditor
         If _faces Is Nothing OrElse _faces.Count = 0 Then Return ""
         Dim mesh = _faces.Where(Function(f) f.Mesh IsNot Nothing).Count()
         Dim dense = _faces.Where(Function(f) f.Mesh Is Nothing AndAlso f.Dense IsNot Nothing).Count()
-        If mesh = _faces.Count Then Return "・478 點"
-        If mesh + dense = _faces.Count Then Return If(mesh = 0, "・68 點", "・478／68 點")
-        Return "・部分臉沒有特徵點"
+        If mesh = _faces.Count Then Return Lang.T("・478 點")
+        If mesh + dense = _faces.Count Then Return If(mesh = 0, Lang.T("・68 點"), Lang.T("・478／68 點"))
+        Return Lang.T("・部分臉沒有特徵點")
     End Function
 
     ''' <summary>臉由左到右排序（「臉 1」是最左邊那張）。</summary>
@@ -213,9 +213,9 @@ Partial Friend Class frmEditor
         Dim keep = _beautyFace
         _beautyTarget.BeginUpdate()
         _beautyTarget.Items.Clear()
-        _beautyTarget.Items.Add(If(faces.Count > 1, $"全部的臉（{faces.Count} 張）", "全部的臉"))
+        _beautyTarget.Items.Add(If(faces.Count > 1, Lang.F("全部的臉（{0} 張）", faces.Count), Lang.T("全部的臉")))
         For i = 1 To faces.Count
-            _beautyTarget.Items.Add($"臉 {i}" & If(i = 1 AndAlso faces.Count > 1, "（最左邊）", ""))
+            _beautyTarget.Items.Add(Lang.F("臉 {0}", i) & If(i = 1 AndAlso faces.Count > 1, Lang.T("（最左邊）"), ""))
         Next
         _beautyTarget.EndUpdate()
         _beautyFace = If(keep >= 0 AndAlso keep < faces.Count, keep, -1)
@@ -255,8 +255,8 @@ Partial Friend Class frmEditor
         Dim strength = If(CurrentBeauty(_recipe).PresetIndex.HasValue, _presetStrength.Value, 100)
         Dim preset = If(index >= 0, BeautySettings.Preset(index, strength), New BeautySettings())
         ApplyChange(Sub(r) EditBeauty(r, Sub(b) b.CopyValuesFrom(preset)))
-        SetStatusMessage(If(index >= 0, $"一鍵美顏：{BeautySettings.PresetName(index)}（強度 {strength}%）", "已清除美顏") &
-                         If(TargetFace() Is Nothing, "", $"（臉 {_beautyFace + 1}）") & "。")
+        SetStatusMessage(If(index >= 0, Lang.F("一鍵美顏：{0}（強度 {1}%）", BeautySettings.PresetName(index), strength), Lang.T("已清除美顏")) &
+                         If(TargetFace() Is Nothing, "", Lang.F("（臉 {0}）", _beautyFace + 1)) & Lang.T("。"))
     End Sub
 
     ''' <summary>強度：整組一鍵美顏的數值等比例縮放（同一次拖曳合併成一步復原）。</summary>
@@ -332,11 +332,11 @@ Partial Friend Class frmEditor
         Dim previewFaces As New List(Of FaceRegion)()
         Dim biggest = _faces.OrderByDescending(Function(f) f.Box.Width * f.Box.Height).First()
         previewFaces.Add(If(faces.Count = 1, faces(0), biggest))
-        targets.Add(New BeautyTarget With {.Name = If(faces.Count > 1, "全部的臉（預覽最大的那張）", "這張臉"), .Settings = _recipe.GlobalBeauty()})
+        targets.Add(New BeautyTarget With {.Name = If(faces.Count > 1, Lang.T("全部的臉（預覽最大的那張）"), Lang.T("這張臉")), .Settings = _recipe.GlobalBeauty()})
         If faces.Count > 1 Then
             For i = 0 To faces.Count - 1
                 previewFaces.Add(faces(i))
-                targets.Add(New BeautyTarget With {.Name = $"臉 {i + 1}", .Settings = _recipe.BeautyFor(faces(i).Box).Clone()})
+                targets.Add(New BeautyTarget With {.Name = Lang.F("臉 {0}", i + 1), .Settings = _recipe.BeautyFor(faces(i).Box).Clone()})
             Next
         End If
         For i = 0 To targets.Count - 1
@@ -360,7 +360,7 @@ Partial Friend Class frmEditor
                                 EditBeautyFor(r, face, Sub(b) b.CopyValuesFrom(s))
                             Next
                         End Sub)
-            SetStatusMessage("已套用手動調整。Ctrl+Z 可復原。")
+            SetStatusMessage(Lang.T("已套用手動調整。Ctrl+Z 可復原。"))
         Finally
             For Each t In targets
                 t.Crop?.Dispose()
@@ -373,7 +373,7 @@ Partial Friend Class frmEditor
         If _photo Is Nothing OrElse _beautyCompare = show Then Return
         _beautyCompare = show
         RequestRender()
-        If show Then SetStatusMessage("未美顏") Else UpdateStatus()
+        If show Then SetStatusMessage(Lang.T("未美顏")) Else UpdateStatus()
     End Sub
 
     ''' <summary>按住看未美顏時，算圖用的配方拿掉美顏與液化。</summary>
@@ -399,7 +399,7 @@ Partial Friend Class frmEditor
             If _tabs.SelectedIndex <> TabPortrait Then _tabs.SelectedIndex = TabPortrait
         End If
         UpdateToolFromTab()
-        SetStatusMessage(If(enabled, "液化：在照片上拖曳（推移）或按一下（膨脹、縮攏、旋轉），放開滑鼠就會套用。Esc 結束。", ""))
+        SetStatusMessage(If(enabled, Lang.T("液化：在照片上拖曳（推移）或按一下（膨脹、縮攏、旋轉），放開滑鼠就會套用。Esc 結束。"), ""))
         If Not enabled Then UpdateStatus()
     End Sub
 
@@ -411,13 +411,13 @@ Partial Friend Class frmEditor
                         If r.Liquify Is Nothing Then r.Liquify = New List(Of LiquifyStroke)()
                         r.Liquify.Add(stroke)
                     End Sub)
-        SetStatusMessage($"液化 {_recipe.Liquify.Count} 筆。Ctrl+Z 可復原，「清除液化」全部移除。")
+        SetStatusMessage(Lang.F("液化 {0} 筆。Ctrl+Z 可復原，「清除液化」全部移除。", _recipe.Liquify.Count))
     End Sub
 
     Private Sub ClearLiquify()
         If Not _recipe.HasLiquify Then Return
         ApplyChange(Sub(r) r.Liquify = Nothing)
-        SetStatusMessage("已清除液化。")
+        SetStatusMessage(Lang.T("已清除液化。"))
     End Sub
 
     '---------------------------------------------------------------------
@@ -433,7 +433,7 @@ Partial Friend Class frmEditor
         Dim geo = _recipe.Clone()
         geo.Crop = Nothing
         g.SmoothingMode = SmoothingMode.AntiAlias
-        Using font As New Font("Microsoft JhengHei UI", 10, FontStyle.Bold)
+        Using font As New Font(Lang.UiFont, 10, FontStyle.Bold)
             For i = 0 To faces.Count - 1
                 Dim m = GeometryMapper.MapBox(faces(i).Box, geo, _previewBase.Width, _previewBase.Height)
                 Dim x = rect.X + CSng((m.X - crop.X) / crop.Width) * rect.Width
@@ -443,7 +443,7 @@ Partial Friend Class frmEditor
                 Using p As New Pen(If(sel, Color.FromArgb(230, 255, 200, 60), Color.FromArgb(150, 255, 255, 255)), If(sel, 2.5F, 1.2F)) With {.DashStyle = If(sel, DashStyle.Solid, DashStyle.Dash)}
                     g.DrawEllipse(p, x, y - h * 0.05F, w, h * 1.1F)
                 End Using
-                Dim label = $"臉 {i + 1}"
+                Dim label = Lang.F("臉 {0}", i + 1)
                 Dim sz = g.MeasureString(label, font)
                 Using bg As New SolidBrush(If(sel, Color.FromArgb(220, 255, 200, 60), Color.FromArgb(160, 0, 0, 0))),
                       fg As New SolidBrush(If(sel, Color.Black, Color.White))

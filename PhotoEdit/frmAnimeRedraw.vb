@@ -1,4 +1,4 @@
-Imports System.Threading
+﻿Imports System.Threading
 Imports PhotoEdit
 
 ''' <summary>
@@ -15,8 +15,8 @@ Friend Class frmAnimeRedraw
     Private ReadOnly _help As HelpTip
     Private ReadOnly _models As IReadOnlyList(Of AnimeRedrawModel)
     Private ReadOnly _presets As IReadOnlyList(Of AnimeRedrawPreset)
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
-    Private ReadOnly _small As New Font("Microsoft JhengHei UI", 9.0F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
+    Private ReadOnly _small As New Font(Lang.UiFont, 9.0F)
     Private ReadOnly _before As New PictureBox With {.SizeMode = PictureBoxSizeMode.Zoom, .BackColor = Color.FromArgb(30, 30, 32)}
     Private ReadOnly _after As New PictureBox With {.SizeMode = PictureBoxSizeMode.Zoom, .BackColor = Color.FromArgb(30, 30, 32)}
     ' 模型與風格各放一個容器（同一容器裡的選項按鈕會互斥）
@@ -30,11 +30,11 @@ Friend Class frmAnimeRedraw
     Private ReadOnly _strengthValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
     Private ReadOnly _seed As New NumericUpDown With {.Minimum = 0, .Maximum = 999999}
     Private ReadOnly _subject As New TextBox()
-    Private ReadOnly _generate As New Button With {.Text = "生成"}
-    Private ReadOnly _cancelGen As New Button With {.Text = "停止", .Enabled = False}
+    Private ReadOnly _generate As New Button With {.Text = Lang.T("生成")}
+    Private ReadOnly _cancelGen As New Button With {.Text = Lang.T("停止"), .Enabled = False}
     Private ReadOnly _progress As New ProgressBar With {.Minimum = 0, .Maximum = 100}
     Private ReadOnly _status As New Label With {.AutoSize = False, .BackColor = Color.Transparent}
-    Private ReadOnly _open As New Button With {.Text = "開成新影像", .Enabled = False}
+    Private ReadOnly _open As New Button With {.Text = Lang.T("開成新影像"), .Enabled = False}
     Private _cts As CancellationTokenSource
     Private _result As Bitmap
     Private _model As Integer
@@ -59,7 +59,7 @@ Friend Class frmAnimeRedraw
         _help = help
         _models = AnimeRedraw.Models()
         _presets = AnimeRedraw.Presets()
-        Text = "宮崎風 AI 重繪"
+        Text = Lang.T("宮崎風 AI 重繪")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -70,8 +70,8 @@ Friend Class frmAnimeRedraw
         Dim rightX = 16 + PreviewW * 2 + 24
         ClientSize = New Size(rightX + 270, top + PreviewH + 70)
 
-        Dim capBefore As New Label With {.Text = "原圖", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top)}
-        Dim capAfter As New Label With {.Text = "宮崎風", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16 + PreviewW + 12, top)}
+        Dim capBefore As New Label With {.Text = Lang.T("原圖"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top)}
+        Dim capAfter As New Label With {.Text = Lang.T("宮崎風"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16 + PreviewW + 12, top)}
         _before.SetBounds(16, top + 24, PreviewW, PreviewH)
         _after.SetBounds(16 + PreviewW + 12, top + 24, PreviewW, PreviewH)
         _before.Image = source
@@ -79,7 +79,7 @@ Friend Class frmAnimeRedraw
 
         ' 右邊：模型、風格、強度、種子、描述、生成
         Dim y = top
-        Controls.Add(New Label With {.Text = "模型", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)})
+        Controls.Add(New Label With {.Text = Lang.T("模型"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)})
         y += 22
         _modelPanel.SetBounds(rightX, y, 256, 28)
         For i = 0 To _models.Count - 1
@@ -94,7 +94,7 @@ Friend Class frmAnimeRedraw
         Next
         Controls.Add(_modelPanel)
         y += 34
-        Controls.Add(New Label With {.Text = "風格", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)})
+        Controls.Add(New Label With {.Text = Lang.T("風格"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)})
         y += 22
         _stylePanel.SetBounds(rightX, y, 256, 4 * 25 + 4)
         Controls.Add(_stylePanel)
@@ -103,22 +103,22 @@ Friend Class frmAnimeRedraw
         _note.SetBounds(rightX, y, 256, 40)
         Controls.Add(_note)
         y += 44
-        Dim scap As New Label With {.Text = "重繪強度", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y + 4)}
+        Dim scap As New Label With {.Text = Lang.T("重繪強度"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y + 4)}
         _strength.SetBounds(rightX + 70, y + 2, 140, 24)
         _strengthValue.SetBounds(rightX + 210, y, 46, 26)
         AddHandler _strength.ValueChanged, Sub() _strengthValue.Text = (_strength.Value / 100.0).ToString("0.00")
         help?.SetHelpLinked("redraw.strength", _strength, scap, _strength, _strengthValue)
         Controls.AddRange({scap, _strength, _strengthValue})
         y += 34
-        Dim seedCap As New Label With {.Text = "種子", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y + 4)}
+        Dim seedCap As New Label With {.Text = Lang.T("種子"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y + 4)}
         _seed.SetBounds(rightX + 70, y, 96, 26)
-        Dim dice As New Button With {.Text = "隨機"}
+        Dim dice As New Button With {.Text = Lang.T("隨機")}
         dice.SetBounds(rightX + 174, y - 1, 82, 28)
         AddHandler dice.Click, Sub() _seed.Value = New Random().Next(0, 999999)
         help?.SetHelpLinked("redraw.seed", _seed, seedCap, _seed, dice)
         Controls.AddRange({seedCap, _seed, dice})
         y += 36
-        Dim subjCap As New Label With {.Text = "畫面描述（英文，可空白）", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)}
+        Dim subjCap As New Label With {.Text = Lang.T("畫面描述（英文，可空白）"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(rightX, y)}
         _subject.SetBounds(rightX, y + 22, 256, 54)
         _subject.Multiline = True
         _subject.ScrollBars = ScrollBars.Vertical
@@ -138,7 +138,7 @@ Friend Class frmAnimeRedraw
         Controls.AddRange({_progress, _status})
 
         ' 下方：開成新影像／關閉
-        Dim closeBtn As New Button With {.Text = "關閉", .DialogResult = DialogResult.Cancel}
+        Dim closeBtn As New Button With {.Text = Lang.T("關閉"), .DialogResult = DialogResult.Cancel}
         _open.SetBounds(ClientSize.Width - 252, ClientSize.Height - 46, 130, 32)
         closeBtn.SetBounds(ClientSize.Width - 116, ClientSize.Height - 46, 100, 32)
         AddHandler _open.Click, Sub()
@@ -178,7 +178,7 @@ Friend Class frmAnimeRedraw
         If _styles.Count > 0 Then _styles(0).Checked = True
         Dim why = AnimeRedraw.Availability(m)
         _generate.Enabled = why Is Nothing AndAlso _cts Is Nothing
-        _status.Text = If(why IsNot Nothing, why & "（模型要另外下載，放在 Models\）", "按「生成」開始（用顯卡）。")
+        _status.Text = If(why IsNot Nothing, why & Lang.T("（模型要另外下載，放在 Models\）"), Lang.T("按「生成」開始（用顯卡）。"))
     End Sub
 
     ''' <summary>選風格：強度與種子換成該風格的設定。</summary>
@@ -199,14 +199,14 @@ Friend Class frmAnimeRedraw
         Dim strength = _strength.Value / 100.0, seed = CInt(_seed.Value), subject = _subject.Text
         SetBusy(True)
         _progress.Value = 0
-        _status.Text = "打底與畫線稿…"
+        _status.Text = Lang.T("打底與畫線稿…")
         Dim t0 = Environment.TickCount
         Threading.Tasks.Task.Run(Function() AnimeRedraw.Generate(_source, preset, strength, seed, subject,
                                                                    Sub(cur, total)
                                                                        If IsDisposed OrElse Not IsHandleCreated Then Return
                                                                        BeginInvoke(Sub()
                                                                                        _progress.Value = Math.Min(100, CInt(cur * 100.0 / Math.Max(1, total)))
-                                                                                       _status.Text = $"重繪中 {cur}/{total}…"
+                                                                                       _status.Text = Lang.F("重繪中 {0}/{1}…", cur, total)
                                                                                    End Sub)
                                                                    End Sub, ct)).ContinueWith(
             Sub(task)
@@ -223,14 +223,14 @@ Friend Class frmAnimeRedraw
                                     _result = task.Result
                                     _after.Image = _result
                                     _progress.Value = 100
-                                    _status.Text = $"完成（{(Environment.TickCount - t0) / 1000.0:0} 秒）。不滿意可以換種子或強度再生成。"
+                                    _status.Text = Lang.F("完成（{0:0} 秒）。不滿意可以換種子或強度再生成。", (Environment.TickCount - t0) / 1000.0)
                                     _open.Enabled = True
                                 ElseIf task.IsCanceled OrElse (task.Exception IsNot Nothing AndAlso TypeOf task.Exception.InnerException Is OperationCanceledException) Then
                                     _progress.Value = 0
-                                    _status.Text = "已停止。"
+                                    _status.Text = Lang.T("已停止。")
                                 Else
                                     _progress.Value = 0
-                                    _status.Text = "生成失敗：" & task.Exception?.InnerException?.Message
+                                    _status.Text = Lang.T("生成失敗：") & task.Exception?.InnerException?.Message
                                 End If
                             End Sub)
             End Sub)

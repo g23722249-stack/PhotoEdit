@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 
 ''' <summary>特效筆的效果（數值存進編輯檔，不可更動；新的往後加）。</summary>
@@ -179,72 +180,72 @@ Public NotInheritable Class EffectCatalog
     End Function
 
     Public Shared ReadOnly FxCategories As Category() = {
-        New Category With {.Name = "光／能量", .Items = {
-            E(FxKind.Stars, "星光", 255, 220, 120), E(FxKind.Flash, "閃光", 255, 245, 200), E(FxKind.LightDots, "光點", 255, 200, 140),
-            E(FxKind.Halo, "光暈", 255, 220, 150), E(FxKind.LightRays, "光線", 120, 200, 255), E(FxKind.LensFlare, "鏡頭光斑", 255, 190, 110),
-            E(FxKind.Beam, "光束", 255, 240, 190), E(FxKind.EnergyParticles, "能量粒子", 90, 220, 255), E(FxKind.MagicAura, "魔法光環", 190, 120, 255),
-            E(FxKind.Arc, "電弧／閃電", 130, 180, 255), E(FxKind.Thunder, "雷電", 170, 150, 255), E(FxKind.Sparks, "火花", 255, 190, 80),
-            E(FxKind.ExplosionLight, "爆炸光", 255, 170, 60)}},
-        New Category With {.Name = "火／煙／爆炸", .Items = {
-            E(FxKind.Fire, "火焰", 255, 160, 60, False), E(FxKind.Embers, "火星", 255, 140, 40, False), E(FxKind.Smoke, "煙霧", 200, 200, 205),
-            E(FxKind.BlackSmoke, "黑煙", 40, 38, 38), E(FxKind.Explosion, "爆炸", 255, 150, 50, False), E(FxKind.Debris, "爆炸碎片", 90, 80, 72),
-            E(FxKind.Ash, "灰燼", 150, 145, 140), E(FxKind.SparkSpray, "火花飛散", 255, 180, 70, False), E(FxKind.HeatHaze, "熱氣", 255, 230, 210),
-            E(FxKind.BurnEdge, "燃燒邊緣", 255, 120, 30, False)}},
-        New Category With {.Name = "液體／自然", .Items = {
-            E(FxKind.Splash, "水花", 120, 190, 245), E(FxKind.WaterDrops, "水滴", 150, 205, 245), E(FxKind.Rain, "雨", 210, 225, 245),
-            E(FxKind.BloodSplatter, "血液飛濺", 140, 5, 15), E(FxKind.Blood, "血滴", 150, 10, 20), E(FxKind.Mud, "泥漿", 100, 70, 40),
-            E(FxKind.OilStain, "油漬", 30, 28, 25), E(FxKind.DirtyWater, "污水", 95, 90, 55), E(FxKind.Snow, "雪花", 255, 255, 255),
-            E(FxKind.IceCrystal, "冰晶", 170, 225, 255)}},
-        New Category With {.Name = "動態效果", .Items = {
-            E(FxKind.SpeedLines, "速度線", 255, 255, 255), E(FxKind.MotionLines, "動態線", 255, 255, 255), E(FxKind.Whirlwind, "旋風", 190, 190, 185),
-            E(FxKind.Vortex, "漩渦", 120, 190, 255), E(FxKind.Airflow, "氣流", 230, 245, 255), E(FxKind.DustScatter, "塵土飛散", 165, 135, 100),
-            E(FxKind.Sandstorm, "沙塵", 215, 175, 115), E(FxKind.ParticleFlow, "粒子流", 120, 220, 255), E(FxKind.Trail, "拖影", 255, 255, 255)}},
-        New Category With {.Name = "魔法／科幻", .Items = {
-            E(FxKind.MagicCircle, "魔法陣", 140, 200, 255), E(FxKind.Runes, "符文", 255, 200, 90), E(FxKind.HaloRing, "光環", 255, 230, 140),
-            E(FxKind.Stardust, "星塵", 255, 225, 160), E(FxKind.Cosmic, "宇宙粒子", 170, 120, 255), E(FxKind.BlackHole, "黑洞", 255, 170, 80),
-            E(FxKind.EnergyWave, "能量波", 90, 230, 255), E(FxKind.Laser, "雷射", 255, 40, 60), E(FxKind.Plasma, "電漿", 220, 90, 255),
-            E(FxKind.Hud, "科技 HUD", 80, 230, 255), E(FxKind.Glitch, "數位故障 Glitch", 0, 255, 230)}},
-        New Category With {.Name = "漫畫效果", .Items = {
-            E(FxKind.ComicBurst, "爆炸框", 255, 215, 50), E(FxKind.FocusLines, "集中線", 20, 20, 20), E(FxKind.RadialLines, "放射線", 20, 20, 20),
-            E(FxKind.Halftone, "網點", 20, 20, 20), E(FxKind.ComicSpeed, "速度線（漫畫）", 20, 20, 20), E(FxKind.ShakeLines, "震動線", 20, 20, 20),
-            E(FxKind.ShockWave, "衝擊波", 20, 20, 20), E(FxKind.ComicShadow, "漫畫陰影", 20, 20, 20), E(FxKind.ComicDryBrush, "漫畫飛白", 20, 20, 20)}},
-        New Category With {.Name = "動畫／特攝／電影", .Items = {
-            E(FxKind.AtomicBreath, "傳奇哥吉拉-原子吐息", 40, 120, 255), E(FxKind.GravityBeam, "傳奇基多拉-引力光線", 255, 196, 70),
-            E(FxKind.SpiralHeatRay, "1995紅蓮哥吉拉-放射熱線", 255, 80, 25), E(FxKind.SpeciumRay, "奧特曼-斯派修姆光線", 60, 170, 255),
-            E(FxKind.ZeperionRay, "奧特曼-哉佩利敖光線", 255, 165, 45), E(FxKind.M87Ray, "奧特曼-M87光線", 255, 110, 200, False)}}}
+        New Category With {.Name = Lang.T("光／能量"), .Items = {
+            E(FxKind.Stars, Lang.T("星光"), 255, 220, 120), E(FxKind.Flash, Lang.T("閃光"), 255, 245, 200), E(FxKind.LightDots, Lang.T("光點"), 255, 200, 140),
+            E(FxKind.Halo, Lang.T("光暈"), 255, 220, 150), E(FxKind.LightRays, Lang.T("光線"), 120, 200, 255), E(FxKind.LensFlare, Lang.T("鏡頭光斑"), 255, 190, 110),
+            E(FxKind.Beam, Lang.T("光束"), 255, 240, 190), E(FxKind.EnergyParticles, Lang.T("能量粒子"), 90, 220, 255), E(FxKind.MagicAura, Lang.T("魔法光環"), 190, 120, 255),
+            E(FxKind.Arc, Lang.T("電弧／閃電"), 130, 180, 255), E(FxKind.Thunder, Lang.T("雷電"), 170, 150, 255), E(FxKind.Sparks, Lang.T("火花"), 255, 190, 80),
+            E(FxKind.ExplosionLight, Lang.T("爆炸光"), 255, 170, 60)}},
+        New Category With {.Name = Lang.T("火／煙／爆炸"), .Items = {
+            E(FxKind.Fire, Lang.T("火焰"), 255, 160, 60, False), E(FxKind.Embers, Lang.T("火星"), 255, 140, 40, False), E(FxKind.Smoke, Lang.T("煙霧"), 200, 200, 205),
+            E(FxKind.BlackSmoke, Lang.T("黑煙"), 40, 38, 38), E(FxKind.Explosion, Lang.T("爆炸"), 255, 150, 50, False), E(FxKind.Debris, Lang.T("爆炸碎片"), 90, 80, 72),
+            E(FxKind.Ash, Lang.T("灰燼"), 150, 145, 140), E(FxKind.SparkSpray, Lang.T("火花飛散"), 255, 180, 70, False), E(FxKind.HeatHaze, Lang.T("熱氣"), 255, 230, 210),
+            E(FxKind.BurnEdge, Lang.T("燃燒邊緣"), 255, 120, 30, False)}},
+        New Category With {.Name = Lang.T("液體／自然"), .Items = {
+            E(FxKind.Splash, Lang.T("水花"), 120, 190, 245), E(FxKind.WaterDrops, Lang.T("水滴"), 150, 205, 245), E(FxKind.Rain, Lang.T("雨"), 210, 225, 245),
+            E(FxKind.BloodSplatter, Lang.T("血液飛濺"), 140, 5, 15), E(FxKind.Blood, Lang.T("血滴"), 150, 10, 20), E(FxKind.Mud, Lang.T("泥漿"), 100, 70, 40),
+            E(FxKind.OilStain, Lang.T("油漬"), 30, 28, 25), E(FxKind.DirtyWater, Lang.T("污水"), 95, 90, 55), E(FxKind.Snow, Lang.T("雪花"), 255, 255, 255),
+            E(FxKind.IceCrystal, Lang.T("冰晶"), 170, 225, 255)}},
+        New Category With {.Name = Lang.T("動態效果"), .Items = {
+            E(FxKind.SpeedLines, Lang.T("速度線"), 255, 255, 255), E(FxKind.MotionLines, Lang.T("動態線"), 255, 255, 255), E(FxKind.Whirlwind, Lang.T("旋風"), 190, 190, 185),
+            E(FxKind.Vortex, Lang.T("漩渦"), 120, 190, 255), E(FxKind.Airflow, Lang.T("氣流"), 230, 245, 255), E(FxKind.DustScatter, Lang.T("塵土飛散"), 165, 135, 100),
+            E(FxKind.Sandstorm, Lang.T("沙塵"), 215, 175, 115), E(FxKind.ParticleFlow, Lang.T("粒子流"), 120, 220, 255), E(FxKind.Trail, Lang.T("拖影"), 255, 255, 255)}},
+        New Category With {.Name = Lang.T("魔法／科幻"), .Items = {
+            E(FxKind.MagicCircle, Lang.T("魔法陣"), 140, 200, 255), E(FxKind.Runes, Lang.T("符文"), 255, 200, 90), E(FxKind.HaloRing, Lang.T("光環"), 255, 230, 140),
+            E(FxKind.Stardust, Lang.T("星塵"), 255, 225, 160), E(FxKind.Cosmic, Lang.T("宇宙粒子"), 170, 120, 255), E(FxKind.BlackHole, Lang.T("黑洞"), 255, 170, 80),
+            E(FxKind.EnergyWave, Lang.T("能量波"), 90, 230, 255), E(FxKind.Laser, Lang.T("雷射"), 255, 40, 60), E(FxKind.Plasma, Lang.T("電漿"), 220, 90, 255),
+            E(FxKind.Hud, Lang.T("科技 HUD"), 80, 230, 255), E(FxKind.Glitch, Lang.T("數位故障 Glitch"), 0, 255, 230)}},
+        New Category With {.Name = Lang.T("漫畫效果"), .Items = {
+            E(FxKind.ComicBurst, Lang.T("爆炸框"), 255, 215, 50), E(FxKind.FocusLines, Lang.T("集中線"), 20, 20, 20), E(FxKind.RadialLines, Lang.T("放射線"), 20, 20, 20),
+            E(FxKind.Halftone, Lang.T("網點"), 20, 20, 20), E(FxKind.ComicSpeed, Lang.T("速度線（漫畫）"), 20, 20, 20), E(FxKind.ShakeLines, Lang.T("震動線"), 20, 20, 20),
+            E(FxKind.ShockWave, Lang.T("衝擊波"), 20, 20, 20), E(FxKind.ComicShadow, Lang.T("漫畫陰影"), 20, 20, 20), E(FxKind.ComicDryBrush, Lang.T("漫畫飛白"), 20, 20, 20)}},
+        New Category With {.Name = Lang.T("動畫／特攝／電影"), .Items = {
+            E(FxKind.AtomicBreath, Lang.T("傳奇哥吉拉-原子吐息"), 40, 120, 255), E(FxKind.GravityBeam, Lang.T("傳奇基多拉-引力光線"), 255, 196, 70),
+            E(FxKind.SpiralHeatRay, Lang.T("1995紅蓮哥吉拉-放射熱線"), 255, 80, 25), E(FxKind.SpeciumRay, Lang.T("奧特曼-斯派修姆光線"), 60, 170, 255),
+            E(FxKind.ZeperionRay, Lang.T("奧特曼-哉佩利敖光線"), 255, 165, 45), E(FxKind.M87Ray, Lang.T("奧特曼-M87光線"), 255, 110, 200, False)}}}
 
     Public Shared ReadOnly MaterialCategories As Category() = {
-        New Category With {.Name = "自然材質", .Items = {
-            E(MaterialKind.Stone, "石頭", 150, 145, 135, False), E(MaterialKind.Rock, "岩石", 110, 100, 90, False), E(MaterialKind.Granite, "花崗岩", 160, 150, 150, False),
-            E(MaterialKind.Marble, "大理石", 235, 232, 228, False), E(MaterialKind.Sand, "沙", 220, 190, 130, False), E(MaterialKind.Soil, "土", 100, 70, 45, False),
-            E(MaterialKind.Mud, "泥", 75, 52, 32, False), E(MaterialKind.Desert, "沙漠", 225, 160, 90, False), E(MaterialKind.Gravel, "礫石", 140, 135, 125, False),
-            E(MaterialKind.CrackedSoil, "裂土", 180, 145, 100, False)}},
-        New Category With {.Name = "植物／木材", .Items = {
-            E(MaterialKind.Wood, "木紋", 150, 100, 60, False), E(MaterialKind.Bark, "樹皮", 85, 70, 55, False), E(MaterialKind.TreeRings, "年輪", 190, 140, 85, False),
-            E(MaterialKind.Leaf, "樹葉", 70, 140, 40, False), E(MaterialKind.Grass, "草", 80, 150, 40, False), E(MaterialKind.Shrub, "灌木", 40, 90, 30, False),
-            E(MaterialKind.Vine, "藤蔓", 60, 110, 35, False), E(MaterialKind.Moss, "苔蘚", 95, 135, 30, False), E(MaterialKind.Petal, "花瓣", 245, 150, 185),
-            E(MaterialKind.DeadLeaf, "枯葉", 170, 105, 40, False)}},
-        New Category With {.Name = "建築材質", .Items = {
-            E(MaterialKind.Cement, "水泥", 160, 160, 155, False), E(MaterialKind.Concrete, "混凝土", 140, 140, 135, False), E(MaterialKind.Brick, "磚牆", 160, 70, 45, False),
-            E(MaterialKind.StoneWall, "石牆", 130, 125, 115, False), E(MaterialKind.WallCrack, "牆面裂紋", 210, 200, 185, False), E(MaterialKind.OldWall, "舊牆", 190, 175, 150, False),
-            E(MaterialKind.PeelingPaint, "油漆剝落", 70, 140, 170), E(MaterialKind.Rust, "鐵鏽", 160, 80, 30, False), E(MaterialKind.Tile, "磁磚", 120, 175, 200)}},
-        New Category With {.Name = "手工／材料", .Items = {
-            E(MaterialKind.Paper, "紙張", 242, 240, 230, False), E(MaterialKind.Kraft, "牛皮紙", 170, 128, 85, False), E(MaterialKind.Parchment, "羊皮紙", 230, 205, 150, False),
-            E(MaterialKind.Fabric, "布料", 70, 100, 170), E(MaterialKind.Canvas, "帆布", 210, 195, 160, False), E(MaterialKind.Blanket, "毛毯", 180, 60, 60),
-            E(MaterialKind.Fur, "毛皮", 140, 100, 65, False), E(MaterialKind.Plank, "木板", 160, 110, 65, False), E(MaterialKind.Leather, "皮革", 120, 70, 40),
-            E(MaterialKind.Burlap, "麻布", 180, 150, 100, False)}},
-        New Category With {.Name = "金屬", .Items = {
-            E(MaterialKind.Iron, "鐵", 110, 110, 115, False), E(MaterialKind.Steel, "鋼", 160, 168, 180, False), E(MaterialKind.Copper, "銅", 215, 120, 75, False),
-            E(MaterialKind.Brass, "黃銅", 205, 165, 80, False), E(MaterialKind.Silver, "銀", 210, 212, 218, False), E(MaterialKind.Gold, "金", 240, 190, 70, False),
-            E(MaterialKind.Corroded, "鏽蝕金屬", 130, 110, 95, False), E(MaterialKind.BrushedMetal, "拉絲金屬", 180, 184, 190, False),
-            E(MaterialKind.Scratched, "刮痕金屬", 150, 155, 162, False), E(MaterialKind.CastIron, "鑄鐵", 60, 60, 62, False),
-            E(MaterialKind.Mercury, "水銀（液態金屬）", 205, 210, 220, False)}},
-        New Category With {.Name = "生物／有機", .Items = {
-            E(MaterialKind.Skin, "皮膚", 235, 190, 160), E(MaterialKind.Hair, "毛髮", 90, 60, 40), E(MaterialKind.Leopard, "豹紋", 215, 160, 80, False),
-            E(MaterialKind.Tiger, "虎紋", 230, 130, 35, False), E(MaterialKind.Zebra, "斑馬紋", 240, 240, 235, False), E(MaterialKind.Lizard, "蜥蜴皮", 110, 130, 50, False),
-            E(MaterialKind.Snake, "蛇皮", 160, 130, 80, False), E(MaterialKind.Dino, "恐龍皮", 100, 110, 85, False), E(MaterialKind.Monster, "怪獸皮膚", 90, 150, 70),
-            E(MaterialKind.Feather, "羽毛", 80, 120, 200), E(MaterialKind.FishScale, "魚鱗", 150, 185, 205), E(MaterialKind.Slime, "黏液", 110, 220, 70),
-            E(MaterialKind.Meat, "肉", 170, 40, 40, False), E(MaterialKind.Bone, "骨頭", 230, 220, 190, False)}}}
+        New Category With {.Name = Lang.T("自然材質"), .Items = {
+            E(MaterialKind.Stone, Lang.T("石頭"), 150, 145, 135, False), E(MaterialKind.Rock, Lang.T("岩石"), 110, 100, 90, False), E(MaterialKind.Granite, Lang.T("花崗岩"), 160, 150, 150, False),
+            E(MaterialKind.Marble, Lang.T("大理石"), 235, 232, 228, False), E(MaterialKind.Sand, Lang.T("沙"), 220, 190, 130, False), E(MaterialKind.Soil, Lang.T("土"), 100, 70, 45, False),
+            E(MaterialKind.Mud, Lang.T("泥"), 75, 52, 32, False), E(MaterialKind.Desert, Lang.T("沙漠"), 225, 160, 90, False), E(MaterialKind.Gravel, Lang.T("礫石"), 140, 135, 125, False),
+            E(MaterialKind.CrackedSoil, Lang.T("裂土"), 180, 145, 100, False)}},
+        New Category With {.Name = Lang.T("植物／木材"), .Items = {
+            E(MaterialKind.Wood, Lang.T("木紋"), 150, 100, 60, False), E(MaterialKind.Bark, Lang.T("樹皮"), 85, 70, 55, False), E(MaterialKind.TreeRings, Lang.T("年輪"), 190, 140, 85, False),
+            E(MaterialKind.Leaf, Lang.T("樹葉"), 70, 140, 40, False), E(MaterialKind.Grass, Lang.T("草"), 80, 150, 40, False), E(MaterialKind.Shrub, Lang.T("灌木"), 40, 90, 30, False),
+            E(MaterialKind.Vine, Lang.T("藤蔓"), 60, 110, 35, False), E(MaterialKind.Moss, Lang.T("苔蘚"), 95, 135, 30, False), E(MaterialKind.Petal, Lang.T("花瓣"), 245, 150, 185),
+            E(MaterialKind.DeadLeaf, Lang.T("枯葉"), 170, 105, 40, False)}},
+        New Category With {.Name = Lang.T("建築材質"), .Items = {
+            E(MaterialKind.Cement, Lang.T("水泥"), 160, 160, 155, False), E(MaterialKind.Concrete, Lang.T("混凝土"), 140, 140, 135, False), E(MaterialKind.Brick, Lang.T("磚牆"), 160, 70, 45, False),
+            E(MaterialKind.StoneWall, Lang.T("石牆"), 130, 125, 115, False), E(MaterialKind.WallCrack, Lang.T("牆面裂紋"), 210, 200, 185, False), E(MaterialKind.OldWall, Lang.T("舊牆"), 190, 175, 150, False),
+            E(MaterialKind.PeelingPaint, Lang.T("油漆剝落"), 70, 140, 170), E(MaterialKind.Rust, Lang.T("鐵鏽"), 160, 80, 30, False), E(MaterialKind.Tile, Lang.T("磁磚"), 120, 175, 200)}},
+        New Category With {.Name = Lang.T("手工／材料"), .Items = {
+            E(MaterialKind.Paper, Lang.T("紙張"), 242, 240, 230, False), E(MaterialKind.Kraft, Lang.T("牛皮紙"), 170, 128, 85, False), E(MaterialKind.Parchment, Lang.T("羊皮紙"), 230, 205, 150, False),
+            E(MaterialKind.Fabric, Lang.T("布料"), 70, 100, 170), E(MaterialKind.Canvas, Lang.T("帆布"), 210, 195, 160, False), E(MaterialKind.Blanket, Lang.T("毛毯"), 180, 60, 60),
+            E(MaterialKind.Fur, Lang.T("毛皮"), 140, 100, 65, False), E(MaterialKind.Plank, Lang.T("木板"), 160, 110, 65, False), E(MaterialKind.Leather, Lang.T("皮革"), 120, 70, 40),
+            E(MaterialKind.Burlap, Lang.T("麻布"), 180, 150, 100, False)}},
+        New Category With {.Name = Lang.T("金屬"), .Items = {
+            E(MaterialKind.Iron, Lang.T("鐵"), 110, 110, 115, False), E(MaterialKind.Steel, Lang.T("鋼"), 160, 168, 180, False), E(MaterialKind.Copper, Lang.T("銅"), 215, 120, 75, False),
+            E(MaterialKind.Brass, Lang.T("黃銅"), 205, 165, 80, False), E(MaterialKind.Silver, Lang.T("銀"), 210, 212, 218, False), E(MaterialKind.Gold, Lang.T("金"), 240, 190, 70, False),
+            E(MaterialKind.Corroded, Lang.T("鏽蝕金屬"), 130, 110, 95, False), E(MaterialKind.BrushedMetal, Lang.T("拉絲金屬"), 180, 184, 190, False),
+            E(MaterialKind.Scratched, Lang.T("刮痕金屬"), 150, 155, 162, False), E(MaterialKind.CastIron, Lang.T("鑄鐵"), 60, 60, 62, False),
+            E(MaterialKind.Mercury, Lang.T("水銀（液態金屬）"), 205, 210, 220, False)}},
+        New Category With {.Name = Lang.T("生物／有機"), .Items = {
+            E(MaterialKind.Skin, Lang.T("皮膚"), 235, 190, 160), E(MaterialKind.Hair, Lang.T("毛髮"), 90, 60, 40), E(MaterialKind.Leopard, Lang.T("豹紋"), 215, 160, 80, False),
+            E(MaterialKind.Tiger, Lang.T("虎紋"), 230, 130, 35, False), E(MaterialKind.Zebra, Lang.T("斑馬紋"), 240, 240, 235, False), E(MaterialKind.Lizard, Lang.T("蜥蜴皮"), 110, 130, 50, False),
+            E(MaterialKind.Snake, Lang.T("蛇皮"), 160, 130, 80, False), E(MaterialKind.Dino, Lang.T("恐龍皮"), 100, 110, 85, False), E(MaterialKind.Monster, Lang.T("怪獸皮膚"), 90, 150, 70),
+            E(MaterialKind.Feather, Lang.T("羽毛"), 80, 120, 200), E(MaterialKind.FishScale, Lang.T("魚鱗"), 150, 185, 205), E(MaterialKind.Slime, Lang.T("黏液"), 110, 220, 70),
+            E(MaterialKind.Meat, Lang.T("肉"), 170, 40, 40, False), E(MaterialKind.Bone, Lang.T("骨頭"), 230, 220, 190, False)}}}
 
     ''' <summary>依列舉值排列的名稱（找不到的值為空字串）。</summary>
     Public Shared ReadOnly FxNames As String() = NamesByValue(FxCategories)

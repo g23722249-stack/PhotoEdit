@@ -260,7 +260,7 @@ Partial Friend Class frmEditor
             If pieces IsNot Nothing AndAlso pieces.Count >= 2 Then results.Add((i, pieces))
         Next
         If results.Count = 0 Then
-            SetStatusMessage("刀線要整個穿過圖形才切得開（圖說、文字、點陣圖層不能切）。")
+            SetStatusMessage(Lang.T("刀線要整個穿過圖形才切得開（圖說、文字、點陣圖層不能切）。"))
             Return
         End If
         ApplyChange(Sub(r)
@@ -273,7 +273,7 @@ Partial Friend Class frmEditor
         Dim all = results.SelectMany(Function(x) x.Pieces).ToList()
         Dim idx = all.Select(Function(p) _recipe.Drawings.IndexOf(p)).Where(Function(i) i >= 0).ToList()
         If idx.Count > 0 Then SetMultiSelection(idx, idx.Max())
-        SetStatusMessage($"已切開：{results.Count} 個圖形變成 {all.Count} 個（都是鋼筆路徑）。")
+        SetStatusMessage(Lang.F("已切開：{0} 個圖形變成 {1} 個（都是鋼筆路徑）。", results.Count, all.Count))
         UpdateDrawControls()
     End Sub
 
@@ -314,14 +314,14 @@ Partial Friend Class frmEditor
     Private Function ToolHint(tool As Integer) As String
         If FxHint(tool) IsNot Nothing Then Return FxHint(tool)
         Select Case tool
-            Case DrawIcons.PanTool : Return "平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。"
-            Case DrawIcons.ZoomTool : Return "縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。"
-            Case DrawIcons.EyedropperTool : Return "吸管：點一下吸成線條色，右鍵（或 Shift＋點）吸成填色；可以按住拖曳看顏色。"
-            Case DrawIcons.SmartFillTool : Return "智慧填色：在線條、圖形圍起來的地方點一下，那塊變成新的圖形（用目前的填色，可以先在右側選漸層）。線條要接起來才填得到。"
-            Case DrawIcons.KnifeTool : Return "刀具：拖一條線穿過圖形把它切開（Shift：45°）；有選取時只切選取的。結果是鋼筆路徑。"
+            Case DrawIcons.PanTool : Return Lang.T("平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。")
+            Case DrawIcons.ZoomTool : Return Lang.T("縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。")
+            Case DrawIcons.EyedropperTool : Return Lang.T("吸管：點一下吸成線條色，右鍵（或 Shift＋點）吸成填色；可以按住拖曳看顏色。")
+            Case DrawIcons.SmartFillTool : Return Lang.T("智慧填色：在線條、圖形圍起來的地方點一下，那塊變成新的圖形（用目前的填色，可以先在右側選漸層）。線條要接起來才填得到。")
+            Case DrawIcons.KnifeTool : Return Lang.T("刀具：拖一條線穿過圖形把它切開（Shift：45°）；有選取時只切選取的。結果是鋼筆路徑。")
             Case DrawIcons.ShapeBuilderTool
-                Return If(_builderOn, Nothing, "形狀建立：先點選或框選兩個以上重疊的封閉圖形，選好就切成一塊一塊。")
-            Case CInt(DrawShape.Text) : Return "文字：拖一個框（或點一下）輸入文字；字型、字級、文字色在右側面板。勾「外框」「填色」就是文字方塊。"
+                Return If(_builderOn, Nothing, Lang.T("形狀建立：先點選或框選兩個以上重疊的封閉圖形，選好就切成一塊一塊。"))
+            Case CInt(DrawShape.Text) : Return Lang.T("文字：拖一個框（或點一下）輸入文字；字型、字級、文字色在右側面板。勾「外框」「填色」就是文字方塊。")
         End Select
         Return Nothing
     End Function
@@ -329,14 +329,14 @@ Partial Friend Class frmEditor
     ''' <summary>修飾筆的提示（直接繪製時）；不是時回傳 Nothing。</summary>
     Private Function RetouchHint(b As BrushKind) As String
         Select Case b
-            Case BrushKind.Heal : Return If(_cloneSource.HasValue, "修復筆：拖曳把來源（十字準星）的紋理畫過來，顏色亮度自動融入周圍；Alt＋點一下換來源。",
-                                            "修復筆：先按住 Alt 在照片上點一下，設定要取樣的來源（像仿製筆）。")
-            Case BrushKind.Blur : Return "模糊：在照片上塗抹讓那裡變柔和（越塗越糊；不透明度控制強度）。結果畫在點陣圖層，原圖不動。"
-            Case BrushKind.Sharpen : Return "銳利化：塗抹讓細節更清楚（別塗太多次會出現雜點）。結果畫在點陣圖層。"
-            Case BrushKind.Dodge : Return "加亮：塗抹讓那裡變亮（同暗房的遮光）。結果畫在點陣圖層。"
-            Case BrushKind.Burn : Return "加深：塗抹讓那裡變暗（同暗房的加光）。結果畫在點陣圖層。"
-            Case BrushKind.SpongeDesaturate : Return "海綿（降低飽和）：塗抹讓顏色變淡、接近灰色。結果畫在點陣圖層。"
-            Case BrushKind.SpongeSaturate : Return "海綿（增加飽和）：塗抹讓顏色更鮮豔。結果畫在點陣圖層。"
+            Case BrushKind.Heal : Return If(_cloneSource.HasValue, Lang.T("修復筆：拖曳把來源（十字準星）的紋理畫過來，顏色亮度自動融入周圍；Alt＋點一下換來源。"),
+                                            Lang.T("修復筆：先按住 Alt 在照片上點一下，設定要取樣的來源（像仿製筆）。"))
+            Case BrushKind.Blur : Return Lang.T("模糊：在照片上塗抹讓那裡變柔和（越塗越糊；不透明度控制強度）。結果畫在點陣圖層，原圖不動。")
+            Case BrushKind.Sharpen : Return Lang.T("銳利化：塗抹讓細節更清楚（別塗太多次會出現雜點）。結果畫在點陣圖層。")
+            Case BrushKind.Dodge : Return Lang.T("加亮：塗抹讓那裡變亮（同暗房的遮光）。結果畫在點陣圖層。")
+            Case BrushKind.Burn : Return Lang.T("加深：塗抹讓那裡變暗（同暗房的加光）。結果畫在點陣圖層。")
+            Case BrushKind.SpongeDesaturate : Return Lang.T("海綿（降低飽和）：塗抹讓顏色變淡、接近灰色。結果畫在點陣圖層。")
+            Case BrushKind.SpongeSaturate : Return Lang.T("海綿（增加飽和）：塗抹讓顏色更鮮豔。結果畫在點陣圖層。")
         End Select
         Return Nothing
     End Function

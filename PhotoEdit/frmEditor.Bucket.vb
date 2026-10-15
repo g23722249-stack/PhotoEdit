@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 繪圖分頁的油漆桶：點一下把顏色相近的區域填滿，畫在目前選取的點陣圖層上（沒有選圖層時自動新增）。
@@ -44,18 +44,18 @@ Partial Friend Class frmEditor
             cb.Margin = New Padding(6, 6, 0, 0)
             cb.BackColor = Color.Transparent
         Next
-        _bucketContiguous.Text = "相鄰"
-        _bucketSoft.Text = "柔邊"
+        _bucketContiguous.Text = Lang.T("相鄰")
+        _bucketSoft.Text = Lang.T("柔邊")
         For Each combo In {_bucketSample, _bucketSource}
             combo.DropDownStyle = ComboBoxStyle.DropDownList
             combo.Width = 78
             combo.Margin = New Padding(0, 3, 0, 0)
         Next
-        _bucketSample.Items.AddRange({"所有圖層", "目前圖層"})
-        _bucketSource.Items.AddRange({"筆刷", "原照片"})
+        _bucketSample.Items.AddRange({Lang.T("所有圖層"), Lang.T("目前圖層")})
+        _bucketSource.Items.AddRange({Lang.T("筆刷"), Lang.T("原照片")})
 
-        Dim tolCaption = caption("容許度"), sampleCaption = caption("取樣"), gapCaption = caption("補缺口"),
-            expandCaption = caption("擴張"), sourceCaption = caption("填入")
+        Dim tolCaption = caption(Lang.T("容許度")), sampleCaption = caption(Lang.T("取樣")), gapCaption = caption(Lang.T("補缺口")),
+            expandCaption = caption(Lang.T("擴張")), sourceCaption = caption(Lang.T("填入"))
         _bucketBar.Controls.AddRange({tolCaption, _bucketTolerance, _bucketContiguous, sampleCaption, _bucketSample,
                                       gapCaption, _bucketGap, expandCaption, _bucketExpand, _bucketSoft, sourceCaption, _bucketSource})
         _help.SetHelpLinked("bucket.tolerance", _bucketTolerance, tolCaption, _bucketTolerance)
@@ -107,11 +107,11 @@ Partial Friend Class frmEditor
     Private Sub BucketClick(u As PointF)
         Dim aspect = PhotoAspect()
         If u.X < 0 OrElse u.Y < 0 OrElse u.X > aspect OrElse u.Y > 1 Then
-            SetStatusMessage("油漆桶：在照片範圍內點一下。")
+            SetStatusMessage(Lang.T("油漆桶：在照片範圍內點一下。"))
             Return
         End If
         Dim sel As DrawLayer = Nothing
-        If Not PixelToolTarget("填色", sel) Then Return
+        If Not PixelToolTarget(Lang.T("填色"), sel) Then Return
         Dim op As New DrawLayer With {.Shape = DrawShape.Bucket, .Seed = _drawRandom.Next(1, 100000), .Param1 = Math.Round(aspect, 5)}
         op.CopyStyleFrom(_drawStyle)
         op.Shadow = False
@@ -120,8 +120,8 @@ Partial Friend Class frmEditor
         b.X = Math.Round(u.X - dx, 5) : b.Y = Math.Round(u.Y - dy, 5)
         op.Bucket = b
         AddPixelOp(op, sel)
-        SetStatusMessage(If(b.Source = BucketSource.Photo, "已用原照片的顏色填回。", "已填色。") &
-                         "（填錯了按 Ctrl+Z；漏到外面可以調高「補缺口」，邊緣有白邊可以調高「擴張」）")
+        SetStatusMessage(If(b.Source = BucketSource.Photo, Lang.T("已用原照片的顏色填回。"), Lang.T("已填色。")) &
+                         Lang.T("（填錯了按 Ctrl+Z；漏到外面可以調高「補缺口」，邊緣有白邊可以調高「擴張」）"))
     End Sub
 
     '---------------------------------------------------------------------

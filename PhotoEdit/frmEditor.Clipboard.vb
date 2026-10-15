@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports System.IO
 Imports PhotoEdit
 
@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     ''' <summary>貼上的圖片存放處（預設「圖片\PhotoEdit\剪貼簿」；測試時可改）。</summary>
     Friend Shared Property PasteFolder As String
         Get
-            Return If(_pasteFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", "剪貼簿"))
+            Return If(_pasteFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", Lang.T("剪貼簿")))
         End Get
         Set(value As String)
             _pasteFolder = value
@@ -70,7 +70,7 @@ Partial Friend Class frmEditor
         Try
             data = Clipboard.GetDataObject()
         Catch ex As Runtime.InteropServices.ExternalException
-            MessageBox.Show(Me, "剪貼簿正被其他程式使用，請稍後再試。", AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
+            MessageBox.Show(Me, Lang.T("剪貼簿正被其他程式使用，請稍後再試。"), AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End Try
         PasteAsNewImage(data)
@@ -87,25 +87,25 @@ Partial Friend Class frmEditor
             End If
         Catch ex As Exception When TypeOf ex Is Runtime.InteropServices.ExternalException OrElse TypeOf ex Is IOException OrElse
                                    TypeOf ex Is UnauthorizedAccessException
-            MessageBox.Show(Me, "無法從剪貼簿貼上：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法從剪貼簿貼上：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         If file Is Nothing Then
-            SetStatusMessage("剪貼簿裡沒有圖片。")
+            SetStatusMessage(Lang.T("剪貼簿裡沒有圖片。"))
             Return
         End If
         Dim before = _photo?.Path
         OpenPhoto(file, remember:=False)
         If _photo IsNot Nothing AndAlso _photo.Path = file AndAlso file <> before Then
             SetStatusMessage(If(file.StartsWith(PasteFolder, StringComparison.OrdinalIgnoreCase),
-                                "已從剪貼簿貼上，存成 " & file, "已開啟剪貼簿裡的檔案：" & file))
+                                Lang.T("已從剪貼簿貼上，存成 ") & file, Lang.T("已開啟剪貼簿裡的檔案：") & file))
         End If
     End Sub
 
     ''' <summary>存成 PNG（保留透明），檔名「貼上_yyyyMMdd_HHmmss.png」，同一秒內重複時加序號。</summary>
     Private Shared Function SaveClipboardImage(bmp As Bitmap) As String
         Directory.CreateDirectory(PasteFolder)
-        Dim name = "貼上_" & DateTime.Now.ToString("yyyyMMdd_HHmmss")
+        Dim name = Lang.T("貼上_") & DateTime.Now.ToString("yyyyMMdd_HHmmss")
         Dim file = Path.Combine(PasteFolder, name & ".png")
         Dim n = 2
         While IO.File.Exists(file)

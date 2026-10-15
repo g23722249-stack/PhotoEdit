@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 裁切模式（Ctrl+K）：畫布顯示未裁切的整張照片，下方兩列工具：
@@ -8,11 +8,11 @@ Imports PhotoEdit
 Partial Friend Class frmEditor
 
     Private Shared ReadOnly CropRatios As (Name As String, Ratio As Double)() = {
-        ("自由", 0), ("原始比例", -1), ("1:1 正方形", 1), ("4:3", 4 / 3), ("3:4", 3 / 4), ("3:2", 3 / 2), ("2:3", 2 / 3),
-        ("16:9", 16 / 9), ("9:16", 9 / 16), ("5:4", 5 / 4), ("4:5（IG 直式）", 4 / 5), ("1.91:1（IG 橫式）", 1.91),
-        ("A4 直式", 210 / 297), ("A4 橫式", 297 / 210), ("證件照 3.5×4.5 cm", 3.5 / 4.5)}
-    Private Shared ReadOnly CropShapeNames As String() = {"矩形", "圓形", "圓角", "愛心", "星形"}
-    Private Shared ReadOnly CropGuideNames As String() = {"三分線", "黃金比例", "格線", "對角線", "無"}
+        (Lang.T("自由"), 0), (Lang.T("原始比例"), -1), (Lang.T("1:1 正方形"), 1), ("4:3", 4 / 3), ("3:4", 3 / 4), ("3:2", 3 / 2), ("2:3", 2 / 3),
+        ("16:9", 16 / 9), ("9:16", 9 / 16), ("5:4", 5 / 4), (Lang.T("4:5（IG 直式）"), 4 / 5), (Lang.T("1.91:1（IG 橫式）"), 1.91),
+        (Lang.T("A4 直式"), 210 / 297), (Lang.T("A4 橫式"), 297 / 210), (Lang.T("證件照 3.5×4.5 cm"), 3.5 / 4.5)}
+    Private Shared ReadOnly CropShapeNames As String() = {Lang.T("矩形"), Lang.T("圓形"), Lang.T("圓角"), Lang.T("愛心"), Lang.T("星形")}
+    Private Shared ReadOnly CropGuideNames As String() = {Lang.T("三分線"), Lang.T("黃金比例"), Lang.T("格線"), Lang.T("對角線"), Lang.T("無")}
 
     Private ReadOnly _cropGuide As New ComboBox()
     Private ReadOnly _cropShape As New ComboBox()
@@ -41,7 +41,7 @@ Partial Friend Class frmEditor
         Dim button = Function(text As String, width As Integer) New Button With {.Text = text, .Width = width, .Height = 27, .UseVisualStyleBackColor = True,
                                                                                  .Margin = New Padding(3, 0, 3, 0)}
         ' 第一列
-        Dim ratioLabel = caption("比例")
+        Dim ratioLabel = caption(Lang.T("比例"))
         _cropRatio.DropDownStyle = ComboBoxStyle.DropDownList
         _cropRatio.Items.AddRange(CropRatios.Select(Function(r) CObj(r.Name)).ToArray())
         _cropRatio.Width = 150
@@ -51,11 +51,11 @@ Partial Friend Class frmEditor
                                                          ApplyRatioCrop()
                                                      End Sub
         _help.SetHelp("crop.ratio", ratioLabel, _cropRatio)
-        Dim swap = button("⇄ 直橫", 70)
+        Dim swap = button(Lang.T("⇄ 直橫"), 70)
         AddHandler swap.Click, Sub() SwapCropOrientation()
         _help.SetHelp("crop.swap", swap)
 
-        Dim guideLabel = caption("輔助線")
+        Dim guideLabel = caption(Lang.T("輔助線"))
         _cropGuide.DropDownStyle = ComboBoxStyle.DropDownList
         _cropGuide.Items.AddRange(CropGuideNames)
         _cropGuide.Width = 92
@@ -69,19 +69,19 @@ Partial Friend Class frmEditor
                                                      End Sub
         _help.SetHelp("crop.guide", guideLabel, _cropGuide)
 
-        Dim shapeLabel = caption("形狀")
+        Dim shapeLabel = caption(Lang.T("形狀"))
         _cropShape.DropDownStyle = ComboBoxStyle.DropDownList
         _cropShape.Items.AddRange(CropShapeNames)
         _cropShape.Width = 76
         AddHandler _cropShape.SelectedIndexChanged, Sub()
                                                          If _syncing OrElse _cropShape.SelectedIndex < 0 Then Return
                                                          _canvas.CropShapeKind = CType(_cropShape.SelectedIndex, CropShape)
-                                                         If _cropShape.SelectedIndex > 0 Then SetStatusMessage("形狀外會變透明；匯出時請存成 PNG（JPG 會變成白色）。")
+                                                         If _cropShape.SelectedIndex > 0 Then SetStatusMessage(Lang.T("形狀外會變透明；匯出時請存成 PNG（JPG 會變成白色）。"))
                                                          _canvas.Focus()
                                                      End Sub
         _help.SetHelp("crop.shape", shapeLabel, _cropShape)
 
-        Dim sizeLabel = caption("尺寸")
+        Dim sizeLabel = caption(Lang.T("尺寸"))
         For Each n In {_cropWidth, _cropHeight}
             n.Minimum = 1
             n.Maximum = 100000
@@ -95,14 +95,14 @@ Partial Friend Class frmEditor
         Dim px = caption("px")
         _help.SetHelp("crop.size", sizeLabel, _cropWidth, times, _cropHeight, px)
 
-        Dim smart = button("智慧構圖", 86)
+        Dim smart = button(Lang.T("智慧構圖"), 86)
         AddHandler smart.Click, Sub() ApplySmartCrop()
         _help.SetHelp("crop.smart", smart)
         row1.Controls.AddRange(New Control() {ratioLabel, _cropRatio, swap, guideLabel, _cropGuide, shapeLabel, _cropShape,
                                               sizeLabel, _cropWidth, times, _cropHeight, px, smart})
 
         ' 第二列
-        Dim straightenLabel = caption("拉直")
+        Dim straightenLabel = caption(Lang.T("拉直"))
         _cropStraighten.Minimum = -90
         _cropStraighten.Maximum = 90
         _cropStraighten.ShowTicks = False
@@ -118,8 +118,8 @@ Partial Friend Class frmEditor
         _cropStraightenLabel.Cursor = Cursors.Hand
         AddHandler _cropStraightenLabel.DoubleClick, Sub() _cropStraighten.Value = 0
         _help.SetHelpLinked("crop.straighten", _cropStraighten, straightenLabel, _cropStraighten, _cropStraightenLabel)
-        Dim rotl = button("⟲ 左轉", 70), rotr = button("⟳ 右轉", 70)
-        Dim fliph = button("⇋ 水平翻轉", 96), flipv = button("⇵ 垂直翻轉", 96)
+        Dim rotl = button(Lang.T("⟲ 左轉"), 70), rotr = button(Lang.T("⟳ 右轉"), 70)
+        Dim fliph = button(Lang.T("⇋ 水平翻轉"), 96), flipv = button(Lang.T("⇵ 垂直翻轉"), 96)
         AddHandler rotl.Click, Sub() CropRotate(False)
         AddHandler rotr.Click, Sub() CropRotate(True)
         AddHandler fliph.Click, Sub() CropFlip(True)
@@ -130,7 +130,7 @@ Partial Friend Class frmEditor
         _help.SetHelp("crop.flipv", flipv)
         tools.Controls.AddRange(New Control() {straightenLabel, _cropStraighten, _cropStraightenLabel, rotl, rotr, fliph, flipv})
 
-        Dim apply = button("套用 (Enter)", 104), cancel = button("取消 (Esc)", 104)
+        Dim apply = button(Lang.T("套用 (Enter)"), 104), cancel = button(Lang.T("取消 (Esc)"), 104)
         AddHandler apply.Click, Sub() ExitCropMode(apply:=True)
         AddHandler cancel.Click, Sub() ExitCropMode(apply:=False)
         _help.SetHelp("crop.apply", apply)
@@ -170,7 +170,7 @@ Partial Friend Class frmEditor
         _canvas.CropPixelSize = FullCropSize()
         SyncCropBar()
         SyncCropSize()
-        SetStatusMessage("拖曳畫出裁切範圍；拖曳四角或四邊調整大小、框內拖曳移動。Enter 套用、Esc 取消。")
+        SetStatusMessage(Lang.T("拖曳畫出裁切範圍；拖曳四角或四邊調整大小、框內拖曳移動。Enter 套用、Esc 取消。"))
     End Sub
 
     Private Sub ExitCropMode(apply As Boolean)
@@ -268,7 +268,7 @@ Partial Friend Class frmEditor
         Dim factor = If(_cropRatio.SelectedIndex <= 1, 0.8, 1.0)
         _canvas.Crop = SmartCrop.Suggest(_canvas.FaceMarks, ratio, _rendered.Width, _rendered.Height, factor)
         SyncCropSize()
-        SetStatusMessage(If(_canvas.FaceMarks.Count > 0, "已依人臉位置構圖：眼睛在上方三分線。", "沒有偵測到臉，改用置中構圖。"))
+        SetStatusMessage(If(_canvas.FaceMarks.Count > 0, Lang.T("已依人臉位置構圖：眼睛在上方三分線。"), Lang.T("沒有偵測到臉，改用置中構圖。")))
         _canvas.Focus()
     End Sub
 

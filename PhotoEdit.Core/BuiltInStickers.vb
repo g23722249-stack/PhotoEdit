@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 
@@ -13,34 +14,34 @@ Public NotInheritable Class BuiltInStickers
 
     ''' <summary>鍵、名稱、預設顏色（顯示在貼圖面板上的順序）。</summary>
     Public Shared ReadOnly Items As IReadOnlyList(Of (Key As String, Name As String, Color As Color)) = {
-        ("smile", "笑臉", Color.FromArgb(255, 196, 30)),
-        ("cat", "貓咪", Color.FromArgb(80, 82, 92)),
-        ("paw", "貓掌", Color.FromArgb(150, 100, 80)),
-        ("crown", "皇冠", Color.FromArgb(245, 178, 30)),
-        ("bow", "蝴蝶結", Color.FromArgb(232, 69, 110)),
-        ("gift", "禮物", Color.FromArgb(214, 52, 80)),
-        ("balloon", "氣球", Color.FromArgb(235, 70, 90)),
-        ("flower", "花朵", Color.FromArgb(240, 110, 165)),
-        ("clover", "四葉草", Color.FromArgb(60, 165, 85)),
-        ("sun", "太陽", Color.FromArgb(255, 165, 25)),
-        ("moon", "月亮", Color.FromArgb(250, 205, 70)),
-        ("cloud", "雲朵", Color.FromArgb(130, 185, 240)),
-        ("bolt", "閃電", Color.FromArgb(255, 200, 30)),
-        ("drop", "水滴", Color.FromArgb(60, 150, 230)),
-        ("snow", "雪花", Color.FromArgb(110, 185, 240)),
-        ("fire", "火焰", Color.FromArgb(255, 105, 25)),
-        ("note", "音符", Color.FromArgb(70, 70, 95)),
-        ("camera", "相機", Color.FromArgb(55, 60, 70)),
-        ("coffee", "咖啡", Color.FromArgb(135, 85, 55)),
-        ("plane", "紙飛機", Color.FromArgb(70, 150, 230)),
-        ("pin", "定位", Color.FromArgb(232, 60, 70)),
-        ("check", "打勾", Color.FromArgb(55, 175, 90)),
-        ("cross", "叉叉", Color.FromArgb(228, 60, 60)),
-        ("exclaim", "驚嘆號", Color.FromArgb(240, 90, 35)),
-        ("question", "問號", Color.FromArgb(80, 115, 230)),
-        ("thumb", "讚", Color.FromArgb(60, 135, 230)),
-        ("sparkles", "閃閃", Color.FromArgb(255, 210, 50)),
-        ("burst", "爆炸", Color.FromArgb(255, 85, 55))}
+        ("smile", Lang.T("笑臉"), Color.FromArgb(255, 196, 30)),
+        ("cat", Lang.T("貓咪"), Color.FromArgb(80, 82, 92)),
+        ("paw", Lang.T("貓掌"), Color.FromArgb(150, 100, 80)),
+        ("crown", Lang.T("皇冠"), Color.FromArgb(245, 178, 30)),
+        ("bow", Lang.T("蝴蝶結"), Color.FromArgb(232, 69, 110)),
+        ("gift", Lang.T("禮物"), Color.FromArgb(214, 52, 80)),
+        ("balloon", Lang.T("氣球"), Color.FromArgb(235, 70, 90)),
+        ("flower", Lang.T("花朵"), Color.FromArgb(240, 110, 165)),
+        ("clover", Lang.T("四葉草"), Color.FromArgb(60, 165, 85)),
+        ("sun", Lang.T("太陽"), Color.FromArgb(255, 165, 25)),
+        ("moon", Lang.T("月亮"), Color.FromArgb(250, 205, 70)),
+        ("cloud", Lang.T("雲朵"), Color.FromArgb(130, 185, 240)),
+        ("bolt", Lang.T("閃電"), Color.FromArgb(255, 200, 30)),
+        ("drop", Lang.T("水滴"), Color.FromArgb(60, 150, 230)),
+        ("snow", Lang.T("雪花"), Color.FromArgb(110, 185, 240)),
+        ("fire", Lang.T("火焰"), Color.FromArgb(255, 105, 25)),
+        ("note", Lang.T("音符"), Color.FromArgb(70, 70, 95)),
+        ("camera", Lang.T("相機"), Color.FromArgb(55, 60, 70)),
+        ("coffee", Lang.T("咖啡"), Color.FromArgb(135, 85, 55)),
+        ("plane", Lang.T("紙飛機"), Color.FromArgb(70, 150, 230)),
+        ("pin", Lang.T("定位"), Color.FromArgb(232, 60, 70)),
+        ("check", Lang.T("打勾"), Color.FromArgb(55, 175, 90)),
+        ("cross", Lang.T("叉叉"), Color.FromArgb(228, 60, 60)),
+        ("exclaim", Lang.T("驚嘆號"), Color.FromArgb(240, 90, 35)),
+        ("question", Lang.T("問號"), Color.FromArgb(80, 115, 230)),
+        ("thumb", Lang.T("讚"), Color.FromArgb(60, 135, 230)),
+        ("sparkles", Lang.T("閃閃"), Color.FromArgb(255, 210, 50)),
+        ("burst", Lang.T("爆炸"), Color.FromArgb(255, 85, 55))}
 
     ''' <summary>預設顏色；不是這裡的貼圖時回傳 Nothing。</summary>
     Public Shared Function DefaultColor(key As String) As Color?

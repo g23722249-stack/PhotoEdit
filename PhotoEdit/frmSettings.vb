@@ -1,4 +1,5 @@
-﻿''' <summary>
+﻿Imports PhotoEdit
+''' <summary>
 ''' 「設定」視窗（編輯 → 設定…，Ctrl+,）：外觀配色選淺色或深色，點選後立刻套用到所有視窗並記住。
 ''' </summary>
 Friend Class frmSettings
@@ -7,7 +8,7 @@ Friend Class frmSettings
     Private ReadOnly _settings As AppSettings
     Private ReadOnly _light As New ThemeCard(dark:=False)
     Private ReadOnly _dark As New ThemeCard(dark:=True)
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.5F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.5F)
     Private ReadOnly _runningMdi As Boolean
     Private ReadOnly _sdi As New RadioButton()
     Private ReadOnly _mdiRadio As New RadioButton()
@@ -15,7 +16,7 @@ Friend Class frmSettings
     Public Sub New(settings As AppSettings, runningMdi As Boolean)
         _settings = settings
         _runningMdi = runningMdi
-        Text = "設定"
+        Text = Lang.T("設定")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -23,13 +24,13 @@ Friend Class frmSettings
         StartPosition = FormStartPosition.CenterParent
         ShowInTaskbar = False
         KeyPreview = True
-        ClientSize = New Size(520, 860)
+        ClientSize = New Size(520, 930)
         Padding = New Padding(16, 23 + 12, 16, 14)
 
-        Dim heading As New Label With {.Text = "外觀", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+        Dim heading As New Label With {.Text = Lang.T("外觀"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
                                        .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
         heading.SetBounds(20, 40, 480, 22)
-        Dim hint As New Label With {.Text = "選擇視窗與面板的配色，點一下立刻套用。", .AutoSize = False, .BackColor = Color.Transparent,
+        Dim hint As New Label With {.Text = Lang.T("選擇視窗與面板的配色，點一下立刻套用。"), .AutoSize = False, .BackColor = Color.Transparent,
                                     .ForeColor = Color.FromArgb(105, 110, 120)}
         hint.SetBounds(20, 64, 480, 22)
         _light.SetBounds(20, 94, 230, 180)
@@ -37,8 +38,8 @@ Friend Class frmSettings
         AddHandler _light.Click, Sub() Choose(False)
         AddHandler _dark.Click, Sub() Choose(True)
 
-        Dim close As New Button With {.Text = "關閉", .UseVisualStyleBackColor = True}
-        close.SetBounds(400, 818, 100, 30)
+        Dim close As New Button With {.Text = Lang.T("關閉"), .UseVisualStyleBackColor = True}
+        close.SetBounds(400, 888, 100, 30)
         AddHandler close.Click, Sub() Me.Close()
         CancelButton = close
 
@@ -47,19 +48,40 @@ Friend Class frmSettings
         BuildPen()
         BuildQuickKeys()
         BuildStrokePreview()
+        BuildLanguage()
         UpdateCards()
         ThemeManager.Attach(Me)
     End Sub
 
+    ''' <summary>介面語言：依系統、繁體中文、簡體中文、English（各語言用自己的文字顯示）。改了要重新開啟。</summary>
+    Private Sub BuildLanguage()
+        Dim heading As New Label With {.Text = If(Lang.Current = UiLanguage.English, "Language", Lang.T("語言") & " / Language"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
+        heading.SetBounds(20, 818, 480, 22)
+        Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
+        combo.Items.AddRange({Lang.T("依照系統語言"), "繁體中文", "简体中文", "English"})
+        combo.SelectedIndex = Math.Max(0, Math.Min(3, _settings.Language))
+        combo.SetBounds(24, 844, 220, 26)
+        Dim hint As New Label With {.Text = Lang.T("改了語言要重新開啟 PhotoEdit 才會生效。"), .AutoSize = False, .BackColor = Color.Transparent,
+                                    .ForeColor = Color.FromArgb(105, 110, 120)}
+        hint.SetBounds(252, 847, 260, 40)
+        AddHandler combo.SelectedIndexChanged, Sub()
+                                                   If combo.SelectedIndex < 0 OrElse combo.SelectedIndex = _settings.Language Then Return
+                                                   _settings.Language = combo.SelectedIndex
+                                                   _settings.Save()
+                                               End Sub
+        Controls.AddRange({heading, combo, hint})
+    End Sub
+
     ''' <summary>筆畫預覽：畫的時候看到的線（真實筆刷／快速線條；逐段筆印保留給之後）。</summary>
     Private Sub BuildStrokePreview()
-        Dim heading As New Label With {.Text = "筆畫預覽（畫的時候看到的線）", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+        Dim heading As New Label With {.Text = Lang.T("筆畫預覽（畫的時候看到的線）"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
                                        .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
         heading.SetBounds(20, 708, 480, 22)
         Controls.Add(heading)
-        Dim options = {(0, "真實筆刷：邊畫邊用筆刷引擎重算，看到的就是放開後的樣子（建議）"),
-                       (1, "快速線條：只畫一條依筆壓變粗細的線（舊電腦、很大的筆刷比較順）"),
-                       (2, "逐段筆印：像 Painter 一樣只算新增的筆印（之後提供）")}
+        Dim options = {(0, Lang.T("真實筆刷：邊畫邊用筆刷引擎重算，看到的就是放開後的樣子（建議）")),
+                       (1, Lang.T("快速線條：只畫一條依筆壓變粗細的線（舊電腦、很大的筆刷比較順）")),
+                       (2, Lang.T("逐段筆印：像 Painter 一樣只算新增的筆印（之後提供）"))}
         Dim y = 734
         For Each o In options
             Dim value = o.Item1
@@ -78,11 +100,11 @@ Friend Class frmSettings
 
     ''' <summary>文件模式：單一文件（SDI）或多文件（MDI）。改了要重開程式才生效，關閉設定時提示。</summary>
     Private Sub BuildDocumentMode()
-        Dim heading As New Label With {.Text = "文件模式", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+        Dim heading As New Label With {.Text = Lang.T("文件模式"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
                                        .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
         heading.SetBounds(20, 290, 480, 22)
-        _sdi.Text = "單一文件（SDI）：一次編輯一張照片，開新照片會取代目前的"
-        _mdiRadio.Text = "多文件（MDI）：同時開多張畫布，分頁或子視窗顯示"
+        _sdi.Text = Lang.T("單一文件（SDI）：一次編輯一張照片，開新照片會取代目前的")
+        _mdiRadio.Text = Lang.T("多文件（MDI）：同時開多張畫布，分頁或子視窗顯示")
         For Each rb In {_sdi, _mdiRadio}
             rb.AutoSize = False
             rb.BackColor = Color.Transparent
@@ -95,7 +117,7 @@ Friend Class frmSettings
                                                  _settings.Mdi = _mdiRadio.Checked
                                                  _settings.Save()
                                              End Sub
-        Dim hint As New Label With {.Text = "改了文件模式要重新開啟 PhotoEdit 才會生效。", .AutoSize = False, .BackColor = Color.Transparent,
+        Dim hint As New Label With {.Text = Lang.T("改了文件模式要重新開啟 PhotoEdit 才會生效。"), .AutoSize = False, .BackColor = Color.Transparent,
                                     .ForeColor = Color.FromArgb(105, 110, 120)}
         hint.SetBounds(24, 376, 480, 22)
         Controls.AddRange({heading, _sdi, _mdiRadio, hint})
@@ -103,7 +125,7 @@ Friend Class frmSettings
 
     ''' <summary>繪圖筆：筆壓曲線（軟硬、最小筆壓、滿壓力道）與穩定器，左邊畫出曲線，拉滑桿立刻更新、立刻生效。</summary>
     Private Sub BuildPen()
-        Dim heading As New Label With {.Text = "繪圖筆", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+        Dim heading As New Label With {.Text = Lang.T("繪圖筆"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
                                        .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
         heading.SetBounds(20, 410, 480, 22)
         Dim curve As New PenCurveView With {.Curve = _settings.PenCurve()}
@@ -126,13 +148,13 @@ Friend Class frmSettings
                             Controls.AddRange({cap, s, v})
                             y += 32
                         End Sub
-        addSlider("pen_soft", "軟硬", -100, 100, _settings.PenSoftness,
-                  Function(v) If(v = 0, "線性", If(v > 0, "軟 " & v, "硬 " & -v)), Sub(v) _settings.PenSoftness = v)
-        addSlider("pen_min", "最小筆壓", 0, 50, _settings.PenMinPressure, Function(v) v & "%", Sub(v) _settings.PenMinPressure = v)
-        addSlider("pen_full", "滿壓力道", 40, 100, _settings.PenFullPressure, Function(v) v & "%", Sub(v) _settings.PenFullPressure = v)
-        addSlider("pen_stab", "穩定器", 0, 100, _settings.Stabilizer, Function(v) If(v = 0, "關", v.ToString()), Sub(v) _settings.Stabilizer = v)
+        addSlider("pen_soft", Lang.T("軟硬"), -100, 100, _settings.PenSoftness,
+                  Function(v) If(v = 0, Lang.T("線性"), If(v > 0, Lang.T("軟 ") & v, Lang.T("硬 ") & -v)), Sub(v) _settings.PenSoftness = v)
+        addSlider("pen_min", Lang.T("最小筆壓"), 0, 50, _settings.PenMinPressure, Function(v) v & "%", Sub(v) _settings.PenMinPressure = v)
+        addSlider("pen_full", Lang.T("滿壓力道"), 40, 100, _settings.PenFullPressure, Function(v) v & "%", Sub(v) _settings.PenFullPressure = v)
+        addSlider("pen_stab", Lang.T("穩定器"), 0, 100, _settings.Stabilizer, Function(v) If(v = 0, Lang.T("關"), v.ToString()), Sub(v) _settings.Stabilizer = v)
         Dim hint As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120),
-                                    .Text = "軟：輕畫就夠粗夠濃；硬：要用力才會粗。手輕的人把「滿壓力道」調低。穩定器去掉手抖。"}
+                                    .Text = Lang.T("軟：輕畫就夠粗夠濃；硬：要用力才會粗。手輕的人把「滿壓力道」調低。穩定器去掉手抖。")}
         hint.SetBounds(186, y + 2, 316, 44)
         Controls.Add(hint)
     End Sub
@@ -145,14 +167,14 @@ Friend Class frmSettings
 
     ''' <summary>快速工具：繪圖分頁在滑鼠位置叫出快速面板、輪盤的熱鍵。</summary>
     Private Sub BuildQuickKeys()
-        Dim heading As New Label With {.Text = "快速工具（繪圖分頁）", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+        Dim heading As New Label With {.Text = Lang.T("快速工具（繪圖分頁）"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
                                        .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
         heading.SetBounds(20, 618, 480, 22)
         Controls.Add(heading)
         Dim keys = QuickKeyChoices()
         Dim x = 24
-        For Each item In {("快速面板", _settings.QuickPanelHotkey, CType(Sub(v As String) _settings.QuickPanelHotkey = v, Action(Of String)), "settings.quickpanel"),
-                          ("輪盤", _settings.QuickRadialHotkey, CType(Sub(v As String) _settings.QuickRadialHotkey = v, Action(Of String)), "settings.quickradial")}
+        For Each item In {(Lang.T("快速面板"), _settings.QuickPanelHotkey, CType(Sub(v As String) _settings.QuickPanelHotkey = v, Action(Of String)), "settings.quickpanel"),
+                          (Lang.T("輪盤"), _settings.QuickRadialHotkey, CType(Sub(v As String) _settings.QuickRadialHotkey = v, Action(Of String)), "settings.quickradial")}
             Dim cap As New Label With {.Text = item.Item1, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(x, 650)}
             Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Width = 70, .Location = New Point(x + 70, 646)}
             combo.Items.AddRange(keys)
@@ -165,7 +187,7 @@ Friend Class frmSettings
             Controls.AddRange({cap, combo})
             x += 170
         Next
-        Dim hint As New Label With {.Text = "在畫布上按一下就在滑鼠位置出現；再按一次或 Esc 收起。", .AutoSize = False, .BackColor = Color.Transparent,
+        Dim hint As New Label With {.Text = Lang.T("在畫布上按一下就在滑鼠位置出現；再按一次或 Esc 收起。"), .AutoSize = False, .BackColor = Color.Transparent,
                                     .ForeColor = Color.FromArgb(105, 110, 120)}
         hint.SetBounds(24, 676, 480, 22)
         Controls.Add(hint)
@@ -179,7 +201,7 @@ Friend Class frmSettings
 
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
-            AccessibleName = "筆壓曲線"
+            AccessibleName = Lang.T("筆壓曲線")
         End Sub
 
         Public Property Curve As PhotoEdit.PenCurve
@@ -218,13 +240,13 @@ Friend Class frmSettings
             End Using
             Dim fore = ThemeManager.Fore(Color.FromArgb(105, 110, 120))
             Using f As New Font(Font.FontFamily, 7.5F)
-                TextRenderer.DrawText(g, "筆的力道 →", f, New Rectangle(box.X, box.Bottom + 2, box.Width, 16), fore, TextFormatFlags.HorizontalCenter)
+                TextRenderer.DrawText(g, Lang.T("筆的力道 →"), f, New Rectangle(box.X, box.Bottom + 2, box.Width, 16), fore, TextFormatFlags.HorizontalCenter)
                 g.TranslateTransform(0, box.Bottom)
                 g.RotateTransform(-90)
                 ' TextRenderer 不吃座標轉換，直的字用 DrawString
                 Using br As New SolidBrush(fore), sf As New StringFormat With {.Alignment = StringAlignment.Center}
                     g.TextRenderingHint = Drawing.Text.TextRenderingHint.ClearTypeGridFit
-                    g.DrawString("筆刷 →", f, br, New RectangleF(0, 1, box.Height, 16), sf)
+                    g.DrawString(Lang.T("筆刷 →"), f, br, New RectangleF(0, 1, box.Height, 16), sf)
                 End Using
                 g.ResetTransform()
             End Using
@@ -234,8 +256,8 @@ Friend Class frmSettings
     Protected Overrides Sub OnFormClosed(e As FormClosedEventArgs)
         MyBase.OnFormClosed(e)
         If _settings.Mdi <> _runningMdi Then
-            MessageBox.Show(Owner, $"文件模式已改成「{If(_settings.Mdi, "多文件（MDI）", "單一文件（SDI）")}」，" & vbCrLf &
-                            "要重新開啟 PhotoEdit 才會生效。", "設定", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            MessageBox.Show(Owner, Lang.F("文件模式已改成「{0}」，", If(_settings.Mdi, Lang.T("多文件（MDI）"), Lang.T("單一文件（SDI）"))) & vbCrLf &
+                            Lang.T("要重新開啟 PhotoEdit 才會生效。"), Lang.T("設定"), MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
     End Sub
 
@@ -275,7 +297,7 @@ Friend Class frmSettings
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
             Cursor = Cursors.Hand
             AccessibleRole = AccessibleRole.RadioButton
-            AccessibleName = If(dark, "深色", "淺色")
+            AccessibleName = If(dark, Lang.T("深色"), Lang.T("淺色"))
         End Sub
 
         Public Property Selected As Boolean
@@ -331,7 +353,7 @@ Friend Class frmSettings
             Dim nameRect As New Rectangle(0, Height - 36, Width, 28)
             Dim fore = ThemeManager.Fore(Color.FromArgb(40, 44, 52))
             Using f As New Font(Font, If(_selected, FontStyle.Bold, FontStyle.Regular))
-                TextRenderer.DrawText(g, If(_selected, "● ", "○ ") & If(_darkCard, "深色", "淺色"), f, nameRect, If(_selected, accent, fore),
+                TextRenderer.DrawText(g, If(_selected, "● ", "○ ") & If(_darkCard, Lang.T("深色"), Lang.T("淺色")), f, nameRect, If(_selected, accent, fore),
                                       TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             End Using
             Dim border = If(_selected, accent, If(_hover, Color.FromArgb(120, 150, 200), ThemeManager.Line(Color.FromArgb(200, 205, 214))))

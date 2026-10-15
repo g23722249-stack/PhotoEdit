@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Threading
 Imports PhotoEdit
 
@@ -14,22 +14,22 @@ Friend Class frmFaceChange
 
     Private ReadOnly _source As Bitmap
     Private ReadOnly _name As String
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
-    Private ReadOnly _small As New Font("Microsoft JhengHei UI", 9.0F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
+    Private ReadOnly _small As New Font(Lang.UiFont, 9.0F)
     Private ReadOnly _preview As New PictureBox With {.SizeMode = PictureBoxSizeMode.Zoom, .BackColor = Color.FromArgb(30, 30, 32)}
     Private ReadOnly _pos As New Aqua.Slider With {.Minimum = 0, .Maximum = 1000, .ShowTicks = False}
     Private ReadOnly _time As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
-    Private ReadOnly _play As New Button With {.Text = "播放"}
+    Private ReadOnly _play As New Button With {.Text = Lang.T("播放")}
     Private ReadOnly _list As New CheckedListBox With {.CheckOnClick = True, .IntegralHeight = False}
-    Private ReadOnly _startSelf As New CheckBox With {.Text = "開頭先看本人", .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
-    Private ReadOnly _endSelf As New CheckBox With {.Text = "最後露出本人", .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
+    Private ReadOnly _startSelf As New CheckBox With {.Text = Lang.T("開頭先看本人"), .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
+    Private ReadOnly _endSelf As New CheckBox With {.Text = Lang.T("最後露出本人"), .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
     Private ReadOnly _hold As New NumericUpDown With {.Minimum = 0.3D, .Maximum = 5, .DecimalPlaces = 1, .Increment = 0.1D, .Value = 1}
     Private ReadOnly _trans As New NumericUpDown With {.Minimum = 0.15D, .Maximum = 1.5D, .DecimalPlaces = 2, .Increment = 0.05D, .Value = 0.35D}
     Private ReadOnly _style As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _size As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-    Private ReadOnly _saveMp4 As New Button With {.Text = "存成 MP4…"}
-    Private ReadOnly _saveGif As New Button With {.Text = "存成 GIF…"}
-    Private ReadOnly _cancel As New Button With {.Text = "停止", .Enabled = False}
+    Private ReadOnly _saveMp4 As New Button With {.Text = Lang.T("存成 MP4…")}
+    Private ReadOnly _saveGif As New Button With {.Text = Lang.T("存成 GIF…")}
+    Private ReadOnly _cancel As New Button With {.Text = Lang.T("停止"), .Enabled = False}
     Private ReadOnly _progress As New ProgressBar With {.Minimum = 0, .Maximum = 100}
     Private ReadOnly _status As New Label With {.AutoSize = False, .BackColor = Color.Transparent}
     Private ReadOnly _rebuild As New System.Windows.Forms.Timer With {.Interval = 300}
@@ -52,12 +52,12 @@ Friend Class frmFaceChange
     Friend Property LastExportMessage As String
 
     ''' <summary>預設打勾、依序變的臉譜。</summary>
-    Private Shared ReadOnly DefaultOrder As String() = {"火焰紅臉", "雲紋藍臉", "綠臉精怪", "金臉神佛", "包拯（月牙）"}
+    Private Shared ReadOnly DefaultOrder As String() = {Lang.T("火焰紅臉"), Lang.T("雲紋藍臉"), Lang.T("綠臉精怪"), Lang.T("金臉神佛"), Lang.T("包拯（月牙）")}
 
     Public Sub New(source As Bitmap, name As String, help As HelpTip)
         _source = source
         _name = name
-        Text = "川劇變臉"
+        Text = Lang.T("川劇變臉")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -82,7 +82,7 @@ Friend Class frmFaceChange
 
         ' 右：臉譜順序
         Dim y = top
-        Controls.Add(New Label With {.Text = "打勾的臉譜依序變（可調順序）", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xR, y)})
+        Controls.Add(New Label With {.Text = Lang.T("打勾的臉譜依序變（可調順序）"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xR, y)})
         y += 24
         _list.SetBounds(xR, y, 240, 270)
         _list.Font = _small
@@ -92,14 +92,14 @@ Friend Class frmFaceChange
         For Each id In order.Concat(rest)
             Dim role = OperaRoles.Get(id)
             _ids.Add(id)
-            _list.Items.Add(If(role.Group = OperaGroup.Chuan, "川劇・", "京劇・") & role.Name, order.Contains(id))
+            _list.Items.Add(If(role.Group = OperaGroup.Chuan, Lang.T("川劇・"), Lang.T("京劇・")) & role.Name, order.Contains(id))
         Next
         AddHandler _list.ItemCheck, Sub() BeginInvoke(Sub() Rebuild())
         help?.SetHelp("facechange.list", _list)
-        Dim up As New Button With {.Text = "上移", .Font = _small}
+        Dim up As New Button With {.Text = Lang.T("上移"), .Font = _small}
         up.SetBounds(xR + 248, y, 70, 28)
         AddHandler up.Click, Sub() MoveItem(-1)
-        Dim down As New Button With {.Text = "下移", .Font = _small}
+        Dim down As New Button With {.Text = Lang.T("下移"), .Font = _small}
         down.SetBounds(xR + 248, y + 32, 70, 28)
         AddHandler down.Click, Sub() MoveItem(1)
         Controls.AddRange({_list, up, down})
@@ -113,19 +113,19 @@ Friend Class frmFaceChange
         Controls.AddRange({_startSelf, _endSelf})
         y += 30
         Dim lab = Function(s As String, yy As Integer) New Label With {.Text = s, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(xR, yy + 4)}
-        Controls.Add(lab("每張停留（秒）", y))
+        Controls.Add(lab(Lang.T("每張停留（秒）"), y))
         _hold.SetBounds(xR + 130, y, 70, 26)
         y += 32
-        Controls.Add(lab("換臉時間（秒）", y))
+        Controls.Add(lab(Lang.T("換臉時間（秒）"), y))
         _trans.SetBounds(xR + 130, y, 70, 26)
         y += 32
-        Controls.Add(lab("換臉方式", y))
-        _style.Items.AddRange({"扯臉", "抹臉", "吹臉", "三種輪流"})
+        Controls.Add(lab(Lang.T("換臉方式"), y))
+        _style.Items.AddRange({Lang.T("扯臉"), Lang.T("抹臉"), Lang.T("吹臉"), Lang.T("三種輪流")})
         _style.SelectedIndex = 3
         _style.SetBounds(xR + 130, y, 120, 26)
         y += 32
-        Controls.Add(lab("輸出大小（長邊）", y))
-        _size.Items.AddRange({"720", "1080", "原尺寸"})
+        Controls.Add(lab(Lang.T("輸出大小（長邊）"), y))
+        _size.Items.AddRange({"720", "1080", Lang.T("原尺寸")})
         _size.SelectedIndex = 1
         _size.SetBounds(xR + 130, y, 120, 26)
         AddHandler _hold.ValueChanged, Sub() TimingChanged()
@@ -150,7 +150,7 @@ Friend Class frmFaceChange
         help?.SetHelp("morph.gif", _saveGif)
         _status.Font = _small
         _status.SetBounds(16, by + 36, ClientSize.Width - 140, 22)
-        Dim closeBtn As New Button With {.Text = "關閉", .DialogResult = DialogResult.Cancel}
+        Dim closeBtn As New Button With {.Text = Lang.T("關閉"), .DialogResult = DialogResult.Cancel}
         closeBtn.SetBounds(ClientSize.Width - 112, ClientSize.Height - 44, 96, 32)
         CancelButton = closeBtn
         Controls.AddRange({_saveMp4, _saveGif, _cancel, _progress, _status, closeBtn})
@@ -206,7 +206,7 @@ Friend Class frmFaceChange
         _fc = Nothing
         Dim seq = Sequence()
         If seq.Count < 2 Then
-            _status.Text = "至少要兩張臉（打勾幾張臉譜，或勾「開頭先看本人」）。"
+            _status.Text = Lang.T("至少要兩張臉（打勾幾張臉譜，或勾「開頭先看本人」）。")
             Return
         End If
         Cursor = Cursors.WaitCursor
@@ -215,7 +215,7 @@ Friend Class frmFaceChange
         Finally
             Cursor = Cursors.Default
         End Try
-        If Not _fc.HasFace Then _status.Text = "這張照片找不到臉，沒辦法變臉。"
+        If Not _fc.HasFace Then _status.Text = Lang.T("這張照片找不到臉，沒辦法變臉。")
         TimingChanged()
     End Sub
 
@@ -228,7 +228,7 @@ Friend Class frmFaceChange
                                      acc += f.Duration
                                      Return s
                                  End Function).ToArray()
-        If _fc.HasFace Then _status.Text = $"{Sequence().Count} 張臉、共 {TotalSeconds():0.0} 秒。"
+        If _fc.HasFace Then _status.Text = Lang.F("{0} 張臉、共 {1:0.0} 秒。", Sequence().Count, TotalSeconds())
         ShowAt(_pos.Value / 1000.0 * TotalSeconds())
     End Sub
 
@@ -253,12 +253,12 @@ Friend Class frmFaceChange
     Private Sub TogglePlay()
         If _playTimer.Enabled Then
             _playTimer.Stop()
-            _play.Text = "播放"
+            _play.Text = Lang.T("播放")
         ElseIf _frames IsNot Nothing Then
             _playClock = _pos.Value / 1000.0 * TotalSeconds()
             If _playClock >= TotalSeconds() - 0.05 Then _playClock = 0
             _playTimer.Start()
-            _play.Text = "停止"
+            _play.Text = Lang.T("停止")
         End If
     End Sub
 
@@ -275,13 +275,13 @@ Friend Class frmFaceChange
 
     Private Sub Export(gif As Boolean)
         If Sequence().Count < 2 OrElse _fc Is Nothing OrElse Not _fc.HasFace Then
-            _status.Text = "先打勾至少兩張臉（照片要找得到臉）。"
+            _status.Text = Lang.T("先打勾至少兩張臉（照片要找得到臉）。")
             Return
         End If
         Directory.CreateDirectory(OutputFolder)
         Dim ext = If(gif, ".gif", ".mp4")
-        Using dlg As New SaveFileDialog With {.Title = If(gif, "存成 GIF", "存成 MP4"), .Filter = If(gif, "GIF 動畫|*.gif", "MP4 影片|*.mp4"),
-                                              .InitialDirectory = OutputFolder, .FileName = $"{_name}_川劇變臉{ext}"}
+        Using dlg As New SaveFileDialog With {.Title = If(gif, Lang.T("存成 GIF"), Lang.T("存成 MP4")), .Filter = If(gif, Lang.T("GIF 動畫|*.gif"), Lang.T("MP4 影片|*.mp4")),
+                                              .InitialDirectory = OutputFolder, .FileName = Lang.F("{0}_川劇變臉{1}", _name, ext)}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             ExportTo(dlg.FileName, gif)
         End Using
@@ -296,7 +296,7 @@ Friend Class frmFaceChange
         _cts = New CancellationTokenSource()
         Dim ct = _cts.Token
         SetExporting(True)
-        _status.Text = "產生中…"
+        _status.Text = Lang.T("產生中…")
         Dim t0 = Environment.TickCount
         Threading.Tasks.Task.Run(Sub()
                                      Dim msg As String
@@ -309,15 +309,15 @@ Friend Class frmFaceChange
                                                  fc.WriteMp4(file, tm, prog, ct)
                                              End If
                                          End Using
-                                         msg = $"完成（{(Environment.TickCount - t0) / 1000.0:0.0} 秒、{New FileInfo(file).Length / 1048576.0:0.0} MB）：{file}"
+                                         msg = Lang.F("完成（{0:0.0} 秒、{1:0.0} MB）：{2}", (Environment.TickCount - t0) / 1000.0, New FileInfo(file).Length / 1048576.0, file)
                                      Catch ex As OperationCanceledException
-                                         msg = "已停止。"
+                                         msg = Lang.T("已停止。")
                                          Try
                                              IO.File.Delete(file)
                                          Catch ex2 As IOException
                                          End Try
                                      Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is IOException OrElse TypeOf ex Is OpenCvSharp.OpenCVException OrElse TypeOf ex Is UnauthorizedAccessException
-                                         msg = "輸出失敗：" & ex.Message
+                                         msg = Lang.T("輸出失敗：") & ex.Message
                                      Finally
                                          img.Dispose()
                                      End Try

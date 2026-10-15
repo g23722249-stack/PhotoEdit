@@ -55,8 +55,8 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private Function BuildNodeBar() As Control
-        Dim defs = {("corner", "尖角"), ("smooth", "平滑"), ("symmetric", "對稱"), ("delete", "刪節點"), ("break", "斷開"),
-                    ("close", "封閉"), ("join", "接合"), ("convert", "轉成曲線")}
+        Dim defs = {("corner", Lang.T("尖角")), ("smooth", Lang.T("平滑")), ("symmetric", Lang.T("對稱")), ("delete", Lang.T("刪節點")), ("break", Lang.T("斷開")),
+                    ("close", Lang.T("封閉")), ("join", Lang.T("接合")), ("convert", Lang.T("轉成曲線"))}
         For Each d In defs
             Dim key = d.Item1
             Dim b = MakeButton(d.Item2, "draw.node." & key)
@@ -82,7 +82,7 @@ Partial Friend Class frmEditor
             _nodeButtons(k).Visible = hasNodes
         Next
         _nodeButtons("close").Visible = editing
-        If editing Then _nodeButtons("close").Text = If(sel.Contours.All(Function(c) c.Closed), "開放", "封閉")
+        If editing Then _nodeButtons("close").Text = If(sel.Contours.All(Function(c) c.Closed), Lang.T("開放"), Lang.T("封閉"))
         _nodeButtons("join").Visible = editing AndAlso JoinableEnds().HasValue
         _nodeButtons("convert").Visible = sel IsNot Nothing AndAlso Not isPath AndAlso
                                           (DrawGeometry.ToPath(sel) IsNot Nothing OrElse (DrawGeometry.HasText(sel.Shape) AndAlso Not String.IsNullOrWhiteSpace(sel.Text))) AndAlso
@@ -196,13 +196,13 @@ Partial Friend Class frmEditor
         If DrawGeometry.HasText(_recipe.Drawings(index).Shape) Then ConvertTextToPaths(index) : Return ' 文字、圖說：每個字變成外框
         Dim p = DrawGeometry.ToPath(_recipe.Drawings(index))
         If p Is Nothing Then
-            SetStatusMessage("圖說、點陣圖層、填滿圖層不能轉成曲線。")
+            SetStatusMessage(Lang.T("圖說、點陣圖層、填滿圖層不能轉成曲線。"))
             Return
         End If
         ApplyChange(Sub(r) r.Drawings(index) = p)
         _drawStrip.SelectedTool = DrawIcons.NodeTool
         SelectDrawLayer(index)
-        SetStatusMessage("已轉成曲線：用節點工具拖曳節點與把手改形狀（原本的圓角、角數等設定不能再調）。")
+        SetStatusMessage(Lang.T("已轉成曲線：用節點工具拖曳節點與把手改形狀（原本的圓角、角數等設定不能再調）。"))
     End Sub
 
     Private Sub DeleteSelectedNodes()
@@ -292,7 +292,7 @@ Partial Friend Class frmEditor
         End If
         Dim d As New DrawLayer With {.Shape = DrawShape.Path, .Seed = _drawRandom.Next(1, 100000), .Contours = New List(Of PathContour) From {c}}
         d.CopyStyleFrom(_drawStyle)
-        d.Name = "鋼筆 " & (LayerCount() + 1)
+        d.Name = Lang.T("鋼筆 ") & (LayerCount() + 1)
         AddDrawLayer(d)
         UpdateDrawHint()
     End Sub

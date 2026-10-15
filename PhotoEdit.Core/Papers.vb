@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Imaging
 
@@ -69,8 +70,8 @@ Public NotInheritable Class Papers
     End Sub
 
     Public Shared ReadOnly Names As String() = {
-        "素描紙", "水彩紙（細紋）", "水彩紙（粗紋）", "畫布", "粉彩紙", "條紋紙", "宣紙", "牛皮紙",
-        "亞麻布", "麻布", "皺紋紙", "砂紙", "混凝土", "磚牆", "木板", "皮革", "自訂"}
+        Lang.T("素描紙"), Lang.T("水彩紙（細紋）"), Lang.T("水彩紙（粗紋）"), Lang.T("畫布"), Lang.T("粉彩紙"), Lang.T("條紋紙"), Lang.T("宣紙"), Lang.T("牛皮紙"),
+        Lang.T("亞麻布"), Lang.T("麻布"), Lang.T("皺紋紙"), Lang.T("砂紙"), Lang.T("混凝土"), Lang.T("磚牆"), Lang.T("木板"), Lang.T("皮革"), Lang.T("自訂")}
 
     ''' <summary>每種紙的底色（新影像用紙張當底時的顏色）。</summary>
     Public Shared ReadOnly BaseColors As Color() = {

@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 填滿圖層（同 Photoshop 的「新增填滿圖層」，非破壞性）：單色、漸層或材質的整個圖層，之後在圖層清單按兩下可以再改；
@@ -9,7 +9,7 @@ Partial Friend Class frmEditor
     ''' <summary>上次新增填滿圖層的選擇（這次開啟程式期間記得）。</summary>
     Private _lastFillLayer As FillChoice
 
-    Private Shared ReadOnly FillLayerKindNames As String() = {"單色", "漸層", "材質"}
+    Private Shared ReadOnly FillLayerKindNames As String() = {Lang.T("單色"), Lang.T("漸層"), Lang.T("材質")}
 
     ''' <summary>繪圖分頁圖層區的「填滿…」：開對話框，新增一個填滿圖層。</summary>
     Private Sub NewFillLayer()
@@ -35,7 +35,7 @@ Partial Friend Class frmEditor
     ''' <summary>直接用選擇新增填滿圖層（不開對話框；測試用）。</summary>
     Private Sub AddFillLayer(layer As DrawLayer)
         AddDrawLayer(layer)
-        SetStatusMessage($"已新增「{layer.Name}」：在圖層清單按兩下可以再改顏色、漸層或材質。")
+        SetStatusMessage(Lang.F("已新增「{0}」：在圖層清單按兩下可以再改顏色、漸層或材質。", layer.Name))
     End Sub
 
     ''' <summary>在圖層清單按兩下填滿圖層：開對話框修改內容（遮色片、位置不變）。</summary>
@@ -50,7 +50,7 @@ Partial Friend Class frmEditor
         End Using
         ApplyChange(Sub(r) ApplyChoiceToLayer(c, r.Drawings(index)))
         UpdateDrawControls()
-        SetStatusMessage($"已修改「{_recipe.Drawings(index).Name}」。")
+        SetStatusMessage(Lang.F("已修改「{0}」。", _recipe.Drawings(index).Name))
     End Sub
 
     ''' <summary>把填滿圖層目前的設定換成對話框的選擇。</summary>
@@ -97,6 +97,6 @@ Partial Friend Class frmEditor
         End If
         Dim kind = FillLayerKindNames(If(c.Content = FillKind.Gradient, 1, If(c.Content = FillKind.Material, 2, 0)))
         ' 沒有改過名字（自動命名）時跟著內容換名字
-        layer.Name = If(String.IsNullOrWhiteSpace(c.Name) OrElse c.Name.StartsWith("填滿圖層（", StringComparison.Ordinal), $"填滿圖層（{kind}）", c.Name)
+        layer.Name = If(String.IsNullOrWhiteSpace(c.Name) OrElse c.Name.StartsWith(Lang.T("填滿圖層（"), StringComparison.Ordinal), Lang.F("填滿圖層（{0}）", kind), c.Name)
     End Sub
 End Class

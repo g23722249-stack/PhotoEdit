@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -21,9 +21,9 @@ Partial Friend Class frmEditor
 
     Private Sub BuildLayersPage(page As Aqua.TabPage)
         Dim L = NewLayout(page, autoScroll:=False)
-        AddHint(L, "文字、貼圖與繪圖圖層都在這裡，上面的蓋住下面的。點眼睛顯示／隱藏、按兩下到該分頁編輯。")
+        AddHint(L, Lang.T("文字、貼圖與繪圖圖層都在這裡，上面的蓋住下面的。點眼睛顯示／隱藏、按兩下到該分頁編輯。"))
 
-        _help.SetHelpLinked("layers.blend", _stackBlend, AddCaption(L, "混合模式", L.Y), _stackBlend)
+        _help.SetHelpLinked("layers.blend", _stackBlend, AddCaption(L, Lang.T("混合模式"), L.Y), _stackBlend)
         _stackBlend.DropDownStyle = ComboBoxStyle.DropDownList
         _stackBlend.Items.AddRange(LayerBlend.Names.Cast(Of Object)().ToArray())
         _stackBlend.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
@@ -37,15 +37,15 @@ Partial Friend Class frmEditor
                                                      End Sub
         L.Add(_stackBlend)
         L.Y += RowHeight
-        AddRow(L, MakeRow("ly_opacity", "不透明度", 0, 100, Function(v) v & "%",
+        AddRow(L, MakeRow("ly_opacity", Lang.T("不透明度"), 0, 100, Function(v) v & "%",
                           Function(r) If(StackSel(r)?.Opacity, 100),
                           Sub(r, v)
                               Dim s = StackSel(r)
                               If s IsNot Nothing Then s.Opacity = v
                           End Sub))
 
-        Dim names = {("移到最上", "layers.top"), ("上移", "layers.up"), ("下移", "layers.down"), ("移到最下", "layers.bottom"),
-                     ("合併向下", "layers.mergedown"), ("合併可見", "layers.mergevisible"), ("編輯", "layers.edit"), ("刪除", "layers.delete")}
+        Dim names = {(Lang.T("移到最上"), "layers.top"), (Lang.T("上移"), "layers.up"), (Lang.T("下移"), "layers.down"), (Lang.T("移到最下"), "layers.bottom"),
+                     (Lang.T("合併向下"), "layers.mergedown"), (Lang.T("合併可見"), "layers.mergevisible"), (Lang.T("編輯"), "layers.edit"), (Lang.T("刪除"), "layers.delete")}
         Dim bw = (L.Width - 8 - 3 * 4) \ 4
         For i = 0 To names.Length - 1
             Dim b = MakeButton(names(i).Item1, names(i).Item2)
@@ -263,7 +263,7 @@ Partial Friend Class frmEditor
         Dim n = DrawGroups.MemberIndices(_recipe, grp.Id).Count
         TextRenderer.DrawText(g, GroupName(grp), _stackList.Font, New Rectangle(x0 + 40, r.Y, r.Right - x0 - 40 - 50, r.Height), fg,
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
-        TextRenderer.DrawText(g, n & " 個", _stackList.Font, New Rectangle(r.Right - 50, r.Y, 46, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
+        TextRenderer.DrawText(g, n & Lang.T(" 個"), _stackList.Font, New Rectangle(r.Right - 50, r.Y, 46, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
                               TextFormatFlags.VerticalCenter Or TextFormatFlags.Right)
         Using line As New Pen(ThemeManager.Line(Color.FromArgb(232, 235, 240)))
             g.DrawLine(line, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1)
@@ -341,7 +341,7 @@ Partial Friend Class frmEditor
                                 DrawGroups.Prune(r)
                             End Sub)
                 SelectStack(LayerStack.PositionOf(_recipe, merged))
-                SetStatusMessage("已合併成點陣圖層「" & merged.Name & "」；可以整體移動、直接繪製或擦除，按復原可以還原。")
+                SetStatusMessage(Lang.T("已合併成點陣圖層「") & merged.Name & Lang.T("」；可以整體移動、直接繪製或擦除，按復原可以還原。"))
             Case 5
                 Dim reason As String = Nothing
                 Dim merged As DrawLayer = Nothing
@@ -355,7 +355,7 @@ Partial Friend Class frmEditor
                                 DrawGroups.Prune(r)
                             End Sub)
                 SelectStack(LayerStack.PositionOf(_recipe, merged))
-                SetStatusMessage("已把所有顯示中的圖層合併成「合併圖層」；隱藏的圖層保留不動，按復原可以還原。")
+                SetStatusMessage(Lang.T("已把所有顯示中的圖層合併成「合併圖層」；隱藏的圖層保留不動，按復原可以還原。"))
             Case 6 : EditStackLayer()
             Case 7 : DeleteStackLayer()
         End Select

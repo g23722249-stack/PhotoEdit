@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     Private Const TargetFill2 As Integer = 3
     ''' <summary>拖曳中的漸層控制點：1＝起點、2＝終點。</summary>
     Private _gradDrag As Integer
-    Private Shared ReadOnly FillModeNames As String() = {"單色", "線性漸層", "放射漸層"}
+    Private Shared ReadOnly FillModeNames As String() = {Lang.T("單色"), Lang.T("線性漸層"), Lang.T("放射漸層")}
     ' ---- 路徑文字 ----
     Private ReadOnly _pathTextBar As New FlowLayoutPanel With {.Dock = DockStyle.Left, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink,
                                                                .WrapContents = False, .BackColor = Color.Transparent, .Padding = New Padding(6, 0, 0, 0)}
@@ -38,12 +38,12 @@ Partial Friend Class frmEditor
             Cursor = Cursors.Default
         End Try
         If rings Is Nothing OrElse rings.Count = 0 Then
-            SetStatusMessage("這裡沒有被線條或圖形圍起來（填到照片邊緣了）；線條要接起來才填得到。")
+            SetStatusMessage(Lang.T("這裡沒有被線條或圖形圍起來（填到照片邊緣了）；線條要接起來才填得到。"))
             Return
         End If
         Dim layer = SmartFill.MakeLayer(rings, _drawStyle)
         If layer Is Nothing Then Return
-        layer.Name = "智慧填色 " & (LayerCount() + 1)
+        layer.Name = Lang.T("智慧填色 ") & (LayerCount() + 1)
         layer.GroupId = EnteredGroup()
         ' 放在圍住它的圖形最下面那個的下方（線條蓋在填色上面）
         Dim rb = DrawGeometry.Bounds(layer)
@@ -66,7 +66,7 @@ Partial Friend Class frmEditor
                         LayerStack.SetOrder(r, order)
                     End Sub)
         SelectDrawLayer(_recipe.Drawings.IndexOf(layer))
-        SetStatusMessage("已填色：變成一個鋼筆路徑（放在線條下面），可以再改顏色、漸層或節點。")
+        SetStatusMessage(Lang.T("已填色：變成一個鋼筆路徑（放在線條下面），可以再改顏色、漸層或節點。"))
     End Sub
 
     '---------------------------------------------------------------------
@@ -75,7 +75,7 @@ Partial Friend Class frmEditor
 
     Private Sub BuildFillStyleRow(L As PageLayout)
         Dim third = (L.Width - 8 - 12) \ 3
-        _help.SetHelpLinked("draw.fillmode", _fillMode, AddCaption(L, "填色方式", L.Y), _fillMode)
+        _help.SetHelpLinked("draw.fillmode", _fillMode, AddCaption(L, Lang.T("填色方式"), L.Y), _fillMode)
         _fillMode.Items.AddRange(FillModeNames.Cast(Of Object)().ToArray())
         _fillMode.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8 - third - 6, 24)
         AddHandler _fillMode.SelectedIndexChanged, Sub()
@@ -93,7 +93,7 @@ Partial Friend Class frmEditor
                                                                    End Sub)
                                                    End Sub
         L.Add(_fillMode)
-        _drawFill2Color.Text = "第二色"
+        _drawFill2Color.Text = Lang.T("第二色")
         _drawFill2Color.FlatStyle = FlatStyle.Flat
         _drawFill2Color.FlatAppearance.BorderColor = Color.FromArgb(150, 160, 175)
         _drawFill2Color.Cursor = Cursors.Hand
@@ -173,16 +173,16 @@ Partial Friend Class frmEditor
         ExitCropMode(apply:=True)
         CommitCalloutEditor()
         If _recipe.Drawings Is Nothing OrElse _recipe.Drawings.Count = 0 Then
-            MessageBox.Show(Me, "還沒有繪圖圖層：SVG 匯出的是繪圖分頁畫的向量圖形。", AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
+            MessageBox.Show(Me, Lang.T("還沒有繪圖圖層：SVG 匯出的是繪圖分頁畫的向量圖形。"), AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
-        Dim withPhoto As New TaskDialogButton("含照片") With {.Tag = True}
-        Dim vectorOnly As New TaskDialogButton("只有向量圖形") With {.Tag = False}
+        Dim withPhoto As New TaskDialogButton(Lang.T("含照片")) With {.Tag = True}
+        Dim vectorOnly As New TaskDialogButton(Lang.T("只有向量圖形")) With {.Tag = False}
         Dim page As New TaskDialogPage With {
-            .Caption = AppName, .Heading = "匯出 SVG",
-            .Text = "繪圖分頁的圖形會變成可以無限放大的向量（鋼筆路徑保留曲線，文字轉成外框）；點陣圖層嵌成圖片。" & vbCrLf &
-                    "水彩、炭筆等筆刷的質感、陰影與混合模式沒辦法變成 SVG，會變成一般的實心線條。" & vbCrLf & vbCrLf &
-                    "要把照片（含文字效果、貼圖）也放進去嗎？",
+            .Caption = AppName, .Heading = Lang.T("匯出 SVG"),
+            .Text = Lang.T("繪圖分頁的圖形會變成可以無限放大的向量（鋼筆路徑保留曲線，文字轉成外框）；點陣圖層嵌成圖片。") & vbCrLf &
+                    Lang.T("水彩、炭筆等筆刷的質感、陰影與混合模式沒辦法變成 SVG，會變成一般的實心線條。") & vbCrLf & vbCrLf &
+                    Lang.T("要把照片（含文字效果、貼圖）也放進去嗎？"),
             .Icon = TaskDialogIcon.Information, .DefaultButton = vectorOnly}
         page.Buttons.Add(withPhoto)
         page.Buttons.Add(vectorOnly)
@@ -190,8 +190,8 @@ Partial Friend Class frmEditor
         Dim result = TaskDialog.ShowDialog(Me, page)
         If result Is TaskDialogButton.Cancel OrElse result Is Nothing OrElse result.Tag Is Nothing Then Return
         Using dlg As New SaveFileDialog()
-            dlg.Title = "匯出 SVG"
-            dlg.Filter = "SVG 向量圖 (*.svg)|*.svg"
+            dlg.Title = Lang.T("匯出 SVG")
+            dlg.Filter = Lang.T("SVG 向量圖 (*.svg)|*.svg")
             SetDialogDefaults(dlg, ".svg")
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             ExportSvg(dlg.FileName, CBool(result.Tag))
@@ -211,10 +211,10 @@ Partial Friend Class frmEditor
                 Dim svg = SvgExport.Export(_recipe, If(includePhoto, bg, Nothing), bg.Width, bg.Height)
                 IO.File.WriteAllText(file, svg, New Text.UTF8Encoding(False))
             End Using
-            SetStatusMessage("已匯出 SVG：" & Path.GetFileName(file))
+            SetStatusMessage(Lang.T("已匯出 SVG：") & Path.GetFileName(file))
             Return True
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
-            MessageBox.Show(Me, "無法匯出：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法匯出：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return False
         Finally
             Cursor = Cursors.Default
@@ -226,9 +226,9 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private Function BuildPathTextBar() As Control
-        _btnAttachText = MakeButton("文字沿路徑", "draw.pathtext.attach")
-        _btnFlipText = MakeButton("換到另一邊", "draw.pathtext.flip")
-        _btnDetachText = MakeButton("離開路徑", "draw.pathtext.detach")
+        _btnAttachText = MakeButton(Lang.T("文字沿路徑"), "draw.pathtext.attach")
+        _btnFlipText = MakeButton(Lang.T("換到另一邊"), "draw.pathtext.flip")
+        _btnDetachText = MakeButton(Lang.T("離開路徑"), "draw.pathtext.detach")
         For Each b In {_btnAttachText, _btnFlipText, _btnDetachText}
             b.Height = 28
             b.AutoSize = True
@@ -238,7 +238,7 @@ Partial Friend Class frmEditor
         AddHandler _btnAttachText.Click, Sub() AttachTextToPath()
         AddHandler _btnFlipText.Click, Sub() SetPathText(Sub(d) d.TextPathFlip = Not d.TextPathFlip)
         AddHandler _btnDetachText.Click, Sub() DetachTextFromPath()
-        Dim lbl As New Label With {.Text = "位置", .AutoSize = True, .Margin = New Padding(2, 7, 1, 0), .BackColor = Color.Transparent}
+        Dim lbl As New Label With {.Text = Lang.T("位置"), .AutoSize = True, .Margin = New Padding(2, 7, 1, 0), .BackColor = Color.Transparent}
         _help.SetHelp("draw.pathtext.shift", _textShift)
         AddHandler _textShift.KeyDown, Sub(s, e)
                                            Dim v As Integer
@@ -299,7 +299,7 @@ Partial Friend Class frmEditor
                         t.TextPathSource = r.Drawings(pi).Id ' 跟著這個圖形
                         ' 文字和圖形組成群組：一起移動、縮放
                         If DrawGroups.ChildGroupAt(r, t, entered) Is Nothing OrElse DrawGroups.ChildGroupAt(r, t, entered) <> DrawGroups.ChildGroupAt(r, r.Drawings(pi), entered) Then
-                            DrawGroups.Create(r, {t, r.Drawings(pi)}, entered, "路徑文字")
+                            DrawGroups.Create(r, {t, r.Drawings(pi)}, entered, Lang.T("路徑文字"))
                         End If
                         t.Contours = path.Contours.Select(Function(x) x.Clone()).ToList()
                         t.TextPathShift = 0
@@ -309,7 +309,7 @@ Partial Friend Class frmEditor
                         t.W = Math.Max(0.05, b.Width) : t.H = Math.Max(0.05, b.Height)
                     End Sub)
         SelectDrawLayer(_recipe.Drawings.IndexOf(textLayer))
-        SetStatusMessage("文字已沿著路徑排，和原本的圖形組成群組（一起移動、縮放）：用節點工具改那個圖形，文字跟著走；上方可以調位置、換到另一邊。")
+        SetStatusMessage(Lang.T("文字已沿著路徑排，和原本的圖形組成群組（一起移動、縮放）：用節點工具改那個圖形，文字跟著走；上方可以調位置、換到另一邊。"))
     End Sub
 
     Private Sub DetachTextFromPath()

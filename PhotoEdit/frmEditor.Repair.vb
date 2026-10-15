@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>修補分頁的動作：修補筆刷、自動拉直；以及最大化時不蓋住工作列。</summary>
 Partial Friend Class frmEditor
@@ -13,7 +13,7 @@ Partial Friend Class frmEditor
             If _tabs.SelectedIndex <> TabRepair Then _tabs.SelectedIndex = TabRepair
         End If
         UpdateToolFromTab()
-        SetStatusMessage(If(enabled, "修補筆刷：在照片上塗抹要移除的污點或雜物，放開滑鼠就會補上。Esc 結束。", ""))
+        SetStatusMessage(If(enabled, Lang.T("修補筆刷：在照片上塗抹要移除的污點或雜物，放開滑鼠就會補上。Esc 結束。"), ""))
         If Not enabled Then UpdateStatus()
     End Sub
 
@@ -37,7 +37,7 @@ Partial Friend Class frmEditor
                         If r.Spots Is Nothing Then r.Spots = New List(Of SpotStroke)()
                         r.Spots.Add(stroke)
                     End Sub)
-        SetStatusMessage($"已修補 {_recipe.Spots.Count} 處。Ctrl+Z 可復原，「清除全部修補」可全部移除。")
+        SetStatusMessage(Lang.F("已修補 {0} 處。Ctrl+Z 可復原，「清除全部修補」可全部移除。", _recipe.Spots.Count))
     End Sub
 
     ''' <summary>
@@ -65,12 +65,12 @@ Partial Friend Class frmEditor
             angle = AutoStraighten.Suggest(img)
         End Using
         If angle Is Nothing Then
-            SetStatusMessage("找不到明顯的水平線或垂直線，請用「拉直」滑桿手動調整。")
+            SetStatusMessage(Lang.T("找不到明顯的水平線或垂直線，請用「拉直」滑桿手動調整。"))
             Return
         End If
         Dim value = Math.Max(-45, Math.Min(45, angle.Value))
         ApplyChange(Sub(r) r.Straighten = value)
-        SetStatusMessage(If(Math.Abs(value) < 0.05, "畫面已經是水平的。", $"自動拉直：{value:+0.0;-0.0}°"))
+        SetStatusMessage(If(Math.Abs(value) < 0.05, Lang.T("畫面已經是水平的。"), Lang.F("自動拉直：{0:+0.0;-0.0}°", value)))
     End Sub
 
     '---------------------------------------------------------------------

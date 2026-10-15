@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 ''' <summary>濾鏡預設集：一組色調、效果與藝術風格，套用時整組替換（見 EditRecipe.CopyLookFrom）。</summary>
 Public Class Preset
     Public ReadOnly Property Name As String

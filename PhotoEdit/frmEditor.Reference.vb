@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>參考圖視窗（檢視 → 參考圖…）：吸色設成繪圖的線條色、描圖時把參考圖疊在畫布上。</summary>
 Partial Friend Class frmEditor
@@ -15,7 +15,7 @@ Partial Friend Class frmEditor
             _reference.Location = New Point(x, y)
             AddHandler _reference.ColorPicked, Sub(c)
                                                    SetDrawProp(Sub(d) d.StrokeColorArgb = c.ToArgb())
-                                                   SetStatusMessage($"從參考圖吸色 RGB({c.R}, {c.G}, {c.B})，已設成線條色。")
+                                                   SetStatusMessage(Lang.F("從參考圖吸色 RGB({0}, {1}, {2})，已設成線條色。", c.R, c.G, c.B))
                                                End Sub
             AddHandler _reference.TraceChanged, Sub() UpdateTrace()
             AddHandler _reference.VisibleChanged, Sub() UpdateTrace()

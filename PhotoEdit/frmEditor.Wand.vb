@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 去背分頁的魔術棒（W）：點一下去掉和點擊處顏色相近的區域，Alt＋點一下（或「補回」模式）加回來。
@@ -15,10 +15,10 @@ Partial Friend Class frmEditor
     Private _wandTolerance As Integer = 25
 
     Private Sub BuildWandSection(L As PageLayout)
-        AddHeading(L, "魔術棒")
+        AddHeading(L, Lang.T("魔術棒"))
         Dim half = (L.Width - 16) \ 2
         _wandToggle.Appearance = Appearance.Button
-        _wandToggle.Text = "魔術棒 (W)"
+        _wandToggle.Text = Lang.T("魔術棒 (W)")
         _wandToggle.TextAlign = ContentAlignment.MiddleCenter
         _wandToggle.FlatStyle = FlatStyle.Flat
         _wandToggle.BackColor = Color.White
@@ -38,10 +38,10 @@ Partial Friend Class frmEditor
             rb.BackColor = Color.White
             rb.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
         Next
-        _wandRemoveMode.Text = "去除"
+        _wandRemoveMode.Text = Lang.T("去除")
         _wandRemoveMode.Checked = True
         _wandRemoveMode.FlatAppearance.CheckedBackColor = Color.FromArgb(250, 210, 210)
-        _wandRestoreMode.Text = "補回"
+        _wandRestoreMode.Text = Lang.T("補回")
         _wandRestoreMode.FlatAppearance.CheckedBackColor = Color.FromArgb(200, 240, 200)
         AddHandler _wandRestoreMode.CheckedChanged, Sub() _canvas.WandRestore = _wandRestoreMode.Checked
         _help.SetHelp("cutout.wandremove", _wandRemoveMode)
@@ -50,7 +50,7 @@ Partial Friend Class frmEditor
         L.Add(PairPanel(_wandRemoveMode, _wandRestoreMode, 8 + half + 8, L.Y + 2, half, 50))
         L.Y += 40
 
-        AddRow(L, New SliderRow With {.Key = "co_wand", .Caption = "相似程度", .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
+        AddRow(L, New SliderRow With {.Key = "co_wand", .Caption = Lang.T("相似程度"), .Minimum = 0, .Maximum = 100, .Format = AddressOf Plain,
             .GetValue = Function(r) If(LastWand(r) Is Nothing, _wandTolerance, LastWand(r).Tolerance),
             .SetValue = Sub(r, v)
                             _wandTolerance = v
@@ -58,7 +58,7 @@ Partial Friend Class frmEditor
                             If last IsNot Nothing Then last.Tolerance = v
                         End Sub})
 
-        _wandContiguous.Text = "只選相連區域"
+        _wandContiguous.Text = Lang.T("只選相連區域")
         _wandContiguous.Checked = True
         _wandContiguous.BackColor = Color.Transparent
         _wandContiguous.SetBounds(8, L.Y + 4, half, 24)
@@ -71,7 +71,7 @@ Partial Friend Class frmEditor
                                                                    End Sub)
                                                    End Sub
         _help.SetHelp("cutout.wandcontiguous", _wandContiguous)
-        _wandDespeckle.Text = "清除雜點"
+        _wandDespeckle.Text = Lang.T("清除雜點")
         _wandDespeckle.BackColor = Color.Transparent
         _wandDespeckle.SetBounds(8 + half + 8, L.Y + 4, half, 24)
         AddHandler _wandDespeckle.CheckedChanged, Sub()
@@ -86,7 +86,7 @@ Partial Friend Class frmEditor
         L.Add(_wandDespeckle)
         _cutoutControls.Add(_wandDespeckle)
         L.Y += 32
-        AddHint(L, "點一下去掉相近的顏色，Alt＋點一下補回。拉「相似程度」會調整最後一次點擊。")
+        AddHint(L, Lang.T("點一下去掉相近的顏色，Alt＋點一下補回。拉「相似程度」會調整最後一次點擊。"))
         AddHandler _canvas.WandClicked, AddressOf OnWandClicked
     End Sub
 
@@ -104,7 +104,7 @@ Partial Friend Class frmEditor
             _syncing = False
         End If
         _canvas.WandRestore = _wandRestoreMode.Checked
-        If _wandToggle.Checked Then SetStatusMessage("魔術棒：在照片上點一下要去掉的顏色（Alt＋點一下補回）。")
+        If _wandToggle.Checked Then SetStatusMessage(Lang.T("魔術棒：在照片上點一下要去掉的顏色（Alt＋點一下補回）。"))
         UpdateToolFromTab()
     End Sub
 
@@ -121,6 +121,6 @@ Partial Friend Class frmEditor
                         If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.Model = model, .Background = CutoutBackground.Transparent}
                         r.Cutout.Wand.Add(click)
                     End Sub)
-        SetStatusMessage(If(restore, "已補回相近顏色的區域。", "已去掉相近顏色的區域。") & "拉「相似程度」可以調整這一次的範圍。")
+        SetStatusMessage(If(restore, Lang.T("已補回相近顏色的區域。"), Lang.T("已去掉相近顏色的區域。")) & Lang.T("拉「相似程度」可以調整這一次的範圍。"))
     End Sub
 End Class

@@ -321,7 +321,7 @@ Partial Friend Class frmEditor
         Dim copies = originals.Select(Function(o)
                                           Dim d = o.Clone()
                                           DrawGeometry.Offset(d, 0.02, 0.02)
-                                          d.Name &= " 複本"
+                                          d.Name &= Lang.T(" 複本")
                                           d.Id = Nothing
                                           Return d
                                       End Function).ToList()

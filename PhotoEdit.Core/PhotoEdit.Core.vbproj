@@ -13,4 +13,9 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 英文介面翻譯表（繁體原文⇥英文），由 Lang 讀取 -->
+    <EmbeddedResource Include="Strings.en.txt" WithCulture="false" LogicalName="PhotoEdit.Strings.en.txt" />
+  </ItemGroup>
+
 </Project>

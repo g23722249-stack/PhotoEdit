@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports System.IO
 Imports System.Runtime.InteropServices
 Imports PhotoEdit
@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     ''' <summary>新影像存放處（預設「圖片\PhotoEdit\新影像」；測試時可改）。</summary>
     Friend Shared Property NewImageFolder As String
         Get
-            Return If(_newImageFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", "新影像"))
+            Return If(_newImageFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", Lang.T("新影像")))
         End Get
         Set(value As String)
             _newImageFolder = value
@@ -63,7 +63,7 @@ Partial Friend Class frmEditor
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                        TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                        TypeOf ex Is ExternalException
-                MessageBox.Show(Me, "無法建立新影像：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show(Me, Lang.T("無法建立新影像：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return
             Finally
                 Cursor = Cursors.Default
@@ -80,8 +80,8 @@ Partial Friend Class frmEditor
                 Dim kind = paperChoice.Value
                 ApplyChange(Sub(r) r.Paper = New PaperSettings With {.Kind = kind, .SurfaceStrength = 40, .SurfaceTarget = SurfaceTarget.Photo})
             End If
-            SetStatusMessage($"已新增 {_photo.Image.Width} × {_photo.Image.Height} 的影像，存成 {file}" &
-                             If(paperChoice.HasValue, $"（紙張：{Papers.Names(CInt(paperChoice.Value))}）", ""))
+            SetStatusMessage(Lang.F("已新增 {0} × {1} 的影像，存成 {2}", _photo.Image.Width, _photo.Image.Height, file) &
+                             If(paperChoice.HasValue, Lang.F("（紙張：{0}）", Papers.Names(CInt(paperChoice.Value))), ""))
         End If
     End Sub
 
@@ -107,7 +107,7 @@ Partial Friend Class frmEditor
     ''' <summary>存成 PNG（保留透明與解析度），檔名「新影像_寬x高_yyyyMMdd_HHmmss.png」，重複時加序號。</summary>
     Private Shared Function SaveNewImage(bmp As Bitmap) As String
         Directory.CreateDirectory(NewImageFolder)
-        Dim name = $"新影像_{bmp.Width}x{bmp.Height}_{DateTime.Now:yyyyMMdd_HHmmss}"
+        Dim name = Lang.F("新影像_{0}x{1}_{2:yyyyMMdd_HHmmss}", bmp.Width, bmp.Height, DateTime.Now)
         Dim file = Path.Combine(NewImageFolder, name & ".png")
         Dim n = 2
         While IO.File.Exists(file)

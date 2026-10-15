@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Imaging
 Imports System.IO
@@ -100,7 +101,7 @@ Public Class PhotoFile
                       Optional prepare As Func(Of Bitmap, Bitmap) = Nothing,
                       Optional faces As IReadOnlyList(Of FaceRegion) = Nothing)
         If String.Equals(IO.Path.GetFullPath(targetPath), IO.Path.GetFullPath(Path), StringComparison.OrdinalIgnoreCase) Then
-            Throw New InvalidOperationException("不能覆寫原始照片，請換一個檔名。")
+            Throw New InvalidOperationException(Lang.T("不能覆寫原始照片，請換一個檔名。"))
         End If
         Using rendered = ImagePipeline.Render(Image, recipe, prepare:=prepare, faces:=faces)
             SaveImage(rendered, targetPath, quality)

@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -23,7 +23,7 @@ Friend Class HistogramView
         SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or
                  ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
         BackColor = Color.FromArgb(30, 30, 32)
-        Font = New Font("Microsoft JhengHei UI", 9.0F)
+        Font = New Font(Lang.UiFont, 9.0F)
     End Sub
 
     Public Property Histogram As Histogram
@@ -94,7 +94,7 @@ Friend Class HistogramView
                 g.FillPolygon(b, {New PointF(cx - 5, cy - 3), New PointF(cx + 5, cy - 3), New PointF(cx, cy + 3)})
             End If
         End Using
-        TextRenderer.DrawText(g, "直方圖", Font, New Rectangle(20, 0, 80, HeaderHeight), fore, TextFormatFlags.VerticalCenter Or TextFormatFlags.Left)
+        TextRenderer.DrawText(g, Lang.T("直方圖"), Font, New Rectangle(20, 0, 80, HeaderHeight), fore, TextFormatFlags.VerticalCenter Or TextFormatFlags.Left)
         If _histogram Is Nothing OrElse _histogram.PixelCount = 0 Then Return
         Dim pk = PeakValue()
         If _collapsed Then

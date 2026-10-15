@@ -159,86 +159,86 @@ Partial Friend Class frmEditor
     Private Sub BuildMenu()
         Dim root As New Aqua.MenuItem()
 
-        Dim fileMenu = root.AddItem(New Aqua.MenuItem("檔案"))
-        fileMenu.AddItem(Item("new", "新增… (Ctrl+N)"))
-        fileMenu.AddItem(Item("open", "載入… (Ctrl+O)"))
-        _recentMenu = fileMenu.AddItem(New Aqua.MenuItem("最近開啟的檔案"))
+        Dim fileMenu = root.AddItem(New Aqua.MenuItem(Lang.T("檔案")))
+        fileMenu.AddItem(Item("new", Lang.T("新增… (Ctrl+N)")))
+        fileMenu.AddItem(Item("open", Lang.T("載入… (Ctrl+O)")))
+        _recentMenu = fileMenu.AddItem(New Aqua.MenuItem(Lang.T("最近開啟的檔案")))
         RebuildRecentMenu()
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(Item("save", "存檔 (Ctrl+S)"))
-        fileMenu.AddItem(Item("saveas", "另存新檔… (Ctrl+Shift+S)"))
-        fileMenu.AddItem(Item("export", "匯出… (Ctrl+E)"))
-        fileMenu.AddItem(Item("exportsvg", "匯出 SVG（向量圖形）…"))
+        fileMenu.AddItem(Item("save", Lang.T("存檔 (Ctrl+S)")))
+        fileMenu.AddItem(Item("saveas", Lang.T("另存新檔… (Ctrl+Shift+S)")))
+        fileMenu.AddItem(Item("export", Lang.T("匯出… (Ctrl+E)")))
+        fileMenu.AddItem(Item("exportsvg", Lang.T("匯出 SVG（向量圖形）…")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(Item("collage", "拼貼…"))
+        fileMenu.AddItem(Item("collage", Lang.T("拼貼…")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(Item("revert", "回復原圖"))
+        fileMenu.AddItem(Item("revert", Lang.T("回復原圖")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(Item("exit", "結束"))
+        fileMenu.AddItem(Item("exit", Lang.T("結束")))
 
-        Dim editMenu = root.AddItem(New Aqua.MenuItem("編輯"))
-        editMenu.AddItem(Item("undo", "復原 (Ctrl+Z)"))
-        editMenu.AddItem(Item("redo", "重做 (Ctrl+Y)"))
+        Dim editMenu = root.AddItem(New Aqua.MenuItem(Lang.T("編輯")))
+        editMenu.AddItem(Item("undo", Lang.T("復原 (Ctrl+Z)")))
+        editMenu.AddItem(Item("redo", Lang.T("重做 (Ctrl+Y)")))
         editMenu.AddItem(New Aqua.MenuItem("-"))
-        editMenu.AddItem(Item("cut", "剪下選取區 (Ctrl+X)"))
-        editMenu.AddItem(Item("copy", "複製 (Ctrl+C)"))
-        editMenu.AddItem(Item("pasteobject", "貼成物件 (Ctrl+Alt+V)"))
-        _pasteImageItem = editMenu.AddItem(Item("pasteimage", "貼成新影像 (Ctrl+V)"))
+        editMenu.AddItem(Item("cut", Lang.T("剪下選取區 (Ctrl+X)")))
+        editMenu.AddItem(Item("copy", Lang.T("複製 (Ctrl+C)")))
+        editMenu.AddItem(Item("pasteobject", Lang.T("貼成物件 (Ctrl+Alt+V)")))
+        _pasteImageItem = editMenu.AddItem(Item("pasteimage", Lang.T("貼成新影像 (Ctrl+V)")))
         editMenu.AddItem(New Aqua.MenuItem("-"))
-        editMenu.AddItem(Item("copyadj", "複製調整 (Ctrl+Shift+C)"))
-        editMenu.AddItem(Item("pasteadj", "貼上調整 (Ctrl+Shift+V)"))
-        editMenu.AddItem(Item("resetadj", "重設調整"))
+        editMenu.AddItem(Item("copyadj", Lang.T("複製調整 (Ctrl+Shift+C)")))
+        editMenu.AddItem(Item("pasteadj", Lang.T("貼上調整 (Ctrl+Shift+V)")))
+        editMenu.AddItem(Item("resetadj", Lang.T("重設調整")))
         editMenu.AddItem(New Aqua.MenuItem("-"))
-        editMenu.AddItem(Item("settings", "設定… (Ctrl+,)"))
+        editMenu.AddItem(Item("settings", Lang.T("設定… (Ctrl+,)")))
 
-        Dim imageMenu = root.AddItem(New Aqua.MenuItem("影像"))
-        imageMenu.AddItem(Item("rotl", "向左轉 (Ctrl+L)"))
-        imageMenu.AddItem(Item("rotr", "向右轉 (Ctrl+R)"))
-        imageMenu.AddItem(Item("fliph", "水平翻轉"))
-        imageMenu.AddItem(Item("flipv", "垂直翻轉"))
+        Dim imageMenu = root.AddItem(New Aqua.MenuItem(Lang.T("影像")))
+        imageMenu.AddItem(Item("rotl", Lang.T("向左轉 (Ctrl+L)")))
+        imageMenu.AddItem(Item("rotr", Lang.T("向右轉 (Ctrl+R)")))
+        imageMenu.AddItem(Item("fliph", Lang.T("水平翻轉")))
+        imageMenu.AddItem(Item("flipv", Lang.T("垂直翻轉")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
-        imageMenu.AddItem(Item("crop", "裁切… (Ctrl+K)"))
-        imageMenu.AddItem(Item("smartcrop", "智慧構圖"))
-        imageMenu.AddItem(Item("autostraighten", "自動拉直"))
-        imageMenu.AddItem(Item("heal", "修補筆刷 (H)"))
+        imageMenu.AddItem(Item("crop", Lang.T("裁切… (Ctrl+K)")))
+        imageMenu.AddItem(Item("smartcrop", Lang.T("智慧構圖")))
+        imageMenu.AddItem(Item("autostraighten", Lang.T("自動拉直")))
+        imageMenu.AddItem(Item("heal", Lang.T("修補筆刷 (H)")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
-        imageMenu.AddItem(Item("auto", "自動增強"))
-        imageMenu.AddItem(Item("autowb", "自動白平衡"))
+        imageMenu.AddItem(Item("auto", Lang.T("自動增強")))
+        imageMenu.AddItem(Item("autowb", Lang.T("自動白平衡")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
-        imageMenu.AddItem(Item("airedraw", "宮崎風 AI 重繪…"))
-        imageMenu.AddItem(Item("morph", "變形動畫…"))
-        imageMenu.AddItem(Item("trace", "描圖（轉成向量）…"))
-        imageMenu.AddItem(Item("facechange", "川劇變臉…"))
+        imageMenu.AddItem(Item("airedraw", Lang.T("宮崎風 AI 重繪…")))
+        imageMenu.AddItem(Item("morph", Lang.T("變形動畫…")))
+        imageMenu.AddItem(Item("trace", Lang.T("描圖（轉成向量）…")))
+        imageMenu.AddItem(Item("facechange", Lang.T("川劇變臉…")))
 
-        Dim selectMenu = root.AddItem(New Aqua.MenuItem("選取"))
-        selectMenu.AddItem(Item("selectall", "全選 (Ctrl+A)"))
-        selectMenu.AddItem(Item("deselect", "取消選取 (Ctrl+D)"))
-        selectMenu.AddItem(Item("invertsel", "反轉選取 (Ctrl+Shift+I)"))
+        Dim selectMenu = root.AddItem(New Aqua.MenuItem(Lang.T("選取")))
+        selectMenu.AddItem(Item("selectall", Lang.T("全選 (Ctrl+A)")))
+        selectMenu.AddItem(Item("deselect", Lang.T("取消選取 (Ctrl+D)")))
+        selectMenu.AddItem(Item("invertsel", Lang.T("反轉選取 (Ctrl+Shift+I)")))
         selectMenu.AddItem(New Aqua.MenuItem("-"))
-        selectMenu.AddItem(Item("toobject", "複製成物件"))
-        selectMenu.AddItem(Item("seladjust", "只調整選取區"))
-        selectMenu.AddItem(Item("seldelete", "刪除選取區（變透明）"))
-        selectMenu.AddItem(Item("selfill", "填色…"))
-        selectMenu.AddItem(Item("selstroke", "描邊…"))
-        selectMenu.AddItem(Item("selcrop", "裁切到選取區"))
-        selectMenu.AddItem(Item("selcutout", "當作去背範圍"))
+        selectMenu.AddItem(Item("toobject", Lang.T("複製成物件")))
+        selectMenu.AddItem(Item("seladjust", Lang.T("只調整選取區")))
+        selectMenu.AddItem(Item("seldelete", Lang.T("刪除選取區（變透明）")))
+        selectMenu.AddItem(Item("selfill", Lang.T("填色…")))
+        selectMenu.AddItem(Item("selstroke", Lang.T("描邊…")))
+        selectMenu.AddItem(Item("selcrop", Lang.T("裁切到選取區")))
+        selectMenu.AddItem(Item("selcutout", Lang.T("當作去背範圍")))
 
-        Dim viewMenu = root.AddItem(New Aqua.MenuItem("檢視"))
-        viewMenu.AddItem(Item("fit", "符合視窗 (Ctrl+0)"))
+        Dim viewMenu = root.AddItem(New Aqua.MenuItem(Lang.T("檢視")))
+        viewMenu.AddItem(Item("fit", Lang.T("符合視窗 (Ctrl+0)")))
         viewMenu.AddItem(Item("actual", "100% (Ctrl+1)"))
-        viewMenu.AddItem(Item("zoomin", "放大 (Ctrl++)"))
-        viewMenu.AddItem(Item("zoomout", "縮小 (Ctrl+-)"))
+        viewMenu.AddItem(Item("zoomin", Lang.T("放大 (Ctrl++)")))
+        viewMenu.AddItem(Item("zoomout", Lang.T("縮小 (Ctrl+-)")))
         viewMenu.AddItem(New Aqua.MenuItem("-"))
-        viewMenu.AddItem(Item("reference", "參考圖… (Ctrl+Shift+R)"))
-        viewMenu.AddItem(Item("fullscreen", "全螢幕繪圖 (F11)"))
+        viewMenu.AddItem(Item("reference", Lang.T("參考圖… (Ctrl+Shift+R)")))
+        viewMenu.AddItem(Item("fullscreen", Lang.T("全螢幕繪圖 (F11)")))
 
         BuildWindowMenu(root) ' 多文件才有
 
-        Dim helpMenu = root.AddItem(New Aqua.MenuItem("說明"))
-        _showHelpItem = helpMenu.AddItem(Item("togglehelp", "顯示使用說明（滑鼠停在按鈕上）"))
+        Dim helpMenu = root.AddItem(New Aqua.MenuItem(Lang.T("說明")))
+        _showHelpItem = helpMenu.AddItem(Item("togglehelp", Lang.T("顯示使用說明（滑鼠停在按鈕上）")))
         _showHelpItem.Checked = _appSettings.ShowHelp
         helpMenu.AddItem(New Aqua.MenuItem("-"))
-        helpMenu.AddItem(Item("about", "關於 PhotoEdit"))
+        helpMenu.AddItem(Item("about", Lang.T("關於 PhotoEdit")))
 
         AddMenu(root)
     End Sub
@@ -271,12 +271,12 @@ Partial Friend Class frmEditor
                 _appSettings.Save()
                 _help.Active = _appSettings.ShowHelp
                 _showHelpItem.Checked = _appSettings.ShowHelp
-                SetStatusMessage(If(_appSettings.ShowHelp, "已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。", "已關閉使用說明。"))
+                SetStatusMessage(If(_appSettings.ShowHelp, Lang.T("已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。"), Lang.T("已關閉使用說明。")))
             Case "about"
-                MessageBox.Show(Me, "PhotoEdit 0.2 — 非破壞性照片編輯器" & vbCrLf & vbCrLf &
-                                "「存檔」存成 PhotoEdit 專案（.pedx），保留所有圖層，下次載入可繼續修改；原始照片不會被修改。" & vbCrLf &
-                                "要得到合併後的圖檔，請用「另存新檔」或「匯出」存成 PNG／JPG／BMP。" & vbCrLf & vbCrLf &
-                                "人臉偵測：YuNet（OpenCV Zoo，Apache-2.0）",
+                MessageBox.Show(Me, Lang.T("PhotoEdit 0.2 — 非破壞性照片編輯器") & vbCrLf & vbCrLf &
+                                Lang.T("「存檔」存成 PhotoEdit 專案（.pedx），保留所有圖層，下次載入可繼續修改；原始照片不會被修改。") & vbCrLf &
+                                Lang.T("要得到合併後的圖檔，請用「另存新檔」或「匯出」存成 PNG／JPG／BMP。") & vbCrLf & vbCrLf &
+                                Lang.T("人臉偵測：YuNet（OpenCV Zoo，Apache-2.0）"),
                                 AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
         End Select
         If _photo Is Nothing Then Return
@@ -300,7 +300,7 @@ Partial Friend Class frmEditor
                 If _history.CanRedo Then _recipe = _history.Redo(_recipe) : OnRecipeChanged()
             Case "copyadj"
                 _copiedAdjustments = _recipe.Clone()
-                SetStatusMessage("已複製調整，可到其他照片「貼上調整」。")
+                SetStatusMessage(Lang.T("已複製調整，可到其他照片「貼上調整」。"))
             Case "pasteadj"
                 If _copiedAdjustments IsNot Nothing Then ApplyChange(Sub(r) r.CopyAdjustmentsFrom(_copiedAdjustments))
             Case "resetadj" : ApplyChange(Sub(r) r.ResetAdjustments())
@@ -598,7 +598,7 @@ Partial Friend Class frmEditor
         If _previewBase Is Nothing OrElse _showingOriginal = show Then Return
         _showingOriginal = show
         ShowCurrentImage()
-        If show Then SetStatusMessage("原圖") Else UpdateStatus()
+        If show Then SetStatusMessage(Lang.T("原圖")) Else UpdateStatus()
     End Sub
 
     Private Function CurrentKey() As String
@@ -622,17 +622,17 @@ Partial Friend Class frmEditor
 
     Private Sub UpdateStatus()
         If _photo Is Nothing OrElse _rendered Is Nothing Then
-            _statusLabel.Text = "載入照片或專案：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N"
+            _statusLabel.Text = Lang.T("載入照片或專案：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N")
             Return
         End If
         Dim scale = _photo.Image.Width / CDbl(_previewBase.Width)
         Dim outW = CInt(Math.Round(_rendered.Width * scale))
         Dim outH = CInt(Math.Round(_rendered.Height * scale))
-        Dim zoom = If(_canvas.IsFit, $"符合視窗 {_canvas.EffectiveZoom():P0}", $"{_canvas.EffectiveZoom():P0}")
-        If _hiResBusy Then zoom &= "（產生高解析度中…）"
-        Dim state = If(_recipe.IsIdentity, "未編輯", "已編輯")
-        Dim faces = If(_faceState = "", "", "　｜　" & _faceState)
-        _statusLabel.Text = $"{_photo.Image.Width} × {_photo.Image.Height}  →  輸出 {outW} × {outH}　｜　顯示 {zoom}　｜　{state}{faces}"
+        Dim zoom = If(_canvas.IsFit, Lang.F("符合視窗 {0:P0}", _canvas.EffectiveZoom()), $"{_canvas.EffectiveZoom():P0}")
+        If _hiResBusy Then zoom &= Lang.T("（產生高解析度中…）")
+        Dim state = If(_recipe.IsIdentity, Lang.T("未編輯"), Lang.T("已編輯"))
+        Dim faces = If(_faceState = "", "", Lang.T("　｜　") & _faceState)
+        _statusLabel.Text = Lang.F("{0} × {1}  →  輸出 {2} × {3}　｜　顯示 {4}　｜　{5}{6}", _photo.Image.Width, _photo.Image.Height, outW, outH, zoom, state, faces)
     End Sub
 
     Private Sub SetStatusMessage(message As String)
@@ -700,13 +700,13 @@ Partial Friend Class frmEditor
         _faces = Nothing
         _faceGeneration += 1
         If Not FaceDetector.ModelAvailable() Then
-            _faceState = "人像功能停用：缺少 Models\" & FaceDetector.ModelFile
+            _faceState = Lang.T("人像功能停用：缺少 Models\") & FaceDetector.ModelFile
             UpdatePortraitControls()
             Return
         End If
         Dim generation = _faceGeneration
         Dim copy = DirectCast(_previewBase.Clone(), Bitmap)
-        _faceState = "偵測人臉中…"
+        _faceState = Lang.T("偵測人臉中…")
         UpdatePortraitControls()
         Task.Run(Function()
                      Dim found = Detector.Value.Detect(copy)
@@ -722,8 +722,8 @@ Partial Friend Class frmEditor
                 PostToUi(Sub()
                              If generation <> _faceGeneration Then Return
                              _faces = If(faces, New List(Of FaceRegion)())
-                             _faceState = If(err IsNot Nothing, "人臉偵測失敗：" & err,
-                                          If(_faces.Count = 0, "沒有偵測到臉", $"找到 {_faces.Count} 張臉" & LandmarkNote()))
+                             _faceState = If(err IsNot Nothing, Lang.T("人臉偵測失敗：") & err,
+                                          If(_faces.Count = 0, Lang.T("沒有偵測到臉"), Lang.F("找到 {0} 張臉", _faces.Count) & LandmarkNote()))
                              UpdatePortraitControls()
                              If _recipe.HasPortrait OrElse _cropMode Then RequestRender()
                              ' 有人臉的照片，去背預設用人像模型（一般模型容易把旁邊顯眼的物體也當主體）。
@@ -738,7 +738,7 @@ Partial Friend Class frmEditor
 
     Private Sub UpdatePortraitControls()
         Dim usable = _faces IsNot Nothing AndAlso _faces.Count > 0
-        _portraitHeading.Text = "人像" & If(_faceState = "" OrElse _photo Is Nothing, "", "（" & _faceState & "）")
+        _portraitHeading.Text = Lang.T("人像") & If(_faceState = "" OrElse _photo Is Nothing, "", Lang.T("（") & _faceState & Lang.T("）"))
         RefreshBeautyTargets()
         For Each row In _rows.Where(Function(r) PortraitKeys.Contains(r.Key))
             row.Slider.Enabled = usable
@@ -833,8 +833,8 @@ Partial Friend Class frmEditor
     Private Sub OpenWithDialog()
         Using dlg As New OpenFileDialog()
             Dim images = String.Join(";", PhotoFile.SupportedExtensions.Select(Function(x) "*" & x))
-            dlg.Title = "載入"
-            dlg.Filter = $"專案與圖片|*{ProjectFile.Extension};{images}|PhotoEdit 專案|*{ProjectFile.Extension}|圖片檔|{images}|所有檔案|*.*"
+            dlg.Title = Lang.T("載入")
+            dlg.Filter = Lang.F("專案與圖片|*{0};{1}|PhotoEdit 專案|*{2}|圖片檔|{3}|所有檔案|*.*", ProjectFile.Extension, images, ProjectFile.Extension, images)
             If _photo IsNot Nothing Then dlg.InitialDirectory = Path.GetDirectoryName(DocumentBasePath)
             If dlg.ShowDialog(Me) = DialogResult.OK Then OpenPhoto(dlg.FileName)
         End Using
@@ -854,7 +854,7 @@ Partial Friend Class frmEditor
                                    TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                    TypeOf ex Is ExternalException
             ' GDI+ 遇到不支援或損壞的圖檔會丟 OutOfMemoryException / ArgumentException。
-            MessageBox.Show(Me, $"無法開啟「{Path.GetFileName(photoPath)}」：{ex.Message}", AppName,
+            MessageBox.Show(Me, Lang.F("無法開啟「{0}」：{1}", Path.GetFileName(photoPath), ex.Message), AppName,
                             MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         Finally
@@ -911,7 +911,7 @@ Partial Friend Class frmEditor
     ''' <summary>有未儲存的編輯時詢問。回傳 False 表示使用者取消。</summary>
     Private Function ConfirmDiscard() As Boolean
         If Not IsDirty Then Return True
-        Select Case MessageBox.Show(Me, $"要儲存對「{DocumentName}」的編輯嗎？", AppName,
+        Select Case MessageBox.Show(Me, Lang.F("要儲存對「{0}」的編輯嗎？", DocumentName), AppName,
                                     MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
             Case DialogResult.Yes : Return SaveDocument()
             Case DialogResult.No : Return True

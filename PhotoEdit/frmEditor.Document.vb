@@ -16,8 +16,8 @@ Partial Friend Class frmEditor
     ''' <summary>載入專案時解開原圖、遮罩、貼圖副本的暫存資料夾；換文件或關閉時刪除。</summary>
     Private _projectWorkDir As String
 
-    Private Const ProjectFilter As String = "PhotoEdit 專案（保留圖層，可繼續修改）|*" & ProjectFile.Extension
-    Private Const ImageFilter As String = "PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp"
+    Private Shared ReadOnly ProjectFilter As String = Lang.T("PhotoEdit 專案（保留圖層，可繼續修改）|*") & ProjectFile.Extension
+    Private Shared ReadOnly ImageFilter As String = Lang.T("PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp")
     Private Shared ReadOnly ImageExtensions As String() = {".png", ".jpg", ".bmp"}
 
     ''' <summary>標題列與提示用的文件名稱。</summary>
@@ -58,7 +58,7 @@ Partial Friend Class frmEditor
 
     Private Shared ReadOnly Property ProjectTempRoot As String
         Get
-            Return Path.Combine(Path.GetTempPath(), "PhotoEdit", "專案")
+            Return Path.Combine(Path.GetTempPath(), "PhotoEdit", Lang.T("專案"))
         End Get
     End Property
 
@@ -88,7 +88,7 @@ Partial Friend Class frmEditor
                                    TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                    TypeOf ex Is ExternalException
             TryDeleteDirectory(workDir)
-            MessageBox.Show(Me, $"無法載入「{Path.GetFileName(projectPath)}」：{ex.Message}", AppName,
+            MessageBox.Show(Me, Lang.F("無法載入「{0}」：{1}", Path.GetFileName(projectPath), ex.Message), AppName,
                             MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         Finally
@@ -97,7 +97,7 @@ Partial Friend Class frmEditor
         StickerLibrary.ClearCache() ' 貼圖副本換了，讓快取重新找檔
         ShowDocument(photo, loaded.Recipe, projectPath, workDir)
         If remember Then AddRecentFile(projectPath)
-        SetStatusMessage("已載入專案：" & projectPath)
+        SetStatusMessage(Lang.T("已載入專案：") & projectPath)
     End Sub
 
     ''' <summary>清掉上次當機等原因留下、超過兩天的暫存資料夾。</summary>
@@ -125,7 +125,7 @@ Partial Friend Class frmEditor
 
     Private Function SaveProjectWithDialog() As Boolean
         Using dlg As New SaveFileDialog()
-            dlg.Title = "存檔"
+            dlg.Title = Lang.T("存檔")
             dlg.Filter = ProjectFilter
             SetDialogDefaults(dlg, ProjectFile.Extension)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return False
@@ -136,7 +136,7 @@ Partial Friend Class frmEditor
     ''' <summary>另存新檔：專案（保留圖層）或 PNG／JPG／BMP（合併圖層，視窗裡仍可繼續編輯）。</summary>
     Private Sub SaveAsWithDialog()
         Using dlg As New SaveFileDialog()
-            dlg.Title = "另存新檔"
+            dlg.Title = Lang.T("另存新檔")
             dlg.Filter = ProjectFilter & "|" & ImageFilter
             SetDialogDefaults(dlg, ProjectFile.Extension)
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
@@ -157,7 +157,7 @@ Partial Friend Class frmEditor
                           _recipe.CropShape <> CropShape.Rectangle OrElse _recipe.PhotoClip IsNot Nothing
         Dim ext = If(transparent, ".png", ".jpg")
         Using dlg As New SaveFileDialog()
-            dlg.Title = "匯出"
+            dlg.Title = Lang.T("匯出")
             dlg.Filter = ImageFilter
             Dim suggested = PhotoFile.SuggestExportPath(DocumentBasePath, ext)
             dlg.InitialDirectory = Path.GetDirectoryName(suggested)
@@ -196,7 +196,7 @@ Partial Friend Class frmEditor
             ProjectFile.Save(projectPath, Path.GetFileName(_photo.Path), _photo.OriginalBytes, _recipe, masks)
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                    TypeOf ex Is ExternalException
-            MessageBox.Show(Me, "無法存檔：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法存檔：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return False
         Finally
             Cursor = Cursors.Default
@@ -206,7 +206,7 @@ Partial Friend Class frmEditor
         _aiMaskDirty = False
         UpdateTitle()
         AddRecentFile(projectPath) ' 存過的專案也列進最近開啟的檔案
-        SetStatusMessage("已存檔：" & projectPath)
+        SetStatusMessage(Lang.T("已存檔：") & projectPath)
         Return True
     End Function
 
@@ -217,9 +217,9 @@ Partial Friend Class frmEditor
         Dim format = Path.GetExtension(file).TrimStart("."c).ToUpperInvariant()
         If confirmMerge AndAlso MergeLayerCount > 0 Then
             Dim answer = MessageBox.Show(Me,
-                $"目前有 {MergeLayerCount} 個圖層（文字、貼圖、繪圖）。存成 {format} 會把所有圖層合併成一張圖。" & vbCrLf & vbCrLf &
-                "視窗裡的圖層會保留，可以繼續修改；要保留圖層下次接著改，請另存成 PhotoEdit 專案（.pedx）。" & vbCrLf & vbCrLf &
-                "要合併並存檔嗎？",
+                Lang.F("目前有 {0} 個圖層（文字、貼圖、繪圖）。存成 {1} 會把所有圖層合併成一張圖。", MergeLayerCount, format) & vbCrLf & vbCrLf &
+                Lang.T("視窗裡的圖層會保留，可以繼續修改；要保留圖層下次接著改，請另存成 PhotoEdit 專案（.pedx）。") & vbCrLf & vbCrLf &
+                Lang.T("要合併並存檔嗎？"),
                 AppName, MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
             If answer <> DialogResult.OK Then Return
         End If
@@ -228,10 +228,10 @@ Partial Friend Class frmEditor
             SyncLock _sourceLock
                 _photo.Export(_recipe, file, prepare:=SourcePrepare(_recipe), faces:=_faces)
             End SyncLock
-            SetStatusMessage($"已存成 {format}：{file}" & If(MergeLayerCount > 0, "（圖層已合併到檔案裡；視窗裡仍可繼續編輯）", ""))
+            SetStatusMessage(Lang.F("已存成 {0}：{1}", format, file) & If(MergeLayerCount > 0, Lang.T("（圖層已合併到檔案裡；視窗裡仍可繼續編輯）"), ""))
         Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse
                                    TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ExternalException
-            MessageBox.Show(Me, "存檔失敗：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("存檔失敗：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
         Finally
             Cursor = Cursors.Default
         End Try
@@ -260,11 +260,11 @@ Partial Friend Class frmEditor
                 data.SetData("PNG", False, png)
                 data.SetData(DataFormats.Bitmap, True, opaque)
                 Clipboard.SetDataObject(data, True, 5, 100)
-                SetStatusMessage($"已複製合併後的影像（{merged.Width} × {merged.Height}）到剪貼簿。")
+                SetStatusMessage(Lang.F("已複製合併後的影像（{0} × {1}）到剪貼簿。", merged.Width, merged.Height))
             End Using
         Catch ex As Exception When TypeOf ex Is ExternalException OrElse TypeOf ex Is OutOfMemoryException OrElse
                                    TypeOf ex Is ArgumentException
-            MessageBox.Show(Me, "無法複製到剪貼簿：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法複製到剪貼簿：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
         Finally
             Cursor = Cursors.Default
         End Try

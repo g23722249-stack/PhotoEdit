@@ -53,6 +53,7 @@ Module Program
             ProjectTestsRun(tempDir)
             LayerTestsRun()
             SelectionTestsRun(tempDir)
+            LangTestsRun()
             FileTests(tempDir)
         Finally
             Directory.Delete(tempDir, recursive:=True)

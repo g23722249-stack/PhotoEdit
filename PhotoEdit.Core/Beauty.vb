@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 
 ''' <summary>光影（美顏）：以臉為準加亮、加暗，模擬打光。</summary>
@@ -314,11 +315,11 @@ Public Class BeautySettings
 
     ' ---- 一鍵美顏 ----
     Public Shared ReadOnly PresetNames As String() = {
-        "自然", "甜美", "證件照", "男性",
-        "清透", "好氣色", "嬰兒肌", "冷白皮", "小麥肌", "精緻小臉", "減齡", "自拍補光", "清爽男生",
-        "韓系淡妝", "桃花妝", "歐美妝", "柔光", "林布蘭光", "側光",
-        "109 白辣妹", "109 黑辣妹", "Y2K 辣妹",
-        "戲曲・京劇青衣", "戲曲・京劇小生", "戲曲・關公", "戲曲・包公", "戲曲・京劇文丑"}
+        Lang.T("自然"), Lang.T("甜美"), Lang.T("證件照"), Lang.T("男性"),
+        Lang.T("清透"), Lang.T("好氣色"), Lang.T("嬰兒肌"), Lang.T("冷白皮"), Lang.T("小麥肌"), Lang.T("精緻小臉"), Lang.T("減齡"), Lang.T("自拍補光"), Lang.T("清爽男生"),
+        Lang.T("韓系淡妝"), Lang.T("桃花妝"), Lang.T("歐美妝"), Lang.T("柔光"), Lang.T("林布蘭光"), Lang.T("側光"),
+        Lang.T("109 白辣妹"), Lang.T("109 黑辣妹"), Lang.T("Y2K 辣妹"),
+        Lang.T("戲曲・京劇青衣"), Lang.T("戲曲・京劇小生"), Lang.T("戲曲・關公"), Lang.T("戲曲・包公"), Lang.T("戲曲・京劇文丑")}
 
     Private Shared Function Argb(r As Integer, g As Integer, b As Integer) As Integer
         Return Color.FromArgb(r, g, b).ToArgb()
@@ -340,7 +341,7 @@ Public Class BeautySettings
     Public Shared Function PresetName(index As Integer) As String
         If index < PresetNames.Length Then Return PresetNames(Math.Max(0, index))
         Dim c = index - PresetNames.Length
-        Return If(c < CustomLooks.Count, CustomLooks(c).Name, "（已刪除）")
+        Return If(c < CustomLooks.Count, CustomLooks(c).Name, Lang.T("（已刪除）"))
     End Function
 
     ''' <summary>第 index 組一鍵美顏（強度 100%），PresetIndex 已填好；我的妝容被刪掉時回傳空的。</summary>
@@ -440,7 +441,7 @@ Public Class BeautySettings
                                              .Hair = 50, .HairColorArgb = Argb(168, 120, 80)}
             Case Else ' 戲曲：名稱「戲曲・角色」對應 OperaRoles
                 b = New BeautySettings()
-                Dim roleName = PresetNames(Math.Max(0, Math.Min(PresetNames.Length - 1, index))).Replace("戲曲・", "")
+                Dim roleName = PresetNames(Math.Max(0, Math.Min(PresetNames.Length - 1, index))).Replace(Lang.T("戲曲・"), "")
                 b.SetOperaRole(OperaRoles.IdOf(roleName))
         End Select
         b.PresetIndex = Math.Max(0, Math.Min(PresetNames.Length - 1, index))

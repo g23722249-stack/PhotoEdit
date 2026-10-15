@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
@@ -197,10 +198,10 @@ Public NotInheritable Class Creative
 
     ''' <summary>內建向量貼圖：最早的 6 種加上 BuiltInStickers 的款式。</summary>
     Public Shared ReadOnly StickerNames As IReadOnlyList(Of (Key As String, Name As String)) =
-        {("heart", "愛心"), ("star", "星星"), ("sparkle", "閃亮"), ("bubble", "對話框"), ("arrow", "箭頭"), ("ring", "圓圈")}.
+        {("heart", Lang.T("愛心")), ("star", Lang.T("星星")), ("sparkle", Lang.T("閃亮")), ("bubble", Lang.T("對話框")), ("arrow", Lang.T("箭頭")), ("ring", Lang.T("圓圈"))}.
         Concat(BuiltInStickers.Items.Select(Function(i) (i.Key, i.Name))).ToList()
 
-    Public Shared ReadOnly FrameNames As IReadOnlyList(Of String) = {"無", "白邊", "黑邊", "拍立得", "圓角", "底片"}
+    Public Shared ReadOnly FrameNames As IReadOnlyList(Of String) = {Lang.T("無"), Lang.T("白邊"), Lang.T("黑邊"), Lang.T("拍立得"), Lang.T("圓角"), Lang.T("底片")}
 
     '=====================================================================
     ' 局部調整

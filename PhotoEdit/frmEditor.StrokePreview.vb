@@ -21,11 +21,14 @@ Partial Friend Class frmEditor
     Private _pvRenderH As Integer
     Private _pvCount As Integer
     Private _pvOpacity As Single = 1
-    Private _pvBusy As Boolean
+    ''' <summary>背景正在算的那次（同一時間只算一個，跨筆畫也是：兩個同時算會搶共用的快取）。</summary>
+    Private _pvTask As Threading.Tasks.Task
     Private _pvSerial As Integer
     ''' <summary>已經放開、等畫面重算完才拿掉的預覽。</summary>
     Private _pvHold As Boolean
     Private _pvTimerWired As Boolean
+    ''' <summary>這一筆正在用真實筆刷預覽（計時器與筆的移動都會帶動）。</summary>
+    Private _pvActive As Boolean
 
     ''' <summary>這一筆要不要用真實筆刷預覽。</summary>
     Private Function EnginePreviewOn() As Boolean
@@ -44,14 +47,15 @@ Partial Friend Class frmEditor
             AddHandler _pvTimer.Tick, Sub() StrokePreviewTick()
             _pvTimerWired = True
         End If
-        If EnginePreviewOn() Then _pvTimer.Start()
+        _pvActive = EnginePreviewOn()
+        If _pvActive Then _pvTimer.Start()
     End Sub
 
     ''' <summary>放開（CommitFreehand 之後）：預覽留到畫面重算完。</summary>
     Private Sub EndStrokePreview()
         _pvTimer.Stop()
-        _pvSerial += 1 ' 還在算的那次不要用了
-        _pvBusy = False
+        _pvActive = False
+        _pvSerial += 1 ' 還在算的那次不要用了（算完會丟掉，下一筆等它算完才開始算）
         If _pvBmp IsNot Nothing Then _pvHold = True
     End Sub
 
@@ -87,9 +91,8 @@ Partial Friend Class frmEditor
 
     ''' <summary>每 40 毫秒：上一次算完、而且筆畫有變時，在背景再算一次。</summary>
     Private Sub StrokePreviewTick()
-        If _dd <> DrawDrag.Freehand OrElse _freePoints Is Nothing OrElse Not EnginePreviewOn() Then _pvTimer.Stop() : Return
-        If _pvBusy OrElse _freePoints.Count = _pvCount Then Return
-        _pvBusy = True
+        If _dd <> DrawDrag.Freehand OrElse _freePoints Is Nothing OrElse Not EnginePreviewOn() Then _pvTimer.Stop() : _pvActive = False : Return
+        If PreviewBusy() OrElse _freePoints.Count = _pvCount Then Return
         Dim layer = PreviewStrokeLayer()
         Dim count = _freePoints.Count
         Dim h = Math.Max(32, Math.Min(2400, CInt(Math.Round(PxPerUnit()))))
@@ -97,23 +100,53 @@ Partial Friend Class frmEditor
         Dim paper = _recipe.Paper
         Dim serial = _pvSerial
         Dim opacity = Math.Max(0, Math.Min(100, _drawStyle.Opacity)) / 100.0F
-        Threading.Tasks.Task.Run(Function() DrawingRenderer.RenderPreview(layer, w, h, paper)).
-            ContinueWith(Sub(t)
-                             _pvBusy = False
-                             If t.IsFaulted Then Return
-                             Dim r = t.Result
-                             If serial <> _pvSerial OrElse IsDisposed Then
-                                 r.Bitmap?.Dispose()
-                                 Return
-                             End If
-                             _pvBmp?.Dispose()
-                             _pvBmp = r.Bitmap
-                             _pvRegion = r.Region
-                             _pvRenderH = h
-                             _pvCount = count
-                             _pvOpacity = opacity
-                             _canvas.Invalidate()
-                         End Sub, Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext())
+        Dim render = Threading.Tasks.Task.Run(Function() DrawingRenderer.RenderPreview(layer, w, h, paper))
+        _pvTask = render
+        ' 算完明確交回 UI 執行緒（不靠 SynchronizationContext：沒有 WinForms 的同步內容時接續會跑在背景執行緒，
+        ' 換掉正在畫的預覽圖 → GDI+「Object is currently in use elsewhere」）
+        render.ContinueWith(Sub(t)
+                                Try
+                                    If IsDisposed OrElse Not IsHandleCreated Then Throw New ObjectDisposedException(Name)
+                                    BeginInvoke(New Action(Sub() ApplyStrokePreview(t, serial, count, h, opacity)))
+                                Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ObjectDisposedException
+                                    If Not t.IsFaulted Then t.Result.Bitmap?.Dispose()
+                                End Try
+                            End Sub)
+    End Sub
+
+    ''' <summary>（UI 執行緒）背景算好的預覽換上畫面。</summary>
+    Private Sub ApplyStrokePreview(t As Threading.Tasks.Task(Of (Bitmap As Bitmap, Region As Rectangle)), serial As Integer, count As Integer, h As Integer, opacity As Single)
+        If t.IsFaulted Then Return
+        Dim r = t.Result
+        If serial <> _pvSerial OrElse IsDisposed Then
+            r.Bitmap?.Dispose()
+            ' 上一筆留下的計算剛算完：這一筆已經在畫了就接著算
+            If Not IsDisposed AndAlso _pvActive Then StrokePreviewTick()
+            Return
+        End If
+        _pvBmp?.Dispose()
+        _pvBmp = r.Bitmap
+        _pvRegion = r.Region
+        _pvRenderH = h
+        _pvCount = count
+        _pvOpacity = opacity
+        _canvas.Invalidate()
+        ' 算的時候又畫了新的點：馬上接著算下一次（不等計時器）
+        If _freePoints IsNot Nothing AndAlso _freePoints.Count > count Then StrokePreviewTick()
+    End Sub
+
+    ''' <summary>
+    ''' 筆移動時呼叫：背景沒有在算就馬上算（一次只算一個，算完有新的點會接著算，等於一張接一張）。
+    ''' 只靠 WinForms 計時器不行：WM_TIMER 的優先順序最低，繪圖筆高頻率的輸入加上一直重畫畫布時計時器幾乎輪不到，
+    ''' 看起來就像真實筆刷沒有作用（只看得到快速線條）。計時器留著當備援。
+    ''' </summary>
+    Private Function PreviewBusy() As Boolean
+        Return _pvTask IsNot Nothing AndAlso Not _pvTask.IsCompleted
+    End Function
+
+    Private Sub KickStrokePreview()
+        If Not _pvActive OrElse PreviewBusy() Then Return
+        StrokePreviewTick()
     End Sub
 
     ''' <summary>畫面：真實筆刷的預覽圖，加上還沒算到的最新一段；沒有預覽圖時畫依筆壓變粗細的線。回傳 True＝已經畫了。</summary>

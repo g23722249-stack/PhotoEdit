@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>手動調整視窗的一個對象（全部的臉，或某一張臉）：預覽用的臉部裁切、臉的位置（裁切座標）、正在調整的數值。</summary>
@@ -25,8 +25,8 @@ Friend Class frmBeautyAdjust
     Private ReadOnly _hasDense As Boolean
     Private ReadOnly _hasMesh As Boolean
     Private ReadOnly _help As HelpTip
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10.0F)
-    Private ReadOnly _small As New Font("Microsoft JhengHei UI", 9.0F)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
+    Private ReadOnly _small As New Font(Lang.UiFont, 9.0F)
     Private ReadOnly _preview As New FacePreview()
     Private ReadOnly _target As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _tabButtons As New List(Of RadioButton)()
@@ -49,7 +49,7 @@ Friend Class frmBeautyAdjust
     Private ReadOnly _makeupSliders As New Panel With {.BackColor = Color.Transparent}
     Private ReadOnly _makeupRows As New List(Of (Slider As Aqua.Slider, Value As Label, GetV As Func(Of BeautySettings, Integer)))()
     Private ReadOnly _makeupNote As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(150, 90, 40)}
-    Private ReadOnly _deleteLook As New Button With {.Text = "刪除這組"}
+    Private ReadOnly _deleteLook As New Button With {.Text = Lang.T("刪除這組")}
     Private _cat As Integer
     Private _styleGeneration As Integer
 
@@ -65,7 +65,7 @@ Friend Class frmBeautyAdjust
         _help = help
         _onLooksChanged = onLooksChanged
         _current = Math.Max(0, Math.Min(targets.Count - 1, startIndex))
-        Text = "美顏手動調整"
+        Text = Lang.T("美顏手動調整")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
         MinButton = False
@@ -77,7 +77,7 @@ Friend Class frmBeautyAdjust
         Dim top = 23 + 12
 
         ' 左：對象、預覽、按住看原圖、全部歸零
-        Dim tcap As New Label With {.Text = "調整", .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top + 4)}
+        Dim tcap As New Label With {.Text = Lang.T("調整"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(16, top + 4)}
         _target.Items.AddRange(targets.Select(Function(t) CObj(t.Name)).ToArray())
         _target.SetBounds(60, top, PreviewSize - 44, 26)
         _target.Enabled = targets.Count > 1
@@ -91,12 +91,12 @@ Friend Class frmBeautyAdjust
                                                  End Sub
         help?.SetHelpLinked("beauty.target", _target, tcap, _target)
         _preview.SetBounds(16, top + 36, PreviewSize, PreviewSize)
-        Dim orig As New Button With {.Text = "按住看原圖"}
+        Dim orig As New Button With {.Text = Lang.T("按住看原圖")}
         orig.SetBounds(16, top + 36 + PreviewSize + 8, 140, 32)
         AddHandler orig.MouseDown, Sub() SetShowOriginal(True)
         AddHandler orig.MouseUp, Sub() SetShowOriginal(False)
         AddHandler orig.MouseLeave, Sub() SetShowOriginal(False)
-        Dim reset As New Button With {.Text = "全部歸零"}
+        Dim reset As New Button With {.Text = Lang.T("全部歸零")}
         reset.SetBounds(164, top + 36 + PreviewSize + 8, 110, 32)
         AddHandler reset.Click, Sub()
                                     Dim s = Cur.Settings
@@ -111,7 +111,7 @@ Friend Class frmBeautyAdjust
 
         ' 右：頁籤列＋各頁
         Dim rx = PreviewSize + 32
-        Dim names = {"肌膚", "五官", "臉型", "美妝", "戲曲", "光影"}
+        Dim names = {Lang.T("肌膚"), Lang.T("五官"), Lang.T("臉型"), Lang.T("美妝"), Lang.T("戲曲"), Lang.T("光影")}
         Dim tw = RightW \ names.Length
         For i = 0 To names.Length - 1
             Dim index = i
@@ -137,8 +137,8 @@ Friend Class frmBeautyAdjust
         BuildLightPage(_pages(5))
 
         ' 確定／取消
-        Dim ok As New Button With {.Text = "確定", .DialogResult = DialogResult.OK}
-        Dim cancel As New Button With {.Text = "取消", .DialogResult = DialogResult.Cancel}
+        Dim ok As New Button With {.Text = Lang.T("確定"), .DialogResult = DialogResult.OK}
+        Dim cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel}
         ok.SetBounds(ClientSize.Width - 220, ClientSize.Height - 48, 96, 32)
         cancel.SetBounds(ClientSize.Width - 116, ClientSize.Height - 48, 96, 32)
         Controls.AddRange({ok, cancel})
@@ -243,46 +243,46 @@ Friend Class frmBeautyAdjust
     End Sub
 
     Private Sub BuildSkinPage(p As Panel)
-        Row(p, "skin", "磨皮", 0, 100, Function(b) b.Smoothing, Sub(b, v) b.Smoothing = v)
-        Row(p, "even", "勻膚", 0, 100, Function(b) b.Even, Sub(b, v) b.Even = v)
-        Row(p, "redness", "去紅", 0, 100, Function(b) b.Redness, Sub(b, v) b.Redness = v)
-        Row(p, "whiten", "美白", 0, 100, Function(b) b.Whiten, Sub(b, v) b.Whiten = v)
-        Row(p, "skintone", "膚色", -100, 100, Function(b) b.Tone, Sub(b, v) b.Tone = v, fmt:=Signed("白皙", "小麥"))
-        Row(p, "tan", "曬黑", 0, 100, Function(b) b.Tan, Sub(b, v) b.Tan = v)
-        Row(p, "facebright", "臉部提亮", 0, 100, Function(b) b.Brighten, Sub(b, v) b.Brighten = v)
-        Row(p, "shine", "去油光", 0, 100, Function(b) b.Shine, Sub(b, v) b.Shine = v)
-        Row(p, "blemish", "去痘", 0, 100, Function(b) b.Blemish, Sub(b, v) b.Blemish = v)
-        Row(p, "darkcircle", "黑眼圈", 0, 100, Function(b) b.DarkCircles, Sub(b, v) b.DarkCircles = v)
+        Row(p, "skin", Lang.T("磨皮"), 0, 100, Function(b) b.Smoothing, Sub(b, v) b.Smoothing = v)
+        Row(p, "even", Lang.T("勻膚"), 0, 100, Function(b) b.Even, Sub(b, v) b.Even = v)
+        Row(p, "redness", Lang.T("去紅"), 0, 100, Function(b) b.Redness, Sub(b, v) b.Redness = v)
+        Row(p, "whiten", Lang.T("美白"), 0, 100, Function(b) b.Whiten, Sub(b, v) b.Whiten = v)
+        Row(p, "skintone", Lang.T("膚色"), -100, 100, Function(b) b.Tone, Sub(b, v) b.Tone = v, fmt:=Signed(Lang.T("白皙"), Lang.T("小麥")))
+        Row(p, "tan", Lang.T("曬黑"), 0, 100, Function(b) b.Tan, Sub(b, v) b.Tan = v)
+        Row(p, "facebright", Lang.T("臉部提亮"), 0, 100, Function(b) b.Brighten, Sub(b, v) b.Brighten = v)
+        Row(p, "shine", Lang.T("去油光"), 0, 100, Function(b) b.Shine, Sub(b, v) b.Shine = v)
+        Row(p, "blemish", Lang.T("去痘"), 0, 100, Function(b) b.Blemish, Sub(b, v) b.Blemish = v)
+        Row(p, "darkcircle", Lang.T("黑眼圈"), 0, 100, Function(b) b.DarkCircles, Sub(b, v) b.DarkCircles = v)
     End Sub
 
     Private Sub BuildFeaturePage(p As Panel)
-        Row(p, "eyebright", "亮眼", 0, 100, Function(b) b.Eyes, Sub(b, v) b.Eyes = v)
-        Row(p, "eyeenlarge", "大眼", 0, 100, Function(b) b.EyeEnlarge, Sub(b, v) b.EyeEnlarge = v)
-        Row(p, "teeth", "牙齒美白", 0, 100, Function(b) b.Teeth, Sub(b, v) b.Teeth = v)
-        Row(p, "eyebag", "臥蠶", 0, 100, Function(b) b.EyeBag, Sub(b, v) b.EyeBag = v, dense:=True)
-        Row(p, "contour", "修容", 0, 100, Function(b) b.Contour, Sub(b, v) b.Contour = v)
-        Note(p, "口紅、眼影、眼線、睫毛、美瞳、雙眼皮、眉毛、腮紅、高光、髮色在「美妝」頁。")
+        Row(p, "eyebright", Lang.T("亮眼"), 0, 100, Function(b) b.Eyes, Sub(b, v) b.Eyes = v)
+        Row(p, "eyeenlarge", Lang.T("大眼"), 0, 100, Function(b) b.EyeEnlarge, Sub(b, v) b.EyeEnlarge = v)
+        Row(p, "teeth", Lang.T("牙齒美白"), 0, 100, Function(b) b.Teeth, Sub(b, v) b.Teeth = v)
+        Row(p, "eyebag", Lang.T("臥蠶"), 0, 100, Function(b) b.EyeBag, Sub(b, v) b.EyeBag = v, dense:=True)
+        Row(p, "contour", Lang.T("修容"), 0, 100, Function(b) b.Contour, Sub(b, v) b.Contour = v)
+        Note(p, Lang.T("口紅、眼影、眼線、睫毛、美瞳、雙眼皮、眉毛、腮紅、高光、髮色在「美妝」頁。"))
     End Sub
 
     Private Sub BuildShapePage(p As Panel)
-        Row(p, "faceslim", "瘦臉", 0, 100, Function(b) b.FaceSlim, Sub(b, v) b.FaceSlim = v, dense:=True)
-        Row(p, "vface", "V 臉", 0, 100, Function(b) b.VFace, Sub(b, v) b.VFace = v, dense:=True)
-        Row(p, "chin", "下巴", -100, 100, Function(b) b.Chin, Sub(b, v) b.Chin = v, dense:=True, fmt:=Signed("短", "長"))
-        Row(p, "noseslim", "瘦鼻", 0, 100, Function(b) b.NoseSlim, Sub(b, v) b.NoseSlim = v, dense:=True)
-        Row(p, "smile", "嘴角上揚", 0, 100, Function(b) b.Smile, Sub(b, v) b.Smile = v, dense:=True)
-        Row(p, "lipfull", "豐唇", -100, 100, Function(b) b.LipFull, Sub(b, v) b.LipFull = v, dense:=True, fmt:=Signed("薄", "厚"))
-        Row(p, "eyecorner", "開眼角", 0, 100, Function(b) b.EyeCorner, Sub(b, v) b.EyeCorner = v, dense:=True)
-        If Not _hasDense Then Note(p, "需要臉部特徵點（Models\face_landmarks.onnx 或 lbfmodel.yaml），目前停用。")
-        Note(p, "眉形（挑眉、平眉、柳葉）在「美妝」頁的眉毛。")
+        Row(p, "faceslim", Lang.T("瘦臉"), 0, 100, Function(b) b.FaceSlim, Sub(b, v) b.FaceSlim = v, dense:=True)
+        Row(p, "vface", Lang.T("V 臉"), 0, 100, Function(b) b.VFace, Sub(b, v) b.VFace = v, dense:=True)
+        Row(p, "chin", Lang.T("下巴"), -100, 100, Function(b) b.Chin, Sub(b, v) b.Chin = v, dense:=True, fmt:=Signed(Lang.T("短"), Lang.T("長")))
+        Row(p, "noseslim", Lang.T("瘦鼻"), 0, 100, Function(b) b.NoseSlim, Sub(b, v) b.NoseSlim = v, dense:=True)
+        Row(p, "smile", Lang.T("嘴角上揚"), 0, 100, Function(b) b.Smile, Sub(b, v) b.Smile = v, dense:=True)
+        Row(p, "lipfull", Lang.T("豐唇"), -100, 100, Function(b) b.LipFull, Sub(b, v) b.LipFull = v, dense:=True, fmt:=Signed(Lang.T("薄"), Lang.T("厚")))
+        Row(p, "eyecorner", Lang.T("開眼角"), 0, 100, Function(b) b.EyeCorner, Sub(b, v) b.EyeCorner = v, dense:=True)
+        If Not _hasDense Then Note(p, Lang.T("需要臉部特徵點（Models\face_landmarks.onnx 或 lbfmodel.yaml），目前停用。"))
+        Note(p, Lang.T("眉形（挑眉、平眉、柳葉）在「美妝」頁的眉毛。"))
     End Sub
 
     Private Sub BuildLightPage(p As Panel)
         Dim y = NewY(p) + 4
-        Dim lcap As New Label With {.Text = "種類", .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleLeft}
+        Dim lcap As New Label With {.Text = Lang.T("種類"), .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleLeft}
         lcap.SetBounds(6, y, 84, 26)
-        _lightKind.Items.AddRange({"無", "柔光", "林布蘭光", "側光"})
+        _lightKind.Items.AddRange({Lang.T("無"), Lang.T("柔光"), Lang.T("林布蘭光"), Lang.T("側光")})
         _lightKind.SetBounds(92, y, 130, 26)
-        _lightSide.Items.AddRange({"光從左邊", "光從右邊"})
+        _lightSide.Items.AddRange({Lang.T("光從左邊"), Lang.T("光從右邊")})
         _lightSide.SetBounds(230, y, 120, 26)
         AddHandler _lightKind.SelectedIndexChanged, Sub()
                                                         If _syncing Then Return
@@ -298,8 +298,8 @@ Friend Class frmBeautyAdjust
                                                     End Sub
         _help?.SetHelpLinked("beauty.light", _lightKind, lcap, _lightKind, _lightSide)
         p.Controls.AddRange({lcap, _lightKind, _lightSide})
-        Row(p, "light", "強度", 0, 100, Function(b) b.Light, Sub(b, v) b.Light = v)
-        Note(p, If(_hasMesh, "有 478 點網格時，林布蘭光與側光依臉的立體起伏打光。", "沒有 478 點網格時，光影以左右漸層表現。"))
+        Row(p, "light", Lang.T("強度"), 0, 100, Function(b) b.Light, Sub(b, v) b.Light = v)
+        Note(p, If(_hasMesh, Lang.T("有 478 點網格時，林布蘭光與側光依臉的立體起伏打光。"), Lang.T("沒有 478 點網格時，光影以左右漸層表現。")))
     End Sub
 
     '---------------------------------------------------------------------
@@ -333,81 +333,81 @@ Friend Class frmBeautyAdjust
 
     Private Shared Function BuildCategories() As MakeupCategory()
         Dim list As New List(Of MakeupCategory)()
-        Dim lip As New MakeupCategory With {.Name = "口紅", .Styles = {"霧面", "水潤", "咬唇", "漸層", "唇線"}, .Region = "lips", .NeedsDense = True,
+        Dim lip As New MakeupCategory With {.Name = Lang.T("口紅"), .Styles = {Lang.T("霧面"), Lang.T("水潤"), Lang.T("咬唇"), Lang.T("漸層"), Lang.T("唇線")}, .Region = "lips", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.LipStyle), .SetStyle = Sub(b, v) b.LipStyle = CType(v, LipStyle),
             .Colors = {C(&HC83C55), C(&HE05A6B), C(&HB4243A), C(&HE8846A), C(&H9C2F4E), C(&HD9707E)},
             .GetColor = Function(b) b.LipColor, .SetColor = Sub(b, v) b.LipColorArgb = v}
-        lip.Sliders.Add(("濃度", 0, 100, Function(b) b.Lips, Sub(b, v) b.Lips = v))
-        lip.Sliders.Add(("光澤", 0, 100, Function(b) b.LipGloss, Sub(b, v) b.LipGloss = v))
+        lip.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Lips, Sub(b, v) b.Lips = v))
+        lip.Sliders.Add((Lang.T("光澤"), 0, 100, Function(b) b.LipGloss, Sub(b, v) b.LipGloss = v))
         list.Add(lip)
-        Dim shadow As New MakeupCategory With {.Name = "眼影", .Styles = {"單色", "大地漸層", "煙燻", "桃花", "亮片", "熊貓白"}, .Region = "eyes", .NeedsDense = True,
+        Dim shadow As New MakeupCategory With {.Name = Lang.T("眼影"), .Styles = {Lang.T("單色"), Lang.T("大地漸層"), Lang.T("煙燻"), Lang.T("桃花"), Lang.T("亮片"), Lang.T("熊貓白")}, .Region = "eyes", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.ShadowStyle), .SetStyle = Sub(b, v) b.ShadowStyle = CType(v, ShadowStyle),
             .Colors = {C(&HC98A73), C(&HA8735E), C(&H7A5244), C(&HE39BB0), C(&HB9A2D6), C(&HD8B27A), C(&HFAFAF8)},
             .GetColor = Function(b) b.EyeShadowColor, .SetColor = Sub(b, v) b.EyeShadowColorArgb = v}
-        shadow.Sliders.Add(("濃度", 0, 100, Function(b) b.EyeShadow, Sub(b, v) b.EyeShadow = v))
-        shadow.Sliders.Add(("範圍", 0, 100, Function(b) b.ShadowSpread, Sub(b, v) b.ShadowSpread = v))
-        shadow.Sliders.Add(("閃粉", 0, 100, Function(b) b.ShadowGlitter, Sub(b, v) b.ShadowGlitter = v))
+        shadow.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.EyeShadow, Sub(b, v) b.EyeShadow = v))
+        shadow.Sliders.Add((Lang.T("範圍"), 0, 100, Function(b) b.ShadowSpread, Sub(b, v) b.ShadowSpread = v))
+        shadow.Sliders.Add((Lang.T("閃粉"), 0, 100, Function(b) b.ShadowGlitter, Sub(b, v) b.ShadowGlitter = v))
         list.Add(shadow)
-        Dim liner As New MakeupCategory With {.Name = "眼線", .Styles = {"自然", "上揚", "貓眼", "內眼線", "下眼線"}, .Region = "eyes", .NeedsDense = True,
+        Dim liner As New MakeupCategory With {.Name = Lang.T("眼線"), .Styles = {Lang.T("自然"), Lang.T("上揚"), Lang.T("貓眼"), Lang.T("內眼線"), Lang.T("下眼線")}, .Region = "eyes", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.LinerStyle), .SetStyle = Sub(b, v) b.LinerStyle = CType(v, LinerStyle),
             .Colors = {C(&H1C1818), C(&H4A3328), C(&H3A3A55)},
             .GetColor = Function(b) b.LinerColor, .SetColor = Sub(b, v) b.LinerColorArgb = v}
-        liner.Sliders.Add(("濃度", 0, 100, Function(b) b.EyeLiner, Sub(b, v) b.EyeLiner = v))
-        liner.Sliders.Add(("粗細", 0, 100, Function(b) b.LinerWidth, Sub(b, v) b.LinerWidth = v))
-        liner.Sliders.Add(("眼尾", 0, 100, Function(b) b.LinerWing, Sub(b, v) b.LinerWing = v))
+        liner.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.EyeLiner, Sub(b, v) b.EyeLiner = v))
+        liner.Sliders.Add((Lang.T("粗細"), 0, 100, Function(b) b.LinerWidth, Sub(b, v) b.LinerWidth = v))
+        liner.Sliders.Add((Lang.T("眼尾"), 0, 100, Function(b) b.LinerWing, Sub(b, v) b.LinerWing = v))
         list.Add(liner)
-        Dim lash As New MakeupCategory With {.Name = "睫毛", .Styles = {"自然", "濃密", "捲翹", "根根分明", "下睫毛"}, .Region = "eyes", .NeedsDense = True,
+        Dim lash As New MakeupCategory With {.Name = Lang.T("睫毛"), .Styles = {Lang.T("自然"), Lang.T("濃密"), Lang.T("捲翹"), Lang.T("根根分明"), Lang.T("下睫毛")}, .Region = "eyes", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.LashStyle), .SetStyle = Sub(b, v) b.LashStyle = CType(v, LashStyle),
             .Colors = {C(&H141010), C(&H3E2A20)},
             .GetColor = Function(b) b.LashColor, .SetColor = Sub(b, v) b.LashColorArgb = v}
-        lash.Sliders.Add(("濃度", 0, 100, Function(b) b.Lash, Sub(b, v) b.Lash = v))
-        lash.Sliders.Add(("長度", 0, 150, Function(b) b.LashLength, Sub(b, v) b.LashLength = v)) ' 超過 100＝假睫毛（辣妹妝）
-        lash.Sliders.Add(("捲翹", 0, 100, Function(b) b.LashCurl, Sub(b, v) b.LashCurl = v))
+        lash.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Lash, Sub(b, v) b.Lash = v))
+        lash.Sliders.Add((Lang.T("長度"), 0, 150, Function(b) b.LashLength, Sub(b, v) b.LashLength = v)) ' 超過 100＝假睫毛（辣妹妝）
+        lash.Sliders.Add((Lang.T("捲翹"), 0, 100, Function(b) b.LashCurl, Sub(b, v) b.LashCurl = v))
         list.Add(lash)
-        Dim iris As New MakeupCategory With {.Name = "美瞳", .Styles = {"自然", "放大", "外圈", "混血", "亮眼"}, .Region = "eyes", .NeedsMesh = True,
+        Dim iris As New MakeupCategory With {.Name = Lang.T("美瞳"), .Styles = {Lang.T("自然"), Lang.T("放大"), Lang.T("外圈"), Lang.T("混血"), Lang.T("亮眼")}, .Region = "eyes", .NeedsMesh = True,
             .GetStyle = Function(b) CInt(b.IrisStyle), .SetStyle = Sub(b, v) b.IrisStyle = CType(v, IrisStyle),
             .Colors = {C(&H785234), C(&H7A5A3A), C(&H6B7A86), C(&H4A6A8A), C(&H5A7A55), C(&H8A6A9A)},
             .GetColor = Function(b) b.IrisColor, .SetColor = Sub(b, v) b.IrisColorArgb = v,
-            .Note = "需要 478 點臉部網格（虹膜點）。"}
-        iris.Sliders.Add(("濃度", 0, 100, Function(b) b.Iris, Sub(b, v) b.Iris = v))
-        iris.Sliders.Add(("放大", 0, 100, Function(b) b.IrisEnlarge, Sub(b, v) b.IrisEnlarge = v))
-        iris.Sliders.Add(("外圈", 0, 100, Function(b) b.IrisRing, Sub(b, v) b.IrisRing = v))
+            .Note = Lang.T("需要 478 點臉部網格（虹膜點）。")}
+        iris.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Iris, Sub(b, v) b.Iris = v))
+        iris.Sliders.Add((Lang.T("放大"), 0, 100, Function(b) b.IrisEnlarge, Sub(b, v) b.IrisEnlarge = v))
+        iris.Sliders.Add((Lang.T("外圈"), 0, 100, Function(b) b.IrisRing, Sub(b, v) b.IrisRing = v))
         list.Add(iris)
-        Dim fold As New MakeupCategory With {.Name = "雙眼皮", .Styles = {"平行", "開扇", "內雙", "歐式"}, .Region = "eyes", .NeedsDense = True,
+        Dim fold As New MakeupCategory With {.Name = Lang.T("雙眼皮"), .Styles = {Lang.T("平行"), Lang.T("開扇"), Lang.T("內雙"), Lang.T("歐式")}, .Region = "eyes", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.FoldStyle), .SetStyle = Sub(b, v) b.FoldStyle = CType(v, FoldStyle)}
-        fold.Sliders.Add(("濃度", 0, 100, Function(b) b.Fold, Sub(b, v) b.Fold = v))
-        fold.Sliders.Add(("寬度", 0, 100, Function(b) b.FoldWidth, Sub(b, v) b.FoldWidth = v))
+        fold.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Fold, Sub(b, v) b.Fold = v))
+        fold.Sliders.Add((Lang.T("寬度"), 0, 100, Function(b) b.FoldWidth, Sub(b, v) b.FoldWidth = v))
         list.Add(fold)
-        Dim brow As New MakeupCategory With {.Name = "眉毛", .Styles = {"原眉加深", "自然", "平眉", "挑眉", "柳葉眉"}, .Region = "brows", .NeedsDense = True,
+        Dim brow As New MakeupCategory With {.Name = Lang.T("眉毛"), .Styles = {Lang.T("原眉加深"), Lang.T("自然"), Lang.T("平眉"), Lang.T("挑眉"), Lang.T("柳葉眉")}, .Region = "brows", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.BrowStyle), .SetStyle = Sub(b, v) b.BrowStyle = CType(v, BrowStyle),
             .Colors = {C(&H5C4030), C(&H7A5A44), C(&H4A4A4A), C(&H2A2420)},
             .GetColor = Function(b) b.BrowColor, .SetColor = Sub(b, v) b.BrowColorArgb = v}
-        brow.Sliders.Add(("濃度", 0, 100, Function(b) b.Brows, Sub(b, v) b.Brows = v))
-        brow.Sliders.Add(("粗細", 0, 100, Function(b) b.BrowThick, Sub(b, v) b.BrowThick = v))
-        brow.Sliders.Add(("眉峰", 0, 100, Function(b) b.BrowPeak, Sub(b, v) b.BrowPeak = v))
+        brow.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Brows, Sub(b, v) b.Brows = v))
+        brow.Sliders.Add((Lang.T("粗細"), 0, 100, Function(b) b.BrowThick, Sub(b, v) b.BrowThick = v))
+        brow.Sliders.Add((Lang.T("眉峰"), 0, 100, Function(b) b.BrowPeak, Sub(b, v) b.BrowPeak = v))
         list.Add(brow)
-        Dim blush As New MakeupCategory With {.Name = "腮紅", .Styles = {"蘋果肌", "斜刷", "曬傷妝", "微醺"}, .Region = "face",
+        Dim blush As New MakeupCategory With {.Name = Lang.T("腮紅"), .Styles = {Lang.T("蘋果肌"), Lang.T("斜刷"), Lang.T("曬傷妝"), Lang.T("微醺")}, .Region = "face",
             .GetStyle = Function(b) CInt(b.BlushStyle), .SetStyle = Sub(b, v) b.BlushStyle = CType(v, BlushStyle),
             .Colors = {C(&HEC788C), C(&HF0A07A), C(&HE07A8A), C(&HD48AB0)},
             .GetColor = Function(b) b.BlushColor, .SetColor = Sub(b, v) b.BlushColorArgb = v}
-        blush.Sliders.Add(("濃度", 0, 100, Function(b) b.Blush, Sub(b, v) b.Blush = v))
-        blush.Sliders.Add(("範圍", 0, 100, Function(b) b.BlushSpread, Sub(b, v) b.BlushSpread = v))
+        blush.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Blush, Sub(b, v) b.Blush = v))
+        blush.Sliders.Add((Lang.T("範圍"), 0, 100, Function(b) b.BlushSpread, Sub(b, v) b.BlushSpread = v))
         list.Add(blush)
-        Dim hi As New MakeupCategory With {.Name = "高光", .Styles = {"鼻樑", "顴骨", "眉骨", "唇峰", "全臉"}, .Region = "face", .NeedsDense = True,
+        Dim hi As New MakeupCategory With {.Name = Lang.T("高光"), .Styles = {Lang.T("鼻樑"), Lang.T("顴骨"), Lang.T("眉骨"), Lang.T("唇峰"), Lang.T("全臉")}, .Region = "face", .NeedsDense = True,
             .GetStyle = Function(b) CInt(b.HighlightStyle), .SetStyle = Sub(b, v) b.HighlightStyle = CType(v, HighlightStyle),
             .Colors = {C(&HFFF6EA), C(&HFFE9D6), C(&HF2F0FF)},
             .GetColor = Function(b) b.HighlightColor, .SetColor = Sub(b, v) b.HighlightColorArgb = v}
-        hi.Sliders.Add(("濃度", 0, 100, Function(b) b.Highlight, Sub(b, v) b.Highlight = v))
-        hi.Sliders.Add(("眼下", 0, 100, Function(b) b.UnderEye, Sub(b, v) b.UnderEye = v))
-        hi.Sliders.Add(("白鼻樑", 0, 100, Function(b) b.WhiteNose, Sub(b, v) b.WhiteNose = v))
+        hi.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Highlight, Sub(b, v) b.Highlight = v))
+        hi.Sliders.Add((Lang.T("眼下"), 0, 100, Function(b) b.UnderEye, Sub(b, v) b.UnderEye = v))
+        hi.Sliders.Add((Lang.T("白鼻樑"), 0, 100, Function(b) b.WhiteNose, Sub(b, v) b.WhiteNose = v))
         list.Add(hi)
-        Dim hair As New MakeupCategory With {.Name = "髮色", .Region = "hair",
+        Dim hair As New MakeupCategory With {.Name = Lang.T("髮色"), .Region = "hair",
             .Colors = {C(&H784628), C(&H963C3C), C(&HB48C64), C(&H7A7A82), C(&H3C2A22), C(&H5A3A6A)},
             .GetColor = Function(b) b.HairColor, .SetColor = Sub(b, v) b.HairColorArgb = v,
-            .Note = "用人像去背模型找出頭髮（第一次約 1 秒）；沒有模型時不作用。"}
-        hair.Sliders.Add(("濃度", 0, 100, Function(b) b.Hair, Sub(b, v) b.Hair = v))
+            .Note = Lang.T("用人像去背模型找出頭髮（第一次約 1 秒）；沒有模型時不作用。")}
+        hair.Sliders.Add((Lang.T("濃度"), 0, 100, Function(b) b.Hair, Sub(b, v) b.Hair = v))
         list.Add(hair)
-        list.Add(New MakeupCategory With {.Name = "我的妝容", .Region = "look"})
+        list.Add(New MakeupCategory With {.Name = Lang.T("我的妝容"), .Region = "look"})
         Return list.ToArray()
     End Function
 
@@ -433,7 +433,7 @@ Friend Class frmBeautyAdjust
             p.Controls.Add(btn)
         Next
         Dim y = 72
-        _styleLabel.Text = "樣式"
+        _styleLabel.Text = Lang.T("樣式")
         _styleLabel.Font = _small
         _styleLabel.SetBounds(6, y, RightW - 40, 18)
         p.Controls.Add(_styleLabel)
@@ -443,7 +443,7 @@ Friend Class frmBeautyAdjust
         _help?.SetHelp("makeup.style", _styleGrid)
         p.Controls.Add(_styleGrid)
         y += 122
-        Dim ccap As New Label With {.Text = "顏色", .AutoSize = False, .BackColor = Color.Transparent, .Font = _small}
+        Dim ccap As New Label With {.Text = Lang.T("顏色"), .AutoSize = False, .BackColor = Color.Transparent, .Font = _small}
         ccap.SetBounds(6, y + 6, 40, 20)
         _colorPanel.SetBounds(48, y, RightW - 80, 32)
         p.Controls.AddRange({ccap, _colorPanel})
@@ -455,11 +455,11 @@ Friend Class frmBeautyAdjust
         _makeupNote.Font = _small
         p.Controls.Add(_makeupNote)
         y += 36
-        Dim clearItem As New Button With {.Text = "這項歸零"}
+        Dim clearItem As New Button With {.Text = Lang.T("這項歸零")}
         clearItem.SetBounds(6, y, 110, 30)
         AddHandler clearItem.Click, Sub() ClearCategory()
         _help?.SetHelp("makeup.clear", clearItem)
-        Dim save As New Button With {.Text = "存成我的妝容"}
+        Dim save As New Button With {.Text = Lang.T("存成我的妝容")}
         save.SetBounds(122, y, 130, 30)
         AddHandler save.Click, Sub() SaveLook()
         _help?.SetHelp("makeup.save", save)
@@ -482,10 +482,10 @@ Friend Class frmBeautyAdjust
         Dim usable = CategoryUsable(c)
         ' 樣式（我的妝容：存過的組合）
         If index = MyLooksCat Then
-            _styleLabel.Text = "我的妝容（點一下套用整組）"
+            _styleLabel.Text = Lang.T("我的妝容（點一下套用整組）")
             _styleGrid.SetItems(BeautySettings.CustomLooks.Select(Function(l) l.Name).ToArray())
         Else
-            _styleLabel.Text = If(c.Styles.Length > 0, "樣式", "")
+            _styleLabel.Text = If(c.Styles.Length > 0, Lang.T("樣式"), "")
             _styleGrid.SetItems(c.Styles)
         End If
         _styleGrid.Visible = index = MyLooksCat OrElse c.Styles.Length > 0
@@ -501,7 +501,7 @@ Friend Class frmBeautyAdjust
             _colorPanel.Controls.Add(dot)
         Next
         If c.Colors.Length > 0 Then
-            Dim more As New Button With {.Text = "更多顏色…", .AutoSize = True, .Font = _small, .Margin = New Padding(6, 2, 0, 0), .Height = 26}
+            Dim more As New Button With {.Text = Lang.T("更多顏色…"), .AutoSize = True, .Font = _small, .Margin = New Padding(6, 2, 0, 0), .Height = 26}
             AddHandler more.Click, Sub()
                                        Using dlg As New Aqua.ColorPickerDialog With {.Color = c.GetColor(Cur.Settings)}
                                            If dlg.ShowDialog(Me) = DialogResult.OK Then OnColorPicked(Color.FromArgb(255, dlg.Color).ToArgb())
@@ -510,7 +510,7 @@ Friend Class frmBeautyAdjust
             more.Enabled = usable
             _colorPanel.Controls.Add(more)
         ElseIf index <> MyLooksCat Then
-            _colorPanel.Controls.Add(New Label With {.Text = "（這項不用選顏色）", .AutoSize = True, .Font = _small, .ForeColor = Color.FromArgb(130, 130, 130), .Margin = New Padding(0, 6, 0, 0)})
+            _colorPanel.Controls.Add(New Label With {.Text = Lang.T("（這項不用選顏色）"), .AutoSize = True, .Font = _small, .ForeColor = Color.FromArgb(130, 130, 130), .Margin = New Padding(0, 6, 0, 0)})
         End If
         ' 滑桿
         _makeupSliders.Controls.Clear()
@@ -537,11 +537,11 @@ Friend Class frmBeautyAdjust
             _makeupRows.Add((s, v, sl.GetV))
         Next
         If index = MyLooksCat Then
-            _makeupNote.Text = If(BeautySettings.CustomLooks.Count = 0, "還沒有存過。調好之後按「存成我的妝容」，也會出現在人像頁的一鍵美顏裡。",
-                                  "存過的組合也會出現在人像頁一鍵美顏的最後面。")
+            _makeupNote.Text = If(BeautySettings.CustomLooks.Count = 0, Lang.T("還沒有存過。調好之後按「存成我的妝容」，也會出現在人像頁的一鍵美顏裡。"),
+                                  Lang.T("存過的組合也會出現在人像頁一鍵美顏的最後面。"))
         Else
-            _makeupNote.Text = If(usable, c.Note, If(c.NeedsMesh, "需要 478 點臉部網格（Models\face_landmarks.onnx），目前停用。",
-                                                                    "需要臉部特徵點（478 點網格或 68 點），目前停用。"))
+            _makeupNote.Text = If(usable, c.Note, If(c.NeedsMesh, Lang.T("需要 478 點臉部網格（Models\face_landmarks.onnx），目前停用。"),
+                                                                    Lang.T("需要臉部特徵點（478 點網格或 68 點），目前停用。")))
         End If
         _deleteLook.Visible = index = MyLooksCat
         SyncMakeup()
@@ -598,7 +598,7 @@ Friend Class frmBeautyAdjust
     End Sub
 
     Private Sub SaveLook()
-        Dim name = Microsoft.VisualBasic.Interaction.InputBox("妝容名稱：", "存成我的妝容", $"我的妝容 {BeautySettings.CustomLooks.Count + 1}")
+        Dim name = Microsoft.VisualBasic.Interaction.InputBox(Lang.T("妝容名稱："), Lang.T("存成我的妝容"), Lang.F("我的妝容 {0}", BeautySettings.CustomLooks.Count + 1))
         If String.IsNullOrWhiteSpace(name) Then Return
         Dim look = Cur.Settings.Clone()
         look.FaceX = Nothing : look.FaceY = Nothing : look.PresetIndex = Nothing : look.PresetStrength = 100
@@ -612,7 +612,7 @@ Friend Class frmBeautyAdjust
     Private Sub DeleteLook()
         Dim i = _styleGrid.SelectedIndex
         If i < 0 OrElse i >= BeautySettings.CustomLooks.Count Then Return
-        If MessageBox.Show(Me, $"刪除「{BeautySettings.CustomLooks(i).Name}」？", "我的妝容", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) <> DialogResult.OK Then Return
+        If MessageBox.Show(Me, Lang.F("刪除「{0}」？", BeautySettings.CustomLooks(i).Name), Lang.T("我的妝容"), MessageBoxButtons.OKCancel, MessageBoxIcon.Question) <> DialogResult.OK Then Return
         BeautySettings.CustomLooks.RemoveAt(i)
         For Each t In _targets
             Dim pi = t.Settings.PresetIndex.GetValueOrDefault(-1) - BeautySettings.PresetNames.Length
@@ -750,8 +750,8 @@ Friend Class frmBeautyAdjust
     Private ReadOnly _operaGroupButtons As New List(Of Button)()
     Private ReadOnly _operaGrid As New BeautyThumbGrid()
     Private ReadOnly _operaNote As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(150, 90, 40)}
-    Private ReadOnly _operaPian As New CheckBox With {.Text = "貼片子", .AutoSize = True, .BackColor = Color.Transparent}
-    Private ReadOnly _operaBeard As New CheckBox With {.Text = "髯口", .AutoSize = True, .BackColor = Color.Transparent}
+    Private ReadOnly _operaPian As New CheckBox With {.Text = Lang.T("貼片子"), .AutoSize = True, .BackColor = Color.Transparent}
+    Private ReadOnly _operaBeard As New CheckBox With {.Text = Lang.T("髯口"), .AutoSize = True, .BackColor = Color.Transparent}
     Private _operaGroup As Integer
     ''' <summary>小圖格目前放的是哪一組的角色（-1＝還沒放）。不能用 _operaGrid.Tag 記：它固定是佈景主題的「略過」標記。</summary>
     Private _operaItemsGroup As Integer = -1
@@ -765,7 +765,7 @@ Friend Class frmBeautyAdjust
     End Function
 
     Private Sub BuildOperaPage(p As Panel)
-        Dim groups = {"俊扮", "臉譜（淨）", "丑角", "川劇"}
+        Dim groups = {Lang.T("俊扮"), Lang.T("臉譜（淨）"), Lang.T("丑角"), Lang.T("川劇")}
         For i = 0 To groups.Length - 1
             Dim index = i
             Dim btn As New Button With {.Text = groups(i), .FlatStyle = FlatStyle.Flat, .Tag = ThemeManager.SkipTag, .Font = _small}
@@ -775,7 +775,7 @@ Friend Class frmBeautyAdjust
             _operaGroupButtons.Add(btn)
             p.Controls.Add(btn)
         Next
-        Dim clear As New Button With {.Text = "清除戲曲妝", .Font = _small}
+        Dim clear As New Button With {.Text = Lang.T("清除戲曲妝"), .Font = _small}
         clear.SetBounds(RightW - 128, 0, 100, 30)
         AddHandler clear.Click, Sub()
                                     Cur.Settings.OperaRole = 0
@@ -799,9 +799,9 @@ Friend Class frmBeautyAdjust
         _operaNote.Font = _small
         _operaNote.SetBounds(6, 268, RightW - 40, 36)
         p.Controls.Add(_operaNote)
-        Row(p, "opera", "濃度", 0, 100, Function(b) b.Opera, Sub(b, v) b.Opera = v, dense:=True)
-        Row(p, "operalift", "吊眉", 0, 100, Function(b) b.OperaLift, Sub(b, v) b.OperaLift = v, dense:=True)
-        Row(p, "operashade", "保留明暗", 0, 100, Function(b) b.OperaShade, Sub(b, v) b.OperaShade = v, dense:=True)
+        Row(p, "opera", Lang.T("濃度"), 0, 100, Function(b) b.Opera, Sub(b, v) b.Opera = v, dense:=True)
+        Row(p, "operalift", Lang.T("吊眉"), 0, 100, Function(b) b.OperaLift, Sub(b, v) b.OperaLift = v, dense:=True)
+        Row(p, "operashade", Lang.T("保留明暗"), 0, 100, Function(b) b.OperaShade, Sub(b, v) b.OperaShade = v, dense:=True)
         Dim y = NewY(p) + 6
         _operaPian.Location = New Point(8, y)
         _operaBeard.Location = New Point(110, y)
@@ -820,7 +820,7 @@ Friend Class frmBeautyAdjust
         _help?.SetHelp("opera.pian", _operaPian)
         _help?.SetHelp("opera.beard", _operaBeard)
         p.Controls.AddRange({_operaPian, _operaBeard})
-        Dim faceChange As New Button With {.Text = "變臉影片…", .Font = _small, .Enabled = FaceChangeRequested IsNot Nothing}
+        Dim faceChange As New Button With {.Text = Lang.T("變臉影片…"), .Font = _small, .Enabled = FaceChangeRequested IsNot Nothing}
         faceChange.SetBounds(RightW - 158, y - 4, 130, 28)
         AddHandler faceChange.Click, Sub() FaceChangeRequested?.Invoke(Me)
         _help?.SetHelp("opera.facechange", faceChange)
@@ -854,9 +854,9 @@ Friend Class frmBeautyAdjust
             Dim role = OperaRoles.Get(s.OperaRole)
             Dim ids = OperaIds(_operaGroup)
             _operaGrid.SelectedIndex = If(s.Opera > 0, Array.IndexOf(ids, s.OperaRole), -1)
-            _operaNote.Text = If(Not _hasDense, "需要臉部特徵點（478 點網格或 68 點），目前停用。",
-                                 If(role Is Nothing, "點一個角色套用。臉譜、丑角會整張臉重畫，一般美妝（口紅、眼影…）先不套用。",
-                                    role.Name & "：" & role.Note))
+            _operaNote.Text = If(Not _hasDense, Lang.T("需要臉部特徵點（478 點網格或 68 點），目前停用。"),
+                                 If(role Is Nothing, Lang.T("點一個角色套用。臉譜、丑角會整張臉重畫，一般美妝（口紅、眼影…）先不套用。"),
+                                    role.Name & Lang.T("：") & role.Note))
             _operaPian.Checked = s.OperaPian
             _operaBeard.Checked = s.OperaBeard
         Finally

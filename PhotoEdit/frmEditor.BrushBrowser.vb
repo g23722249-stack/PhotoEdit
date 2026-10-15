@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 Partial Friend Class frmEditor
@@ -14,17 +14,17 @@ Partial Friend Class frmEditor
         Private Const HeaderH As Integer = 34
         Private Const W As Integer = 456
         Private Shared ReadOnly Groups As (Name As String, Brushes As BrushKind())() = {
-            ("基本", {BrushKind.HardRound, BrushKind.SoftRound, BrushKind.Pencil, BrushKind.Charcoal, BrushKind.Chalk, BrushKind.Crayon, BrushKind.Airbrush}),
-            ("繪畫", {BrushKind.Watercolor, BrushKind.OilPaint, BrushKind.Acrylic, BrushKind.Ink, BrushKind.ChineseBrush, BrushKind.Marker, BrushKind.DryBrush}),
-            ("Painter 筆（讀取畫布顏色）", {BrushKind.Mixer, BrushKind.Smudge, BrushKind.Clone}),
-            ("特殊（點了再選效果）", {BrushKind.Texture, BrushKind.FX, BrushKind.Particle, BrushKind.StickerHose})}
+            (Lang.T("基本"), {BrushKind.HardRound, BrushKind.SoftRound, BrushKind.Pencil, BrushKind.Charcoal, BrushKind.Chalk, BrushKind.Crayon, BrushKind.Airbrush}),
+            (Lang.T("繪畫"), {BrushKind.Watercolor, BrushKind.OilPaint, BrushKind.Acrylic, BrushKind.Ink, BrushKind.ChineseBrush, BrushKind.Marker, BrushKind.DryBrush}),
+            (Lang.T("Painter 筆（讀取畫布顏色）"), {BrushKind.Mixer, BrushKind.Smudge, BrushKind.Clone}),
+            (Lang.T("特殊（點了再選效果）"), {BrushKind.Texture, BrushKind.FX, BrushKind.Particle, BrushKind.StickerHose})}
         Private ReadOnly _ed As frmEditor
-        Private ReadOnly _font As New Font("Microsoft JhengHei UI", 9.5F)
+        Private ReadOnly _font As New Font(Lang.UiFont, 9.5F)
         Private ReadOnly _main As New Panel()
         Private ReadOnly _sub As New Panel With {.Visible = False}
         Private ReadOnly _tiles As New List(Of BrushChip)()
         Private ReadOnly _labels As New List(Of Label)()
-        Private ReadOnly _back As New Button With {.Text = "◀ 全部筆刷", .FlatStyle = FlatStyle.Flat}
+        Private ReadOnly _back As New Button With {.Text = Lang.T("◀ 全部筆刷"), .FlatStyle = FlatStyle.Flat}
         Private ReadOnly _cats As New FlowLayoutPanel With {.WrapContents = True}
         Private ReadOnly _items As New FlowLayoutPanel With {.WrapContents = True, .AutoScroll = True}
         Private _subBrush As BrushKind
@@ -178,7 +178,7 @@ Partial Friend Class frmEditor
             Using head As New SolidBrush(ThemeManager.Back(Color.FromArgb(232, 235, 241)))
                 g.FillRectangle(head, 0, 0, Width, HeaderH)
             End Using
-            Dim title = If(_sub.Visible, $"{DrawGeometry.BrushNames(CInt(_subBrush))}：選效果", "全部筆刷")
+            Dim title = If(_sub.Visible, Lang.F("{0}：選效果", DrawGeometry.BrushNames(CInt(_subBrush))), Lang.T("全部筆刷"))
             Using bold As New Font(_font, FontStyle.Bold), fg As New SolidBrush(ForeColor), small As New Font(_font.FontFamily, 8.5F),
                   s2 As New SolidBrush(ThemeManager.Fore(Color.FromArgb(105, 110, 120)))
                 g.DrawString(title, bold, fg, 12, 8)
@@ -186,7 +186,7 @@ Partial Friend Class frmEditor
                     g.DrawLine(p, Width - 24, 12, Width - 14, 22)
                     g.DrawLine(p, Width - 14, 12, Width - 24, 22)
                 End Using
-                Dim hint = If(_sub.Visible, "點一下套用（線條色換成建議顏色）　｜　Esc 關閉", "點一下換筆刷　｜　常用筆刷在輪盤外圈按右鍵更換　｜　Esc 關閉")
+                Dim hint = If(_sub.Visible, Lang.T("點一下套用（線條色換成建議顏色）　｜　Esc 關閉"), Lang.T("點一下換筆刷　｜　常用筆刷在輪盤外圈按右鍵更換　｜　Esc 關閉"))
                 Using sf As New StringFormat With {.Alignment = StringAlignment.Center}
                     g.DrawString(hint, small, s2, New RectangleF(0, Height - 22, Width, 18), sf)
                 End Using

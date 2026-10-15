@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports OpenCvSharp
 
 ''' <summary>
@@ -22,7 +23,7 @@ Public NotInheritable Class VideoExport
             End If
             vw.Dispose()
         Next
-        If writer Is Nothing Then Throw New InvalidOperationException("無法建立 MP4（找不到可用的影片編碼器）。")
+        If writer Is Nothing Then Throw New InvalidOperationException(Lang.T("無法建立 MP4（找不到可用的影片編碼器）。"))
         Using writer
             For i = 0 To frames.Count - 1
                 ct.ThrowIfCancellationRequested()

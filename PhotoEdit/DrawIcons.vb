@@ -73,19 +73,19 @@ Friend Module DrawIcons
 
     Public Function ToolName(tool As Integer) As String
         Select Case tool
-            Case SelectTool : Return "選取"
-            Case NodeTool : Return "節點"
-            Case PanTool : Return "平移"
-            Case ZoomTool : Return "縮放"
-            Case EyedropperTool : Return "吸管"
-            Case EraserTool : Return "橡皮擦"
-            Case ShapeBuilderTool : Return "形狀建立"
-            Case KnifeTool : Return "刀具"
-            Case SmartFillTool : Return "智慧填色"
-            Case ShadowTool : Return "陰影"
-            Case TransparencyTool : Return "透明度"
-            Case EnvelopeTool : Return "封套"
-            Case CInt(DrawShape.Raster) : Return "筆刷"
+            Case SelectTool : Return Lang.T("選取")
+            Case NodeTool : Return Lang.T("節點")
+            Case PanTool : Return Lang.T("平移")
+            Case ZoomTool : Return Lang.T("縮放")
+            Case EyedropperTool : Return Lang.T("吸管")
+            Case EraserTool : Return Lang.T("橡皮擦")
+            Case ShapeBuilderTool : Return Lang.T("形狀建立")
+            Case KnifeTool : Return Lang.T("刀具")
+            Case SmartFillTool : Return Lang.T("智慧填色")
+            Case ShadowTool : Return Lang.T("陰影")
+            Case TransparencyTool : Return Lang.T("透明度")
+            Case EnvelopeTool : Return Lang.T("封套")
+            Case CInt(DrawShape.Raster) : Return Lang.T("筆刷")
         End Select
         Dim b = BrushOf(tool)
         If b.HasValue Then Return DrawGeometry.BrushNames(CInt(b.Value))

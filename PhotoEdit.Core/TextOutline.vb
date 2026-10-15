@@ -1,4 +1,5 @@
-﻿Imports System.Drawing
+﻿Imports PhotoEdit
+Imports System.Drawing
 Imports System.Drawing.Drawing2D
 
 ''' <summary>
@@ -79,7 +80,7 @@ Partial Public NotInheritable Class DrawGeometry
                     d.Stroked = False
                     d.Symmetry = SymmetryKind.None
                     d.Text = ""
-                    d.Name = If(kv.Key >= 0 AndAlso kv.Key < layer.Text.Length, layer.Text(kv.Key).ToString(), "文字")
+                    d.Name = If(kv.Key >= 0 AndAlso kv.Key < layer.Text.Length, layer.Text(kv.Key).ToString(), Lang.T("文字"))
                     d.Id = Nothing
                     ' 外框座標：量字時的像素 → 以圖層中心為原點的單位 → 旋轉、移到圖層位置
                     For Each c In kv.Value

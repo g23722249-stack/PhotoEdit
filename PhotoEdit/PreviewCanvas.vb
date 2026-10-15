@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -523,7 +523,7 @@ Partial Friend Class PreviewCanvas
         Dim g = e.Graphics
         g.Clear(BackColor)
         If _image Is Nothing Then
-            TextRenderer.DrawText(g, "把照片拖曳到這裡，或從「檔案 → 載入／新增」", Font, ClientRectangle, ForeColor,
+            TextRenderer.DrawText(g, Lang.T("把照片拖曳到這裡，或從「檔案 → 載入／新增」"), Font, ClientRectangle, ForeColor,
                                   TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             Return
         End If

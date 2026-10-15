@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Runtime.InteropServices
 Imports OpenCvSharp
@@ -49,7 +50,7 @@ Public NotInheritable Class FaceMorph
     Implements IDisposable
 
     ''' <summary>預設點裡用來對齊、自動推估的 5 個關鍵點。</summary>
-    Public Shared ReadOnly KeyNames As String() = {"左眼", "右眼", "鼻尖", "左嘴角", "右嘴角"}
+    Public Shared ReadOnly KeyNames As String() = {Lang.T("左眼"), Lang.T("右眼"), Lang.T("鼻尖"), Lang.T("左嘴角"), Lang.T("右嘴角")}
 
     Private ReadOnly _a As Mat, _b As Mat
     Private ReadOnly _pa As Point2f(), _pb As Point2f()
@@ -81,42 +82,42 @@ Public NotInheritable Class FaceMorph
         If eyeL.X > eyeR.X Then
             Dim tmp = eyeL : eyeL = eyeR : eyeR = tmp
         End If
-        add("左眼", eyeL) : add("右眼", eyeR)
-        add("鼻尖", P(1))
+        add(Lang.T("左眼"), eyeL) : add(Lang.T("右眼"), eyeR)
+        add(Lang.T("鼻尖"), P(1))
         Dim mL = P(61), mR = P(291)
         If mL.X > mR.X Then
             Dim tmp = mL : mL = mR : mR = tmp
         End If
-        add("左嘴角", mL) : add("右嘴角", mR)
+        add(Lang.T("左嘴角"), mL) : add(Lang.T("右嘴角"), mR)
         ' 眼睛（畫面左邊那隻＝網格 33/133 那組時，依 x 判斷）
         Dim leftIsLow = m(33).X < m(263).X
         Dim eyeSets = {(Outer:=33, Upper:=159, Inner:=133, Lower:=145), (Outer:=263, Upper:=386, Inner:=362, Lower:=374)}
         For k = 0 To 1
             Dim e = eyeSets(If(leftIsLow, k, 1 - k))
-            Dim side = If(k = 0, "左", "右")
-            add(side & "眼外角", P(e.Outer)) : add(side & "眼上緣", P(e.Upper)) : add(side & "眼內角", P(e.Inner)) : add(side & "眼下緣", P(e.Lower))
+            Dim side = If(k = 0, Lang.T("左"), Lang.T("右"))
+            add(side & Lang.T("眼外角"), P(e.Outer)) : add(side & Lang.T("眼上緣"), P(e.Upper)) : add(side & Lang.T("眼內角"), P(e.Inner)) : add(side & Lang.T("眼下緣"), P(e.Lower))
         Next
         ' 眉毛
         Dim brows = {New Integer() {70, 105, 107}, New Integer() {300, 334, 336}}
         For k = 0 To 1
             Dim br = brows(If(leftIsLow, k, 1 - k))
-            Dim side = If(k = 0, "左", "右")
+            Dim side = If(k = 0, Lang.T("左"), Lang.T("右"))
             Dim pts = br.Select(Function(i) P(i)).OrderBy(Function(q) q.X).ToArray()
-            add(side & "眉1", pts(0)) : add(side & "眉2", pts(1)) : add(side & "眉3", pts(2))
+            add(side & Lang.T("眉1"), pts(0)) : add(side & Lang.T("眉2"), pts(1)) : add(side & Lang.T("眉3"), pts(2))
         Next
         ' 鼻
-        add("鼻樑", P(6))
+        add(Lang.T("鼻樑"), P(6))
         Dim nL = P(98), nR = P(327)
         If nL.X > nR.X Then
             Dim tmp = nL : nL = nR : nR = tmp
         End If
-        add("左鼻翼", nL) : add("右鼻翼", nR) : add("鼻底", P(2))
+        add(Lang.T("左鼻翼"), nL) : add(Lang.T("右鼻翼"), nR) : add(Lang.T("鼻底"), P(2))
         ' 嘴
-        add("上唇", P(0)) : add("嘴中上", P(13)) : add("嘴中下", P(14)) : add("下唇", P(17))
+        add(Lang.T("上唇"), P(0)) : add(Lang.T("嘴中上"), P(13)) : add(Lang.T("嘴中下"), P(14)) : add(Lang.T("下唇"), P(17))
         ' 臉的輪廓（16 點，從額頭頂順時針）
         Dim oval = {10, 297, 284, 389, 454, 361, 397, 378, 152, 149, 172, 132, 234, 162, 54, 67}
         For k = 0 To oval.Length - 1
-            add("輪廓" & (k + 1), P(oval(k)))
+            add(Lang.T("輪廓") & (k + 1), P(oval(k)))
         Next
         ' 推估：頭頂、耳尖、髮側、脖子、肩膀
         Dim top = P(10), chin = P(152)
@@ -126,12 +127,12 @@ Public NotInheritable Class FaceMorph
         If sx < 0 Then sx = -sx : sy = -sy
         Dim fw = Math.Sqrt((P(234).X - P(454).X) ^ 2 + (P(234).Y - P(454).Y) ^ 2)
         Dim at = Function(b As PointF, up As Double, right As Double) New PointF(CSng(b.X + ux * up + sx * right), CSng(b.Y + uy * up + sy * right))
-        add("頭頂", at(top, fh * 0.3, 0))
-        add("左耳尖", at(top, fh * 0.32, -fw * 0.42)) : add("右耳尖", at(top, fh * 0.32, fw * 0.42))
+        add(Lang.T("頭頂"), at(top, fh * 0.3, 0))
+        add(Lang.T("左耳尖"), at(top, fh * 0.32, -fw * 0.42)) : add(Lang.T("右耳尖"), at(top, fh * 0.32, fw * 0.42))
         Dim sideL = If(m(234).X < m(454).X, P(234), P(454)), sideR = If(m(234).X < m(454).X, P(454), P(234))
-        add("左髮側", at(sideL, 0, -fw * 0.2)) : add("右髮側", at(sideR, 0, fw * 0.2))
-        add("脖子", at(chin, -fh * 0.3, 0))
-        add("左肩", at(chin, -fh * 0.55, -fw * 0.55)) : add("右肩", at(chin, -fh * 0.55, fw * 0.55))
+        add(Lang.T("左髮側"), at(sideL, 0, -fw * 0.2)) : add(Lang.T("右髮側"), at(sideR, 0, fw * 0.2))
+        add(Lang.T("脖子"), at(chin, -fh * 0.3, 0))
+        add(Lang.T("左肩"), at(chin, -fh * 0.55, -fw * 0.55)) : add(Lang.T("右肩"), at(chin, -fh * 0.55, fw * 0.55))
         ' 超出照片的推估點收回照片內
         For Each q In list
             q.X = Math.Max(0, Math.Min(w - 1, q.X))
@@ -182,7 +183,7 @@ Public NotInheritable Class FaceMorph
     ''' <param name="align">第二張圖依兩眼對齊的程度 0..1。</param>
     Public Sub New(imageA As Bitmap, imageB As Bitmap, pointsA As IList(Of MorphPoint), pointsB As IList(Of MorphPoint),
                    Optional maxSide As Integer = 1080, Optional align As Double = 0.5)
-        If pointsA.Count <> pointsB.Count Then Throw New ArgumentException("兩張圖的點數不同。")
+        If pointsA.Count <> pointsB.Count Then Throw New ArgumentException(Lang.T("兩張圖的點數不同。"))
         ' 畫布：第一張的比例，長邊不超過 maxSide、也不超過第一張原本的大小；寬高取偶數
         Dim k = Math.Min(1.0, maxSide / Math.Max(imageA.Width, imageA.Height))
         Width = Math.Max(2, CInt(Math.Round(imageA.Width * k / 2)) * 2)
@@ -195,8 +196,8 @@ Public NotInheritable Class FaceMorph
         Dim cover = Math.Max(Width / CDbl(imageB.Width), Height / CDbl(imageB.Height))
         Dim coverTx = (Width - imageB.Width * cover) / 2, coverTy = (Height - imageB.Height * cover) / 2
         Dim s = cover, angle = 0.0, tx = coverTx, ty = coverTy
-        Dim iL = IndexOfName(pointsA, "左眼"), iR = IndexOfName(pointsA, "右眼")
-        If align > 0 AndAlso iL >= 0 AndAlso iR >= 0 AndAlso IndexOfName(pointsB, "左眼") = iL AndAlso IndexOfName(pointsB, "右眼") = iR Then
+        Dim iL = IndexOfName(pointsA, Lang.T("左眼")), iR = IndexOfName(pointsA, Lang.T("右眼"))
+        If align > 0 AndAlso iL >= 0 AndAlso iR >= 0 AndAlso IndexOfName(pointsB, Lang.T("左眼")) = iL AndAlso IndexOfName(pointsB, Lang.T("右眼")) = iR Then
             Dim aL = _pa(iL), aR = _pa(iR), bL = pointsB(iL).Pt, bR = pointsB(iR).Pt
             Dim da = Math.Sqrt((aR.X - aL.X) ^ 2 + (aR.Y - aL.Y) ^ 2), db = Math.Sqrt((bR.X - bL.X) ^ 2 + (bR.Y - bL.Y) ^ 2)
             If da > 1 AndAlso db > 1 Then

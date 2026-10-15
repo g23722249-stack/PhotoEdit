@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 「效果」分頁的藝術風格區：選風格（依分類列出）、強度、線條、細節。
@@ -12,16 +12,16 @@ Partial Friend Class frmEditor
 
     Private Sub BuildArtSection(L As PageLayout)
         L.Y += 6
-        AddHeading(L, "藝術風格")
-        _help.SetHelpLinked("art.style", _artStyle, AddCaption(L, "風格", L.Y), _artStyle)
+        AddHeading(L, Lang.T("藝術風格"))
+        _help.SetHelpLinked("art.style", _artStyle, AddCaption(L, Lang.T("風格"), L.Y), _artStyle)
         _artStyle.DropDownStyle = ComboBoxStyle.DropDownList
         _artStyle.MaxDropDownItems = 16
         _artItems.Add(ArtStyle.None)
-        _artStyle.Items.Add("無")
+        _artStyle.Items.Add(Lang.T("無"))
         For Each cat In ArtStyles.Categories
             For Each st In cat.Styles
                 _artItems.Add(st)
-                _artStyle.Items.Add($"{cat.Name}｜{ArtStyles.Names(CInt(st))}")
+                _artStyle.Items.Add(Lang.F("{0}｜{1}", cat.Name, ArtStyles.Names(CInt(st))))
             Next
         Next
         _artStyle.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
@@ -32,17 +32,17 @@ Partial Friend Class frmEditor
                                                    End Sub
         L.Add(_artStyle)
         L.Y += RowHeight
-        AddRow(L, MakeRow("artstrength", "強度", 0, 100, AddressOf Plain, Function(r) r.ArtStrength, Sub(r, v) r.ArtStrength = v))
-        AddRow(L, MakeRow("artline", "線條", 0, 100, AddressOf Plain, Function(r) r.ArtLine, Sub(r, v) r.ArtLine = v))
-        AddRow(L, MakeRow("artdetail", "筆觸大小", 0, 100, AddressOf Plain, Function(r) r.ArtDetail, Sub(r, v) r.ArtDetail = v))
+        AddRow(L, MakeRow("artstrength", Lang.T("強度"), 0, 100, AddressOf Plain, Function(r) r.ArtStrength, Sub(r, v) r.ArtStrength = v))
+        AddRow(L, MakeRow("artline", Lang.T("線條"), 0, 100, AddressOf Plain, Function(r) r.ArtLine, Sub(r, v) r.ArtLine = v))
+        AddRow(L, MakeRow("artdetail", Lang.T("筆觸大小"), 0, 100, AddressOf Plain, Function(r) r.ArtDetail, Sub(r, v) r.ArtDetail = v))
         ' 宮崎風 AI 重繪：結果開成新影像（不是即時套用的風格）
-        Dim redraw = MakeButton("宮崎風 AI 重繪…", "btn.airedraw")
+        Dim redraw = MakeButton(Lang.T("宮崎風 AI 重繪…"), "btn.airedraw")
         redraw.SetBounds(8, L.Y + 2, L.Width - 16, 30)
         AddHandler redraw.Click, Sub() RunCommand("airedraw")
         L.Add(redraw)
         L.Y += 40
-        AddHint(L, "強度：和原圖混合的比例。線條：輪廓線粗細。筆觸大小：筆觸、網點、色塊的大小（越大越粗獷）。" & vbCrLf &
-                   "風格會畫在色調之後，文字、貼圖與繪圖不會被風格化。")
+        AddHint(L, Lang.T("強度：和原圖混合的比例。線條：輪廓線粗細。筆觸大小：筆觸、網點、色塊的大小（越大越粗獷）。") & vbCrLf &
+                   Lang.T("風格會畫在色調之後，文字、貼圖與繪圖不會被風格化。"))
     End Sub
 
     Private Sub SyncArtControls()

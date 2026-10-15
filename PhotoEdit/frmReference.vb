@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing.Drawing2D
 
 ''' <summary>
@@ -10,13 +11,13 @@ Friend Class frmReference
 
     Private ReadOnly _settings As AppSettings
     Private ReadOnly _view As New RefView()
-    Private ReadOnly _open As New Button With {.Text = "開啟圖片…", .UseVisualStyleBackColor = True}
-    Private ReadOnly _trace As New CheckBox With {.Text = "描圖", .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
+    Private ReadOnly _open As New Button With {.Text = Lang.T("開啟圖片…"), .UseVisualStyleBackColor = True}
+    Private ReadOnly _trace As New CheckBox With {.Text = Lang.T("描圖"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
     Private ReadOnly _opacity As New Aqua.Slider With {.Minimum = 10, .Maximum = 80, .ShowTicks = False}
     Private ReadOnly _opacityLabel As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
     Private ReadOnly _status As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleLeft, .BackColor = Color.Transparent,
                                                .ForeColor = Color.FromArgb(105, 110, 120)}
-    Private ReadOnly _font As New Font("Microsoft JhengHei UI", 10)
+    Private ReadOnly _font As New Font(Lang.UiFont, 10)
 
     ''' <summary>點一下參考圖吸到的顏色。</summary>
     Public Event ColorPicked(c As Color)
@@ -25,7 +26,7 @@ Friend Class frmReference
 
     Public Sub New(settings As AppSettings)
         _settings = settings
-        Text = "參考圖"
+        Text = Lang.T("參考圖")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Sizable
         MinButton = False
@@ -49,7 +50,7 @@ Friend Class frmReference
                                               If _trace.Checked Then RaiseEvent TraceChanged()
                                           End Sub
         AddHandler _view.Picked, Sub(c)
-                                     _status.Text = $"已吸色 RGB({c.R}, {c.G}, {c.B})，設成線條色。"
+                                     _status.Text = Lang.F("已吸色 RGB({0}, {1}, {2})，設成線條色。", c.R, c.G, c.B)
                                      RaiseEvent ColorPicked(c)
                                  End Sub
         _view.AllowDrop = True
@@ -59,7 +60,7 @@ Friend Class frmReference
                                        If files IsNot Nothing AndAlso files.Length > 0 Then LoadImage(files(0))
                                    End Sub
         Controls.AddRange({_open, _trace, _opacity, _opacityLabel, _view, _status})
-        _status.Text = "點一下吸色；滾輪縮放、拖曳移動、按兩下看全圖。"
+        _status.Text = Lang.T("點一下吸色；滾輪縮放、拖曳移動、按兩下看全圖。")
         LayoutBody()
         ThemeManager.Attach(Me)
         If Not String.IsNullOrEmpty(_settings.ReferencePath) AndAlso IO.File.Exists(_settings.ReferencePath) Then LoadImage(_settings.ReferencePath, quiet:=True)
@@ -101,7 +102,7 @@ Friend Class frmReference
     End Sub
 
     Private Sub OpenWithDialog()
-        Using dlg As New OpenFileDialog With {.Title = "開啟參考圖", .Filter = "圖片|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.webp|所有檔案|*.*"}
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("開啟參考圖"), .Filter = Lang.T("圖片|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.webp|所有檔案|*.*")}
             If Not String.IsNullOrEmpty(_settings.ReferencePath) Then
                 Try
                     dlg.InitialDirectory = IO.Path.GetDirectoryName(_settings.ReferencePath)
@@ -121,13 +122,13 @@ Friend Class frmReference
             End Using
         Catch ex As Exception When TypeOf ex Is IO.IOException OrElse TypeOf ex Is ArgumentException OrElse
                                    TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is OutOfMemoryException
-            If Not quiet Then MessageBox.Show(Me, $"無法開啟「{IO.Path.GetFileName(path)}」：{ex.Message}", "參考圖", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            If Not quiet Then MessageBox.Show(Me, Lang.F("無法開啟「{0}」：{1}", IO.Path.GetFileName(path), ex.Message), Lang.T("參考圖"), MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         _view.Image = bmp
         _settings.ReferencePath = path
         _settings.Save()
-        Text = "參考圖 – " & IO.Path.GetFileName(path)
+        Text = Lang.T("參考圖 – ") & IO.Path.GetFileName(path)
         RaiseEvent TraceChanged()
     End Sub
 
@@ -166,7 +167,7 @@ Friend Class frmReference
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
             Cursor = Cursors.Cross
-            AccessibleName = "參考圖"
+            AccessibleName = Lang.T("參考圖")
         End Sub
 
         Public Property Image As Bitmap
@@ -198,7 +199,7 @@ Friend Class frmReference
             Dim g = e.Graphics
             g.Clear(ThemeManager.Back(Color.FromArgb(52, 52, 56)))
             If _image Is Nothing Then
-                TextRenderer.DrawText(g, "按「開啟圖片…」或把圖片拖曳到這裡", Font, ClientRectangle, Color.FromArgb(200, 204, 212),
+                TextRenderer.DrawText(g, Lang.T("按「開啟圖片…」或把圖片拖曳到這裡"), Font, ClientRectangle, Color.FromArgb(200, 204, 212),
                                       TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.WordBreak)
                 Return
             End If

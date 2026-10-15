@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports System.IO
 Imports PhotoEdit
 
@@ -13,7 +13,7 @@ Partial Friend Class frmEditor
     ''' <summary>結果存放的資料夾（測試時可以改到暫存區）。</summary>
     Friend Shared Property RedrawFolder As String
         Get
-            Return If(_redrawFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", "AI重繪"))
+            Return If(_redrawFolder, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoEdit", Lang.T("AI重繪")))
         End Get
         Set(value As String)
             _redrawFolder = value
@@ -26,7 +26,7 @@ Partial Friend Class frmEditor
         Try
             source = RenderMerged(_recipe)
         Catch ex As Exception When TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is ArgumentException
-            MessageBox.Show(Me, "無法取得目前的影像：" & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.T("無法取得目前的影像：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End Try
         Dim baseName = Path.GetFileNameWithoutExtension(_photo.Path)
@@ -38,7 +38,7 @@ Partial Friend Class frmEditor
                     file = SaveRedraw(result, $"{baseName}_{dlg.ResultName}")
                 End Using
                 OpenPhoto(file, remember:=False)
-                SetStatusMessage("宮崎風 AI 重繪：已存成 " & file)
+                SetStatusMessage(Lang.T("宮崎風 AI 重繪：已存成 ") & file)
             End Using
         End Using
     End Sub

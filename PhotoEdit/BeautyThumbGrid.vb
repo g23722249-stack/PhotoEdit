@@ -22,7 +22,7 @@ Friend NotInheritable Class BeautyThumbGrid
         SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or
                  ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
         BackColor = Color.Transparent
-        Font = New Font("Microsoft JhengHei UI", 9.0F)
+        Font = New Font(Global.PhotoEdit.Lang.UiFont, 9.0F)
         Tag = ThemeManager.SkipTag
     End Sub
 

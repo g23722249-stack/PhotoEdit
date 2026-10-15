@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 
 ''' <summary>
@@ -334,8 +335,8 @@ Partial Public NotInheritable Class OperaRoles
         Const Gold = &HE2B23A, Silver = &HD6DCE6, Ink = &H121010, Paper = &HF4F0E8
 
         ' 1 張飛・蝴蝶臉：蝴蝶眼窩＋臉頰外側紋＋紅鼻頭
-        r = New OperaRole With {.Name = "張飛（蝴蝶臉）", .Group = OperaGroup.Chuan, .Lift = 40,
-                                .Note = "川劇張飛：眉眼畫成一對黑蝴蝶（白翅脈、觸鬚捲），額頭紅菱描金，臉頰外側黑紋夾紅線、紅鼻頭、白下巴。勇猛又憨直。"}
+        r = New OperaRole With {.Name = Lang.T("張飛（蝴蝶臉）"), .Group = OperaGroup.Chuan, .Lift = 40,
+                                .Note = Lang.T("川劇張飛：眉眼畫成一對黑蝴蝶（白翅脈、觸鬚捲），額頭紅菱描金，臉頰外側黑紋夾紅線、紅鼻頭、白下巴。勇猛又憨直。")}
         AddOrnate(r, New Ornate With {.Base = &HF0E6E0, .Col = Column.None, .Eye = EyeStyle.None, .Cheek = CheekStyle.Folds, .CheekAccent = &HD82A2A,
                                       .Nose = NoseStyle.RedTip})
         Dim wingUp = Curve(True, 0.14, -0.08, 0.2, -0.5, 0.45, -0.84, 0.8, -0.88, 1.02, -0.6, 0.96, -0.24, 0.7, -0.08)
@@ -357,8 +358,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 2 包拯・月牙：白眼圈金角、白雲紋
-        r = New OperaRole With {.Name = "包拯（月牙）", .Group = OperaGroup.Chuan, .Lift = 25,
-                                .Note = "黑整臉：白色掃帚眉鑲金、粗白眼圈外角描金、額頭描金邊的白月牙，臉頰白雲捲。鐵面無私。"}
+        r = New OperaRole With {.Name = Lang.T("包拯（月牙）"), .Group = OperaGroup.Chuan, .Lift = 25,
+                                .Note = Lang.T("黑整臉：白色掃帚眉鑲金、粗白眼圈外角描金、額頭描金邊的白月牙，臉頰白雲捲。鐵面無私。")}
         AddOrnate(r, New Ornate With {.Base = &H1A1818, .Brow = Paper, .BrowEdge = Gold, .Col = Column.None, .Eye = EyeStyle.WhiteRim, .EyeAccent = Gold,
                                       .Cheek = CheekStyle.Clouds, .CheekAccent = Paper, .Nose = NoseStyle.Plain, .Chin = ChinStyle.None, .Lip = &H5A1010})
         Dim moon = Arc(0, -0.86, 0.24, 0.24, 15, 165).Concat(Arc(0, -0.94, 0.22, 0.22, 160, 20)).ToArray()
@@ -367,8 +368,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 3 鍾馗・紅臉蝙蝠：火焰眼、下半臉白、鼻樑捲紋
-        r = New OperaRole With {.Name = "鍾馗（蝙蝠）", .Group = OperaGroup.Chuan, .Lift = 55,
-                                .Note = "紅臉：火焰眼竄向太陽穴、黑掃帚眉，額頭展翅黑蝙蝠（取「福」），鼻子以下整塊白、紅元寶下巴，鼻樑捲紋。捉鬼的判官。"}
+        r = New OperaRole With {.Name = Lang.T("鍾馗（蝙蝠）"), .Group = OperaGroup.Chuan, .Lift = 55,
+                                .Note = Lang.T("紅臉：火焰眼竄向太陽穴、黑掃帚眉，額頭展翅黑蝙蝠（取「福」），鼻子以下整塊白、紅元寶下巴，鼻樑捲紋。捉鬼的判官。")}
         AddOrnate(r, New Ornate With {.Base = &HC0242A, .Col = Column.None, .Eye = EyeStyle.Fire, .EyeAccent = Paper,
                                       .Cheek = CheekStyle.LowerBlock, .CheekColor = Paper, .CheekAccent = Ink, .Nose = NoseStyle.Curls, .Chin = ChinStyle.RedYuanbao})
         r.Layers.Add(Poly(Paper, Move(BatHalf, 0, -0.74, 0.6, 0.42)))
@@ -376,15 +377,15 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 4 火焰紅臉：黑淚形眼窩、頰上金斑、金鼻樑、金火焰下巴
-        r = New OperaRole With {.Name = "火焰紅臉", .Group = OperaGroup.Chuan, .Lift = 60,
-                                .Note = "紅臉、額頭金黃：金色火焰柱（藍焰心）、黑淚形眼窩描白、頰上金斑、金鼻樑、下巴金火焰。性情剛烈的武將。"}
+        r = New OperaRole With {.Name = Lang.T("火焰紅臉"), .Group = OperaGroup.Chuan, .Lift = 60,
+                                .Note = Lang.T("紅臉、額頭金黃：金色火焰柱（藍焰心）、黑淚形眼窩描白、頰上金斑、金鼻樑、下巴金火焰。性情剛烈的武將。")}
         AddOrnate(r, New Ornate With {.Base = &HC21E24, .Forehead = &HF0B828, .ColOuter = Gold, .ColMetal = True, .ColInner = &H2A5CC8,
                                       .Eye = EyeStyle.Teardrop, .Cheek = CheekStyle.Patch, .CheekAccent = &HF0B828, .Nose = NoseStyle.GoldBridge, .Chin = ChinStyle.GoldFlame})
         list.Add(r)
 
         ' 5 雲紋藍臉：白葉眼斑、白雲捲
-        r = New OperaRole With {.Name = "雲紋藍臉", .Group = OperaGroup.Chuan, .Lift = 45,
-                                .Note = "藍臉：紅色水滴印堂描白邊、黑掃帚眉、白葉眼斑，太陽穴與臉頰捲起白雲紋、白鼻樑、白下巴。勇猛剛直、有神通的角色。"}
+        r = New OperaRole With {.Name = Lang.T("雲紋藍臉"), .Group = OperaGroup.Chuan, .Lift = 45,
+                                .Note = Lang.T("藍臉：紅色水滴印堂描白邊、黑掃帚眉、白葉眼斑，太陽穴與臉頰捲起白雲紋、白鼻樑、白下巴。勇猛剛直、有神通的角色。")}
         AddOrnate(r, New Ornate With {.Base = &H1E50A8, .Col = Column.Drop, .ColOuter = &HC8202A, .ColInner = &HF2C430,
                                       .Cheek = CheekStyle.Clouds, .CheekAccent = Paper})
         Dim sp = Spiral(0.84, -0.62, 0.13, 0.02, 1.6, 200)
@@ -393,8 +394,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 6 金臉神佛：金眼眶、紅鼻頭、紅元寶下巴
-        r = New OperaRole With {.Name = "金臉神佛", .Group = OperaGroup.Chuan, .Lift = 50,
-                                .Note = "金臉（金屬光澤）：額頭一排紅點、紅火焰印堂，金眼眶配銀眼斑，臉頰乾淨只點紅，紅鼻頭、紅元寶下巴。天神、佛一類的角色。"}
+        r = New OperaRole With {.Name = Lang.T("金臉神佛"), .Group = OperaGroup.Chuan, .Lift = 50,
+                                .Note = Lang.T("金臉（金屬光澤）：額頭一排紅點、紅火焰印堂，金眼眶配銀眼斑，臉頰乾淨只點紅，紅鼻頭、紅元寶下巴。天神、佛一類的角色。")}
         AddOrnate(r, New Ornate With {.Base = &HDCAA3C, .Col = Column.Dots, .ColOuter = &HC8202A, .Eye = EyeStyle.GoldRing,
                                       .Cheek = CheekStyle.None, .Nose = NoseStyle.RedTip, .Chin = ChinStyle.RedYuanbao, .Lip = &HB01828})
         r.Layers(0).Metal = True
@@ -403,8 +404,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 7 綠臉精怪：下垂淚眼、臉頰外側紅紋、黑三角下巴
-        r = New OperaRole With {.Name = "綠臉精怪", .Group = OperaGroup.Chuan, .Lift = 50,
-                                .Note = "綠臉：黃色火焰印堂、下垂的黑淚眼（裡面一圈黃）、臉頰外側紅紋夾黑線、鼻樑捲紋、黑三角下巴、嘴角獠牙，額頭水波紋。山精水怪一類的角色。"}
+        r = New OperaRole With {.Name = Lang.T("綠臉精怪"), .Group = OperaGroup.Chuan, .Lift = 50,
+                                .Note = Lang.T("綠臉：黃色火焰印堂、下垂的黑淚眼（裡面一圈黃）、臉頰外側紅紋夾黑線、鼻樑捲紋、黑三角下巴、嘴角獠牙，額頭水波紋。山精水怪一類的角色。")}
         AddOrnate(r, New Ornate With {.Base = &H2C8A48, .ColOuter = &HF2C430, .ColInner = &HC8202A, .Eye = EyeStyle.Droop, .EyeAccent = &HF2C430,
                                       .Cheek = CheekStyle.Folds, .CheekColor = &HC8202A, .CheekAccent = Ink, .Nose = NoseStyle.Curls,
                                       .Chin = ChinStyle.BlackTriangle, .Lip = &H141010})
@@ -416,8 +417,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 8 太極臉：黑淚形眼窩、頰上白斑、白鼻樑、紅元寶下巴
-        r = New OperaRole With {.Name = "太極臉", .Group = OperaGroup.Chuan, .Lift = 45,
-                                .Note = "紅臉、額頭黑白太極描金，黑掃帚眉、黑淚形眼窩、頰上白斑捲紋、白鼻樑。亦正亦邪、有道行的角色。"}
+        r = New OperaRole With {.Name = Lang.T("太極臉"), .Group = OperaGroup.Chuan, .Lift = 45,
+                                .Note = Lang.T("紅臉、額頭黑白太極描金，黑掃帚眉、黑淚形眼窩、頰上白斑捲紋、白鼻樑。亦正亦邪、有道行的角色。")}
         AddOrnate(r, New Ornate With {.Base = &HC8222A, .Col = Column.None, .Eye = EyeStyle.Teardrop, .Cheek = CheekStyle.Patch, .CheekAccent = Paper,
                                       .Chin = ChinStyle.None})
         Const TR = 0.17, TY = -0.76
@@ -429,8 +430,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 9 陰陽臉（左黑右白）
-        r = New OperaRole With {.Name = "陰陽臉", .Group = OperaGroup.Chuan, .Lift = 45,
-                                .Note = "左黑右白的陰陽臉：兩邊的眉、眼窩、捲紋用相反的顏色，鼻樑紅火焰。川劇不對稱臉譜的代表畫法。"}
+        r = New OperaRole With {.Name = Lang.T("陰陽臉"), .Group = OperaGroup.Chuan, .Lift = 45,
+                                .Note = Lang.T("左黑右白的陰陽臉：兩邊的眉、眼窩、捲紋用相反的顏色，鼻樑紅火焰。川劇不對稱臉譜的代表畫法。")}
         r.Layers.Add(Fill(&HF0ECE6, 0.93))
         r.Layers.Add(Poly(&H161414, P(-2, -2, 0, -2, 0, 2.5, -2, 2.5), mirror:=False, op:=0.95, blur:=0.01))
         For Each side In {1.0, -1.0}
@@ -450,16 +451,16 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 10 黃臉：火焰眼、臉頰外側黑紋夾紅、紅鼻頭、紅元寶
-        r = New OperaRole With {.Name = "黃臉", .Group = OperaGroup.Chuan, .Lift = 50,
-                                .Note = "黃臉：額頭一排紅點、紅火焰印堂，火焰眼、臉頰外側黑紋夾紅線、紅鼻頭、紅元寶下巴。驍勇、性格暴躁的角色。"}
+        r = New OperaRole With {.Name = Lang.T("黃臉"), .Group = OperaGroup.Chuan, .Lift = 50,
+                                .Note = Lang.T("黃臉：額頭一排紅點、紅火焰印堂，火焰眼、臉頰外側黑紋夾紅線、紅鼻頭、紅元寶下巴。驍勇、性格暴躁的角色。")}
         AddOrnate(r, New Ornate With {.Base = &HF0C428, .Col = Column.Dots, .ColOuter = &HD8202A, .Eye = EyeStyle.Fire, .EyeAccent = &HD8202A,
                                       .Cheek = CheekStyle.Folds, .CheekAccent = &HD8202A, .Nose = NoseStyle.RedTip, .Chin = ChinStyle.RedYuanbao})
         r.Layers.Add(Poly(&HD8202A, Curve(True, 0, -0.1, 0.07, -0.3, 0.1, -0.52, 0.04, -0.62, 0, -0.66), blur:=0.006))
         list.Add(r)
 
         ' 11 粉臉：白葉眼斑、下半臉紅、白下巴
-        r = New OperaRole With {.Name = "粉臉", .Group = OperaGroup.Chuan, .Lift = 45,
-                                .Note = "粉紅臉：紅色水滴印堂、黑掃帚眉、白葉眼斑、白鼻樑，鼻子以下整塊紅、白下巴。年老或帶喜氣的武將。"}
+        r = New OperaRole With {.Name = Lang.T("粉臉"), .Group = OperaGroup.Chuan, .Lift = 45,
+                                .Note = Lang.T("粉紅臉：紅色水滴印堂、黑掃帚眉、白葉眼斑、白鼻樑，鼻子以下整塊紅、白下巴。年老或帶喜氣的武將。")}
         AddOrnate(r, New Ornate With {.Base = &HEE9AAE, .Col = Column.Drop, .ColOuter = &HC8202A, .ColInner = Paper,
                                       .Cheek = CheekStyle.LowerBlock, .CheekColor = &HC8202A, .CheekAccent = Ink})
         list.Add(r)
@@ -489,8 +490,8 @@ Partial Public NotInheritable Class OperaRoles
                    End Sub
 
         ' 12 川丑・豆腐乾
-        r = New OperaRole With {.Name = "川丑・豆腐乾", .Group = OperaGroup.Chuan, .Lift = 0,
-                                .Note = "川丑最典型的小花臉：鼻樑一塊花邊白豆腐乾，裡面畫捲曲小眉、小眼、紅鼻頭，額頭紅花、雙頰紅暈加捲紋。"}
+        r = New OperaRole With {.Name = Lang.T("川丑・豆腐乾"), .Group = OperaGroup.Chuan, .Lift = 0,
+                                .Note = Lang.T("川丑最典型的小花臉：鼻樑一塊花邊白豆腐乾，裡面畫捲曲小眉、小眼、紅鼻頭，額頭紅花、雙頰紅暈加捲紋。")}
         Dim tofu = Curve(True, 0, -0.42, 0.12, -0.36, 0.24, -0.4, 0.22, -0.24, 0.26, -0.08, 0.2, 0.08, 0.24, 0.26, 0.2, 0.44, 0.24, 0.58, 0.1, 0.56, 0, 0.62,
                          -0.1, 0.56, -0.24, 0.58, -0.2, 0.44, -0.24, 0.26, -0.2, 0.08, -0.26, -0.08, -0.22, -0.24, -0.24, -0.4, -0.12, -0.36)
         chou(r, tofu, False)
@@ -500,8 +501,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 13 川丑・銅錢
-        r = New OperaRole With {.Name = "川丑・銅錢", .Group = OperaGroup.Chuan, .Lift = 0,
-                                .Note = "白鼻塊中間一枚金銅錢（外圈花邊、方孔），上下各一個捲紋：貪財、勢利的市井小人物。"}
+        r = New OperaRole With {.Name = Lang.T("川丑・銅錢"), .Group = OperaGroup.Chuan, .Lift = 0,
+                                .Note = Lang.T("白鼻塊中間一枚金銅錢（外圈花邊、方孔），上下各一個捲紋：貪財、勢利的市井小人物。")}
         Dim coinPatch = Arc(0, 0.12, 0.26, 0.44, 0, 360, 48).Select(Function(q, i) New PointF(CSng(q.X * (1 + 0.06 * Math.Cos(i * Math.PI / 3))), CSng(0.12 + (q.Y - 0.12) * (1 + 0.04 * Math.Cos(i * Math.PI / 3))))).ToArray()
         chou(r, coinPatch, False)
         r.Layers.Add(Metal(Oval(Gold, 0, 0.14, 0.15, 0.15, False, 1, 0.006)))
@@ -513,8 +514,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 14 川丑・蝙蝠
-        r = New OperaRole With {.Name = "川丑・蝙蝠", .Group = OperaGroup.Chuan, .Lift = 0,
-                                .Note = "鼻樑畫成展翅的白蝙蝠（描黑邊、翅膀有骨紋），翅膀伸到眼下，紅鼻頭：機靈、會鑽營的小人物。"}
+        r = New OperaRole With {.Name = Lang.T("川丑・蝙蝠"), .Group = OperaGroup.Chuan, .Lift = 0,
+                                .Note = Lang.T("鼻樑畫成展翅的白蝙蝠（描黑邊、翅膀有骨紋），翅膀伸到眼下，紅鼻頭：機靈、會鑽營的小人物。")}
         Dim bat = Move(BatHalf, 0, 0.16, 0.62, 0.5)
         chou(r, bat, True)
         For Each v In {P(0.06, 0.08, 0.3, -0.02, 0.5, -0.06), P(0.08, 0.14, 0.26, 0.12, 0.42, 0.18)}
@@ -524,8 +525,8 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' 15 青白鬼臉
-        r = New OperaRole With {.Name = "青白鬼臉", .Group = OperaGroup.Chuan, .Lift = -10,
-                                .Note = "青白的臉、發黑下垂的眼眶、臉頰凹陷、暗紫唇，額前幾縷亂髮。冤魂、鬼魂一類的角色。"}
+        r = New OperaRole With {.Name = Lang.T("青白鬼臉"), .Group = OperaGroup.Chuan, .Lift = -10,
+                                .Note = Lang.T("青白的臉、發黑下垂的眼眶、臉頰凹陷、暗紫唇，額前幾縷亂髮。冤魂、鬼魂一類的角色。")}
         r.Layers.Add(Fill(&HD6E4E2, 0.9))
         r.Layers.Add(Socket(&H3A2A48, 1.6, 1.8, -0.12, 0.85, 0.06))
         r.Layers.Add(Rouge(&H7A8AA4, 0.72, 0.5, 0.24, 0.34, 0.45))

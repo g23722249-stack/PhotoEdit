@@ -1,4 +1,5 @@
-﻿Imports System.Drawing
+﻿Imports PhotoEdit
+Imports System.Drawing
 
 ''' <summary>影像描圖的模式。</summary>
 Public Enum TraceMode
@@ -93,7 +94,7 @@ Public NotInheritable Class ImageTrace
             Dim style As New DrawLayer With {.Filled = True, .Stroked = False, .FillColorArgb = palette(k).ToArgb(), .Brush = BrushKind.HardRound}
             Dim layer = PathBoolean.MakeLayer(style, rings)
             If layer Is Nothing Then Continue For
-            layer.Name = $"描圖 #{palette(k).R:X2}{palette(k).G:X2}{palette(k).B:X2}"
+            layer.Name = Lang.F("描圖 #{0:X2}{1:X2}{2:X2}", palette(k).R, palette(k).G, palette(k).B)
             result.Add(layer)
         Next
         Return result

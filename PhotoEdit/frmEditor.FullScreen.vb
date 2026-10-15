@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing.Drawing2D
 
 ''' <summary>
@@ -48,7 +49,7 @@ Partial Friend Class frmEditor
         If _fsExit Is Nothing OrElse _fsExit.IsDisposed Then _fsExit = New FullScreenExitButton(Me)
         _fsExit.ShowAtCorner(wa)
         _canvas.Focus()
-        SetStatusMessage("全螢幕繪圖：Esc 或 F11 離開。")
+        SetStatusMessage(Lang.T("全螢幕繪圖：Esc 或 F11 離開。"))
     End Sub
 
     Friend Sub ExitFullScreen()
@@ -87,7 +88,7 @@ Partial Friend Class frmEditor
         Inherits Form
 
         Private ReadOnly _ed As frmEditor
-        Private ReadOnly _font As New Font("Microsoft JhengHei UI", 9.5F)
+        Private ReadOnly _font As New Font(Lang.UiFont, 9.5F)
         Private _hot As Boolean
         ''' <summary>平常的不透明度（測試設成 0，不會出現在使用者螢幕上）。</summary>
         Friend IdleOpacity As Double = 0.45
@@ -145,7 +146,7 @@ Partial Friend Class frmEditor
                 g.DrawLines(p, {New Point(x, y + s - k), New Point(x + k, y + s - k), New Point(x + k, y + s)})
                 g.DrawLines(p, {New Point(x + s, y + s - k), New Point(x + s - k, y + s - k), New Point(x + s - k, y + s)})
             End Using
-            TextRenderer.DrawText(g, "離開全螢幕 (Esc)", _font, New Rectangle(34, 0, Width - 38, Height), Color.White,
+            TextRenderer.DrawText(g, Lang.T("離開全螢幕 (Esc)"), _font, New Rectangle(34, 0, Width - 38, Height), Color.White,
                                   TextFormatFlags.VerticalCenter Or TextFormatFlags.Left)
         End Sub
 

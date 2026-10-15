@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.IO
 Imports Microsoft.ML.OnnxRuntime
@@ -46,7 +47,7 @@ Public NotInheritable Class AnimeStyle
     ''' <summary>模型的輸入輸出名稱與維度（除錯用）。</summary>
     Public Shared Function Describe(m As AnimeModel) As String
         Dim s = Session(m)
-        If s Is Nothing Then Return "（沒有模型）"
+        If s Is Nothing Then Return Lang.T("（沒有模型）")
         Dim f = Function(md As IReadOnlyDictionary(Of String, NodeMetadata)) String.Join("; ", md.Select(Function(kv) $"{kv.Key} [{String.Join(",", kv.Value.Dimensions)}]"))
         Return $"in: {f(s.InputMetadata)} | out: {f(s.OutputMetadata)}"
     End Function

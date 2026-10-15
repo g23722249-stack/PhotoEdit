@@ -1,3 +1,4 @@
+﻿Imports PhotoEdit
 Imports System.Drawing
 Imports System.Drawing.Imaging
 Imports System.Runtime.InteropServices
@@ -30,8 +31,8 @@ Public NotInheritable Class LayerBlend
 
     ''' <summary>選單用的中文名稱（順序同 BlendMode）。</summary>
     Public Shared ReadOnly Names As String() = {
-        "正常", "色彩增值", "濾色", "覆蓋", "變暗", "變亮", "加亮顏色", "加深顏色",
-        "線性加亮（增加）", "線性加深", "實光", "柔光", "差異化", "排除"}
+        Lang.T("正常"), Lang.T("色彩增值"), Lang.T("濾色"), Lang.T("覆蓋"), Lang.T("變暗"), Lang.T("變亮"), Lang.T("加亮顏色"), Lang.T("加深顏色"),
+        Lang.T("線性加亮（增加）"), Lang.T("線性加深"), Lang.T("實光"), Lang.T("柔光"), Lang.T("差異化"), Lang.T("排除")}
 
     Public Shared Function Name(mode As BlendMode) As String
         Dim i = CInt(mode)
