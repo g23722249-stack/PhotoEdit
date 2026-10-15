@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Drawing2D
 
 ''' <summary>繪圖圖層的種類（數值存進編輯檔，不可更動；工具列順序見 DrawToolStrip）。</summary>
@@ -32,6 +32,10 @@ Public Enum DrawShape
     ''' 單色用 FillColorArgb；漸層用 Gradient（顏色 FillColorArgb → StrokeColorArgb，Param2 = 方向）；材質用 FillContent = Material、Material。
     ''' </summary>
     FillLayer = 21
+    ''' <summary>鋼筆路徑：一條或多條由節點（錨點＋前後把手）組成的路徑，見 DrawLayer.Contours。</summary>
+    Path = 22
+    ''' <summary>文字：方框裡的文字（沒有圖說的框與尖角；勾外框、填色時就是文字方塊）。</summary>
+    Text = 23
 End Enum
 
 ''' <summary>漸層的形狀。</summary>
@@ -168,6 +172,15 @@ Public Enum BrushKind
     Clone = 19
     ''' <summary>貼圖噴槍：沿筆畫噴灑某個主題的貼圖。</summary>
     StickerHose = 20
+    ' 修飾筆（同 Photoshop 的模糊／銳利化／加亮／加深／海綿／修復筆刷；讀取畫布，只能用在點陣圖層）
+    Blur = 21
+    Sharpen = 22
+    Dodge = 23
+    Burn = 24
+    SpongeDesaturate = 25
+    SpongeSaturate = 26
+    ''' <summary>修復筆：像仿製筆一樣從來源畫過來，但顏色與亮度融入目的地（只取來源的紋理）。</summary>
+    Heal = 27
 End Enum
 
 ''' <summary>粒子筆的種類（數值存進編輯檔，不可更動）。</summary>
@@ -255,6 +268,12 @@ Public Class DrawLayer
     Public Property Id As String
     ''' <summary>和下面圖層的混合模式。</summary>
     Public Property Blend As BlendMode
+    ''' <summary>所屬群組（最內層，見 EditRecipe.DrawGroups）；Nothing＝不在群組裡。</summary>
+    Public Property GroupId As String
+    ''' <summary>因為群組被隱藏而隱藏（群組再顯示時恢復；自己原本就隱藏的不設）。</summary>
+    Public Property HiddenByGroup As Boolean
+    ''' <summary>因為群組被鎖定而鎖定。</summary>
+    Public Property LockedByGroup As Boolean
 
     ' ---- 方框類 ----
     Public Property X As Double
@@ -274,6 +293,8 @@ Public Class DrawLayer
     ' ---- 點類 ----
     Public Property Points As List(Of DrawPoint)
     Public Property Strokes As List(Of DrawStroke)
+    ''' <summary>鋼筆路徑（Shape = Path）的各條路徑。</summary>
+    Public Property Contours As List(Of PathContour)
 
     ' ---- 圖說文字 ----
     Public Property Text As String = ""
@@ -370,6 +391,7 @@ Public Class DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
         c.Points = Points?.Select(Function(p) p.Clone()).ToList()
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
+        c.Contours = Contours?.Select(Function(p) p.Clone()).ToList()
         c.Ops = Ops?.Select(Function(o) o.Clone()).ToList()
         c.Item = Item?.Clone()
         c.Region = Region?.Clone()
@@ -405,7 +427,17 @@ Public Class DrawLayer
 
     ''' <summary>會讀取畫布顏色的筆（混色、塗抹、仿製）：只能畫在點陣圖層。</summary>
     Public Shared Function SamplesCanvas(b As BrushKind) As Boolean
-        Return b = BrushKind.Mixer OrElse b = BrushKind.Smudge OrElse b = BrushKind.Clone
+        Return b = BrushKind.Mixer OrElse b = BrushKind.Smudge OrElse b = BrushKind.Clone OrElse IsToolOnlyBrush(b)
+    End Function
+
+    ''' <summary>修飾筆（模糊、銳利化、加亮、加深、海綿、修復）：只從左側工具列選，不列在筆刷面板。</summary>
+    Public Shared Function IsToolOnlyBrush(b As BrushKind) As Boolean
+        Return b >= BrushKind.Blur AndAlso b <= BrushKind.Heal
+    End Function
+
+    ''' <summary>要用 Alt 點選來源的筆（仿製、修復）。</summary>
+    Public Shared Function UsesCloneSource(b As BrushKind) As Boolean
+        Return b = BrushKind.Clone OrElse b = BrushKind.Heal
     End Function
 
     <System.Text.Json.Serialization.JsonIgnore>
@@ -417,17 +449,18 @@ Public Class DrawLayer
 End Class
 
 ''' <summary>繪圖圖層的形狀幾何、點選與編輯（全部以照片高度為單位，畫布與算圖共用）。</summary>
-Public NotInheritable Class DrawGeometry
+Partial Public NotInheritable Class DrawGeometry
     Private Sub New()
     End Sub
 
     Public Shared ReadOnly ShapeNames As String() = {
         "自由繪製（向量）", "直線", "貝茲曲線", "矩形", "圓角矩形", "橢圓", "多邊形", "箭頭", "愛心",
-        "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製", "油漆桶", "漸層", "填滿圖層"}
+        "四角星形", "五角星形", "六角星形", "圓角矩形圖說", "橢圓圖說", "雲朵圖說", "氣泡圖說", "吶喊框", "閃電", "直接繪製", "油漆桶", "漸層", "填滿圖層", "鋼筆", "文字"}
 
     Public Shared ReadOnly BrushNames As String() = {
         "硬筆", "軟筆", "鉛筆", "炭筆", "粉筆", "蠟筆", "水彩", "油畫", "壓克力", "墨水", "毛筆", "麥克筆", "噴槍", "乾刷", "紋理筆", "特效筆",
-        "混色筆", "塗抹筆", "粒子筆", "仿製筆", "貼圖噴槍"}
+        "混色筆", "塗抹筆", "粒子筆", "仿製筆", "貼圖噴槍",
+        "模糊", "銳利化", "加亮", "加深", "海綿（降低飽和）", "海綿（增加飽和）", "修復筆"}
 
     ''' <summary>特效與材質名稱（依列舉值）；分類與預設顏色見 EffectCatalog。</summary>
     Public Shared ReadOnly Property FxNames As String()
@@ -443,11 +476,16 @@ Public NotInheritable Class DrawGeometry
     End Property
 
     Public Shared Function IsBox(s As DrawShape) As Boolean
-        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer
+        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer AndAlso s <> DrawShape.Path
     End Function
 
     Public Shared Function IsCallout(s As DrawShape) As Boolean
         Return s >= DrawShape.CalloutRect AndAlso s <= DrawShape.CalloutShout
+    End Function
+
+    ''' <summary>有文字的圖形：圖說與文字（按兩下輸入文字）。</summary>
+    Public Shared Function HasText(s As DrawShape) As Boolean
+        Return IsCallout(s) OrElse s = DrawShape.Text
     End Function
 
     ''' <summary>以點描述、可個別拖曳各點的形狀。</summary>
@@ -599,6 +637,8 @@ Public NotInheritable Class DrawGeometry
                 If layer.Points IsNot Nothing AndAlso layer.Points.Count >= 2 Then
                     list.Add(New Figure With {.Points = layer.Points.Select(Function(p) p.ToPointF()).ToArray(), .Closed = layer.Points.Count >= 3})
                 End If
+            Case DrawShape.Path
+                list.AddRange(PathFigures(layer))
             Case DrawShape.Raster, DrawShape.Bucket, DrawShape.Gradient, DrawShape.FillLayer
                 ' 點陣圖層沒有外形線，範圍見 RasterBounds。
             Case Else
@@ -616,7 +656,7 @@ Public NotInheritable Class DrawGeometry
         Dim list As New List(Of Figure)()
         Dim tail As New PointF(CSng(layer.TailX), CSng(layer.TailY))
         Select Case layer.Shape
-            Case DrawShape.Rectangle
+            Case DrawShape.Rectangle, DrawShape.Text
                 list.Add(Closed({New PointF(-hw, -hh), New PointF(hw, -hh), New PointF(hw, hh), New PointF(-hw, hh)}))
             Case DrawShape.RoundRect
                 list.Add(Closed(RoundRectPoints(w, h, CSng(layer.Param1 * Math.Min(w, h)))))
@@ -666,6 +706,7 @@ Public NotInheritable Class DrawGeometry
             Case DrawShape.CalloutRect : fx = 0.84F : fy = 0.78F
             Case DrawShape.CalloutCloud : fx = 0.62F : fy = 0.56F
             Case DrawShape.CalloutShout : fx = 0.52F : fy = 0.46F
+            Case DrawShape.Text : fx = 0.96F : fy = 0.92F
             Case Else : fx = 0.7F : fy = 0.64F
         End Select
         Return New RectangleF(-w * fx / 2, -h * fy / 2, w * fx, h * fy)
@@ -1057,7 +1098,8 @@ Public NotInheritable Class DrawGeometry
         op.Opacity = 100 : op.Visible = True : op.Locked = False : op.Name = "" : op.Id = Nothing : op.Blend = BlendMode.Normal
         ' 圖層的識別碼與混合模式留在點陣圖層上，上下位置與混合效果不變。
         Return New DrawLayer With {.Shape = DrawShape.Raster, .Name = layer.Name, .Visible = layer.Visible, .Locked = layer.Locked,
-                                   .Opacity = layer.Opacity, .Id = layer.Id, .Blend = layer.Blend,
+                                   .Opacity = layer.Opacity, .Id = layer.Id, .Blend = layer.Blend, .GroupId = layer.GroupId,
+                                   .HiddenByGroup = layer.HiddenByGroup, .LockedByGroup = layer.LockedByGroup,
                                    .X = 0, .Y = 0, .Ops = New List(Of DrawLayer) From {op}}
     End Function
 
@@ -1079,6 +1121,33 @@ Public NotInheritable Class DrawGeometry
                 Next
             Next
         End If
+        If layer.Contours IsNot Nothing Then
+            For Each c In layer.Contours
+                For Each n In c.Nodes
+                    n.Offset(CSng(dx), CSng(dy))
+                Next
+            Next
+        End If
+    End Sub
+
+    ''' <summary>鋼筆路徑的每個座標（錨點與把手）照 map 轉換（從 start 的路徑算到 layer）。</summary>
+    Private Shared Sub MapContours(layer As DrawLayer, start As DrawLayer, map As Func(Of PointF, PointF))
+        If start.Contours Is Nothing Then Return
+        layer.Contours = start.Contours.Select(Function(c)
+                                                   Dim k = c.Clone()
+                                                   For Each n In k.Nodes
+                                                       n.Transform(map)
+                                                   Next
+                                                   Return k
+                                               End Function).ToList()
+    End Sub
+
+    ''' <summary>單選的鋼筆路徑繞 center 轉 degrees 度（從 start 算）。</summary>
+    Public Shared Sub RotatePath(layer As DrawLayer, start As DrawLayer, center As PointF, degrees As Double)
+        MapContours(layer, start, Function(p)
+                                      Dim r = Rotate(New PointF(p.X - center.X, p.Y - center.Y), degrees)
+                                      Return New PointF(center.X + r.X, center.Y + r.Y)
+                                  End Function)
     End Sub
 
     ''' <summary>方框的 8 個縮放控制點（0 左上、1 上、2 右上、3 右、4 右下、5 下、6 左下、7 左）的未旋轉位置。</summary>
@@ -1131,8 +1200,89 @@ Public NotInheritable Class DrawGeometry
         If start.Strokes IsNot Nothing Then
             layer.Strokes = start.Strokes.Select(Function(s) New DrawStroke With {.Points = s.Points.Select(map).ToList()}).ToList()
         End If
+        MapContours(layer, start, Function(p) New PointF(CSng(newBounds.X + (p.X - oldBounds.X) * sx), CSng(newBounds.Y + (p.Y - oldBounds.Y) * sy)))
         ' 線寬依面積比例縮放，看起來才一致。
         layer.StrokeWidth = start.StrokeWidth * Math.Sqrt(Math.Abs(sx * sy))
+    End Sub
+
+    '=====================================================================
+    ' 多選：一起縮放、旋轉（以按下時的圖層 start 為準，結果寫回 layer）
+    '=====================================================================
+
+    ''' <summary>多個圖層的外接矩形（填滿圖層不算，它蓋滿整張）；都沒有時為 Empty。</summary>
+    Public Shared Function GroupBounds(layers As IEnumerable(Of DrawLayer)) As RectangleF
+        Dim any = False
+        Dim l = Single.MaxValue, t = Single.MaxValue, r = Single.MinValue, b = Single.MinValue
+        For Each d In layers
+            If d.Shape = DrawShape.FillLayer Then Continue For
+            Dim rb = Bounds(d)
+            If rb.Width <= 0 AndAlso rb.Height <= 0 AndAlso rb.X = 0 AndAlso rb.Y = 0 Then Continue For
+            l = Math.Min(l, rb.Left) : t = Math.Min(t, rb.Top) : r = Math.Max(r, rb.Right) : b = Math.Max(b, rb.Bottom)
+            any = True
+        Next
+        Return If(any, RectangleF.FromLTRB(l, t, r, b), RectangleF.Empty)
+    End Function
+
+    ''' <summary>
+    ''' 多選縮放：把 start 從外接矩形 oldBounds 換到 newBounds。
+    ''' 方框類移動中心、依自己的旋轉方向換算寬高；點類、自由繪製縮放各點；點陣圖層只跟著移動（不能縮放）；填滿圖層不動。
+    ''' </summary>
+    Public Shared Sub ScaleInGroup(layer As DrawLayer, start As DrawLayer, oldBounds As RectangleF, newBounds As RectangleF)
+        Dim sx = If(oldBounds.Width <= 0, 1.0, newBounds.Width / oldBounds.Width)
+        Dim sy = If(oldBounds.Height <= 0, 1.0, newBounds.Height / oldBounds.Height)
+        Dim map = Function(x As Double, y As Double) New PointF(CSng(newBounds.X + (x - oldBounds.X) * sx), CSng(newBounds.Y + (y - oldBounds.Y) * sy))
+        Select Case True
+            Case start.Shape = DrawShape.FillLayer
+            Case start.Shape = DrawShape.Raster
+                Dim rb = Bounds(start)
+                Dim c = map(rb.X + rb.Width / 2, rb.Y + rb.Height / 2)
+                layer.X = start.X + c.X - (rb.X + rb.Width / 2)
+                layer.Y = start.Y + c.Y - (rb.Y + rb.Height / 2)
+            Case IsBox(start.Shape)
+                Dim c = map(start.X, start.Y)
+                layer.X = c.X : layer.Y = c.Y
+                ' 圖形自己的寬（沿旋轉後的 x 軸）、高（沿旋轉後的 y 軸）各自的縮放
+                Dim a = start.Rotation * Math.PI / 180
+                Dim kw = Math.Sqrt((sx * Math.Cos(a)) ^ 2 + (sy * Math.Sin(a)) ^ 2)
+                Dim kh = Math.Sqrt((sx * Math.Sin(a)) ^ 2 + (sy * Math.Cos(a)) ^ 2)
+                layer.W = start.W * kw : layer.H = start.H * kh
+                layer.TailX = start.TailX * kw : layer.TailY = start.TailY * kh
+            Case Else
+                ScalePoints(layer, start, oldBounds, newBounds)
+        End Select
+    End Sub
+
+    ''' <summary>多選旋轉：start 繞 center 轉 degrees 度（順時針）。點陣圖層只移動位置，填滿圖層不動。</summary>
+    Public Shared Sub RotateInGroup(layer As DrawLayer, start As DrawLayer, center As PointF, degrees As Double)
+        Dim rot = Function(x As Double, y As Double) As PointF
+                      Dim r = Rotate(New PointF(CSng(x - center.X), CSng(y - center.Y)), degrees)
+                      Return New PointF(center.X + r.X, center.Y + r.Y)
+                  End Function
+        Select Case True
+            Case start.Shape = DrawShape.FillLayer
+            Case start.Shape = DrawShape.Raster
+                Dim rb = Bounds(start)
+                Dim cx = rb.X + rb.Width / 2, cy = rb.Y + rb.Height / 2
+                Dim c = rot(cx, cy)
+                layer.X = start.X + c.X - cx : layer.Y = start.Y + c.Y - cy
+            Case IsBox(start.Shape)
+                Dim c = rot(start.X, start.Y)
+                layer.X = c.X : layer.Y = c.Y
+                Dim deg = start.Rotation + degrees
+                While deg > 180 : deg -= 360 : End While
+                While deg <= -180 : deg += 360 : End While
+                layer.Rotation = Math.Round(deg, 2)
+            Case Else
+                Dim map = Function(p As DrawPoint)
+                              Dim q = rot(p.X, p.Y)
+                              Return New DrawPoint(q.X, q.Y, p.P)
+                          End Function
+                If start.Points IsNot Nothing Then layer.Points = start.Points.Select(map).ToList()
+                If start.Strokes IsNot Nothing Then
+                    layer.Strokes = start.Strokes.Select(Function(s) New DrawStroke With {.Points = s.Points.Select(map).ToList()}).ToList()
+                End If
+                MapContours(layer, start, Function(p) rot(p.X, p.Y))
+        End Select
     End Sub
 
     ''' <summary>軸對齊外接矩形的 8 個控制點（自由繪製）。</summary>

@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
 
@@ -259,10 +259,28 @@ Partial Public NotInheritable Class DrawingRenderer
             Next
         Next
 
+        ' 修復筆：目的地與來源各自的低頻（模糊後）顏色；結果＝目的地低頻＋來源的細節（來源－來源低頻）
+        Dim isHeal = op.Brush = BrushKind.Heal
+        Dim lowR, lowG, lowB, lowA, sR, sG, sB, sA, sLowR, sLowG, sLowB, sLowA As Single()
+        If isHeal Then
+            Dim blurR = Math.Max(2, CInt(radius * 0.6F))
+            lowR = BoxBlur(cr, rw, rh, blurR) : lowG = BoxBlur(cg, rw, rh, blurR) : lowB = BoxBlur(cb, rw, rh, blurR) : lowA = BoxBlur(ca, rw, rh, blurR)
+            ReDim sR(n - 1) : ReDim sG(n - 1) : ReDim sB(n - 1) : ReDim sA(n - 1)
+            For y = 0 To rh - 1
+                For x = 0 To rw - 1
+                    Dim c = compAt(region.X + x + cdx, region.Y + y + cdy)
+                    Dim i = y * rw + x
+                    sR(i) = c.R : sG(i) = c.G : sB(i) = c.B : sA(i) = c.A
+                Next
+            Next
+            sLowR = BoxBlur(sR, rw, rh, blurR) : sLowG = BoxBlur(sG, rw, rh, blurR) : sLowB = BoxBlur(sB, rw, rh, blurR) : sLowA = BoxBlur(sA, rw, rh, blurR)
+        End If
+        Dim retouch = Global.PhotoEdit.DrawLayer.IsToolOnlyBrush(op.Brush)
+
         For Each f In figs
             Dim path = If(f.Closed, f.Points.Concat({f.Points(0)}).ToArray(), f.Points)
             Dim first = True
-            Dim spacing = Math.Max(0.5F, radius * If(op.Brush = BrushKind.Clone, 0.25F, 0.12F))
+            Dim spacing = Math.Max(0.5F, radius * If(op.Brush = BrushKind.Clone OrElse retouch, 0.25F, 0.12F))
             Walk(path, f.Pressure, spacing,
                  Sub(fx, fy, p, dx, dy, s, total)
                      Dim cx = CInt(Math.Round(fx)) - region.X, cy = CInt(Math.Round(fy)) - region.Y
@@ -299,6 +317,44 @@ Partial Public NotInheritable Class DrawingRenderer
                                  Case BrushKind.Clone
                                      Dim src = compAt(region.X + px + cdx, region.Y + py + cdy)
                                      cr(i) += (src.R - curR) * a : cg(i) += (src.G - curG) * a : cb(i) += (src.B - curB) * a : ca(i) += (src.A - curA) * a
+                                 Case BrushKind.Heal
+                                     Dim ta = Clamp01(lowA(i) + sA(i) - sLowA(i))
+                                     Dim tr = Math.Max(0, Math.Min(ta, lowR(i) + sR(i) - sLowR(i)))
+                                     Dim tg = Math.Max(0, Math.Min(ta, lowG(i) + sG(i) - sLowG(i)))
+                                     Dim tb = Math.Max(0, Math.Min(ta, lowB(i) + sB(i) - sLowB(i)))
+                                     cr(i) += (tr - curR) * a : cg(i) += (tg - curG) * a : cb(i) += (tb - curB) * a : ca(i) += (ta - curA) * a
+                                 Case BrushKind.Blur, BrushKind.Sharpen
+                                     ' 3×3 平均（讀目前的畫布，越畫越糊／越銳利）
+                                     Dim mR = 0.0F, mG = 0.0F, mB = 0.0F, mA = 0.0F, cnt = 0
+                                     For ny = Math.Max(0, py - 1) To Math.Min(rh - 1, py + 1)
+                                         For nx = Math.Max(0, px - 1) To Math.Min(rw - 1, px + 1)
+                                             Dim j = ny * rw + nx
+                                             mR += cr(j) : mG += cg(j) : mB += cb(j) : mA += ca(j) : cnt += 1
+                                         Next
+                                     Next
+                                     mR /= cnt : mG /= cnt : mB /= cnt : mA /= cnt
+                                     If op.Brush = BrushKind.Blur Then
+                                         Dim k = a * 0.6F
+                                         cr(i) += (mR - curR) * k : cg(i) += (mG - curG) * k : cb(i) += (mB - curB) * k : ca(i) += (mA - curA) * k
+                                     Else
+                                         Dim k = a * 0.35F
+                                         cr(i) = Math.Max(0, Math.Min(curA, curR + (curR - mR) * k))
+                                         cg(i) = Math.Max(0, Math.Min(curA, curG + (curG - mG) * k))
+                                         cb(i) = Math.Max(0, Math.Min(curA, curB + (curB - mB) * k))
+                                     End If
+                                 Case BrushKind.Dodge
+                                     ' 加亮：往白色靠（預乘：往 alpha 靠）
+                                     Dim k = a * 0.07F
+                                     cr(i) += (curA - curR) * k : cg(i) += (curA - curG) * k : cb(i) += (curA - curB) * k
+                                 Case BrushKind.Burn
+                                     Dim k = a * 0.07F
+                                     cr(i) -= curR * k : cg(i) -= curG * k : cb(i) -= curB * k
+                                 Case BrushKind.SpongeDesaturate, BrushKind.SpongeSaturate
+                                     Dim lum = 0.299F * curR + 0.587F * curG + 0.114F * curB
+                                     Dim k = a * 0.1F * If(op.Brush = BrushKind.SpongeDesaturate, -1, 1)
+                                     cr(i) = Math.Max(0, Math.Min(curA, curR + (curR - lum) * k))
+                                     cg(i) = Math.Max(0, Math.Min(curA, curG + (curG - lum) * k))
+                                     cb(i) = Math.Max(0, Math.Min(curA, curB + (curB - lum) * k))
                                  Case Else
                                      Dim k = ((yy + r0) * side + xx + r0) * 4
                                      ' 把筆尖上的顏料抹上去

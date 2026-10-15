@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 繪圖分頁的「直接繪製」：像 Photoshop 的筆刷，畫在目前選取的點陣圖層上，畫完就是像素、不能再個別調整。
@@ -46,6 +46,7 @@ Partial Friend Class frmEditor
                                                    _drawEraser.BackColor = If(_drawEraser.Checked, Color.FromArgb(255, 214, 120), If(ThemeManager.Dark, ThemeManager.ButtonBack, SystemColors.Control))
                                                    _drawEraser.ForeColor = If(_drawEraser.Checked OrElse Not ThemeManager.Dark, SystemColors.ControlText, Aqua.Theme.TextColor)
                                                    UpdateDrawHint()
+                                                   SyncToolHighlight() ' 左側工具列：筆刷↔橡皮擦
                                                End Sub
     End Sub
 
@@ -118,7 +119,7 @@ Partial Friend Class frmEditor
         _tempErase = False ' 右鍵、筆的橡皮擦端只擦這一筆
         op.CopyStyleFrom(_drawStyle)
         If op.Eraser Then op.Shadow = False
-        If op.Brush = BrushKind.Clone AndAlso Not op.Eraser AndAlso stroke.Points.Count > 0 Then
+        If DrawLayer.UsesCloneSource(op.Brush) AndAlso Not op.Eraser AndAlso stroke.Points.Count > 0 Then
             ' 對齊模式（同 Photoshop）：第一筆決定來源與筆畫的距離，之後每一筆都維持這個距離，直到重新 Alt 點選來源。
             If Not _cloneOffset.HasValue AndAlso _cloneSource.HasValue Then
                 _cloneOffset = New PointF(_cloneSource.Value.X - stroke.Points(0).X, _cloneSource.Value.Y - stroke.Points(0).Y)

@@ -1,4 +1,4 @@
-Imports PhotoEdit
+﻿Imports PhotoEdit
 
 ''' <summary>
 ''' 繪圖的顏色：浮動的 Aqua.ColorPickerWindow（點繪圖分頁的線條色／填色／文字色打開），改顏色立即套用到畫筆；
@@ -164,7 +164,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>仿製筆（直接繪製、不是橡皮擦）時 Alt 是設定仿製來源，不吸色。</summary>
     Private Function AltSetsCloneSource() As Boolean
-        Return _drawStyle.Brush = BrushKind.Clone AndAlso Not _drawEraser.Checked AndAlso
+        Return DrawLayer.UsesCloneSource(_drawStyle.Brush) AndAlso Not _drawEraser.Checked AndAlso
                (_drawStrip.SelectedTool = CInt(DrawShape.Raster) OrElse _drawStrip.SelectedTool = CInt(DrawShape.Freehand))
     End Function
 

@@ -1,4 +1,4 @@
-''' <summary>
+﻿''' <summary>
 ''' 捲軸：影像放大到超出畫布時，下方與右方出現捲軸，拖曳捲軸移動檢視；用滑鼠平移、縮放時捲軸跟著同步。
 ''' 符合視窗、裁切模式時不顯示。影像的顯示範圍以 ViewSize（扣掉捲軸）計算。
 ''' </summary>
@@ -68,6 +68,16 @@ Partial Friend Class PreviewCanvas
         bar.SmallChange = Math.Max(1, view \ 10)
         Dim v = CInt(Math.Round(center * disp - view / 2.0))
         bar.Value = Math.Max(0, Math.Min(max - bar.LargeChange + 1, v))
+    End Sub
+
+    ''' <summary>平移檢視（螢幕像素；平移工具、中鍵拖曳）。符合視窗時不動。</summary>
+    Public Sub PanBy(dx As Integer, dy As Integer)
+        If _image Is Nothing OrElse _zoom = 0 OrElse (dx = 0 AndAlso dy = 0) Then Return
+        Dim dispW = _image.Width * _imageScale * _zoom, dispH = _image.Height * _imageScale * _zoom
+        _center = New PointF(CSng(_center.X - dx / dispW), CSng(_center.Y - dy / dispH))
+        ClampCenter()
+        Invalidate()
+        RaiseEvent ZoomChanged(Me, EventArgs.Empty)
     End Sub
 
     ''' <summary>拖曳捲軸：換算回檢視中心。</summary>

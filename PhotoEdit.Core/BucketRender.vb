@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Imaging
 
 ''' <summary>
@@ -145,11 +145,10 @@ Partial Public NotInheritable Class DrawingRenderer
         Next
         ' 讀畫布、特效、粒子、貼圖這類筆刷沒有「填滿」的樣子：當成硬筆填單色
         Dim style = op
-        Select Case op.Brush
-            Case BrushKind.FX, BrushKind.Particle, BrushKind.StickerHose, BrushKind.Mixer, BrushKind.Smudge, BrushKind.Clone
-                style = op.Clone()
-                style.Brush = BrushKind.HardRound
-        End Select
+        If op.Brush = BrushKind.FX OrElse op.Brush = BrushKind.Particle OrElse op.Brush = BrushKind.StickerHose OrElse Global.PhotoEdit.DrawLayer.SamplesCanvas(op.Brush) Then
+            style = op.Clone()
+            style.Brush = BrushKind.HardRound
+        End If
         Dim widthPx = CSng(Math.Max(0.6, style.StrokeWidth * h))
         Shade(cv, cov, Nothing, style, Color.FromArgb(style.StrokeColorArgb), widthPx, h, isFill:=True)
         Return ToBitmap(cv)

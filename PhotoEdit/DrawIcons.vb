@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -9,6 +9,105 @@ Imports PhotoEdit
 Friend Module DrawIcons
 
     Public Const SelectTool As Integer = -1
+    ''' <summary>節點工具（改鋼筆路徑的節點與把手）。</summary>
+    Public Const NodeTool As Integer = -2
+    ' 共用
+    Public Const PanTool As Integer = -3
+    Public Const ZoomTool As Integer = -4
+    Public Const EyedropperTool As Integer = -5
+    ' 點陣（都是「直接繪製」加上不同的筆或橡皮擦）
+    Public Const EraserTool As Integer = -6
+    Public Const CloneTool As Integer = -7
+    Public Const HealTool As Integer = -8
+    Public Const SmudgeTool As Integer = -9
+    Public Const MixerTool As Integer = -10
+    Public Const BlurTool As Integer = -11
+    Public Const SharpenTool As Integer = -12
+    Public Const DodgeTool As Integer = -13
+    Public Const BurnTool As Integer = -14
+    Public Const SpongeMinusTool As Integer = -15
+    Public Const SpongePlusTool As Integer = -16
+    ' 向量
+    Public Const ShapeBuilderTool As Integer = -17
+    Public Const KnifeTool As Integer = -18
+
+    ''' <summary>點陣工具的變化（實際上是「直接繪製」）：橡皮擦、仿製、修復、塗抹、混色、模糊、銳利化、加亮、加深、海綿。</summary>
+    Public Function IsRasterVariant(tool As Integer) As Boolean
+        Return tool <= EraserTool AndAlso tool >= SpongePlusTool
+    End Function
+
+    ''' <summary>工具實際用的引擎工具：點陣的變化都是直接繪製。</summary>
+    Public Function EngineTool(tool As Integer) As Integer
+        Return If(IsRasterVariant(tool), CInt(DrawShape.Raster), tool)
+    End Function
+
+    ''' <summary>點陣工具對應的筆（橡皮擦、一般筆刷為 Nothing）。</summary>
+    Public Function BrushOf(tool As Integer) As BrushKind?
+        Select Case tool
+            Case CloneTool : Return BrushKind.Clone
+            Case HealTool : Return BrushKind.Heal
+            Case SmudgeTool : Return BrushKind.Smudge
+            Case MixerTool : Return BrushKind.Mixer
+            Case BlurTool : Return BrushKind.Blur
+            Case SharpenTool : Return BrushKind.Sharpen
+            Case DodgeTool : Return BrushKind.Dodge
+            Case BurnTool : Return BrushKind.Burn
+            Case SpongeMinusTool : Return BrushKind.SpongeDesaturate
+            Case SpongePlusTool : Return BrushKind.SpongeSaturate
+        End Select
+        Return Nothing
+    End Function
+
+    ''' <summary>筆對應的點陣工具（一般筆刷回傳直接繪製）。</summary>
+    Public Function ToolOfBrush(b As BrushKind) As Integer
+        For t = CloneTool To SpongePlusTool Step -1
+            Dim k = BrushOf(t)
+            If k.HasValue AndAlso k.Value = b Then Return t
+        Next
+        Return CInt(DrawShape.Raster)
+    End Function
+
+    Public Function ToolName(tool As Integer) As String
+        Select Case tool
+            Case SelectTool : Return "選取"
+            Case NodeTool : Return "節點"
+            Case PanTool : Return "平移"
+            Case ZoomTool : Return "縮放"
+            Case EyedropperTool : Return "吸管"
+            Case EraserTool : Return "橡皮擦"
+            Case ShapeBuilderTool : Return "形狀建立"
+            Case KnifeTool : Return "刀具"
+            Case CInt(DrawShape.Raster) : Return "筆刷"
+        End Select
+        Dim b = BrushOf(tool)
+        If b.HasValue Then Return DrawGeometry.BrushNames(CInt(b.Value))
+        If tool >= 0 AndAlso tool < DrawGeometry.ShapeNames.Length Then Return DrawGeometry.ShapeNames(tool)
+        Return ""
+    End Function
+
+    ''' <summary>說明文字的鍵。</summary>
+    Public Function HelpKey(tool As Integer) As String
+        Select Case tool
+            Case SelectTool : Return "draw.tool.select"
+            Case NodeTool : Return "draw.tool.node"
+            Case PanTool : Return "draw.tool.pan"
+            Case ZoomTool : Return "draw.tool.zoom"
+            Case EyedropperTool : Return "draw.tool.eyedropper"
+            Case EraserTool : Return "draw.tool.eraser"
+            Case CloneTool : Return "draw.tool.clone"
+            Case HealTool : Return "draw.tool.heal"
+            Case SmudgeTool : Return "draw.tool.smudge"
+            Case MixerTool : Return "draw.tool.mixer"
+            Case BlurTool : Return "draw.tool.blur"
+            Case SharpenTool : Return "draw.tool.sharpen"
+            Case DodgeTool : Return "draw.tool.dodge"
+            Case BurnTool : Return "draw.tool.burn"
+            Case SpongeMinusTool, SpongePlusTool : Return "draw.tool.sponge"
+            Case ShapeBuilderTool : Return "draw.builder"
+            Case KnifeTool : Return "draw.tool.knife"
+        End Select
+        Return "draw.tool." & tool
+    End Function
 
     Public Sub DrawTool(g As Graphics, tool As Integer, r As RectangleF, color As Color)
         Dim k = Math.Min(r.Width, r.Height) / 24.0F
@@ -20,7 +119,23 @@ Friend Module DrawIcons
             Using pen As New Pen(color, 1.6F) With {.LineJoin = LineJoin.Round, .StartCap = LineCap.Round, .EndCap = LineCap.Round},
                   path = IconPath(tool)
                 g.DrawPath(pen, path)
+                If tool <= PanTool OrElse tool = CInt(DrawShape.Text) Then DrawExtra(g, tool, pen, color)
                 Select Case tool
+                    Case NodeTool
+                        ' 白色箭頭＋右下一個節點方塊
+                        Using bg As New SolidBrush(Color.White)
+                            g.FillPolygon(bg, {New PointF(5, 3), New PointF(15, 10), New PointF(10.5F, 11), New PointF(8.5F, 16)})
+                        End Using
+                        g.DrawPolygon(pen, {New PointF(5, 3), New PointF(15, 10), New PointF(10.5F, 11), New PointF(8.5F, 16)})
+                        Using br As New SolidBrush(color)
+                            g.FillRectangle(br, 15.5F, 15.5F, 5, 5)
+                        End Using
+                    Case DrawShape.Path
+                        ' 筆尖中間的小圓孔
+                        Using bg As New SolidBrush(Color.White)
+                            g.FillEllipse(bg, 10.6F, 9.6F, 2.8F, 2.8F)
+                        End Using
+                        g.DrawEllipse(pen, 10.6F, 9.6F, 2.8F, 2.8F)
                     Case DrawShape.Line
                         Dot(g, pen, 4, 19, 1.6F) : Dot(g, pen, 20, 5, 1.6F)
                     Case DrawShape.Bezier
@@ -88,15 +203,131 @@ Friend Module DrawIcons
         End Try
     End Sub
 
+    ''' <summary>共用、點陣修飾、形狀建立、刀具、文字的圖示。</summary>
+    Private Sub DrawExtra(g As Graphics, tool As Integer, pen As Pen, color As Color)
+        Using br As New SolidBrush(color), soft As New SolidBrush(Color.FromArgb(110, color)), bg As New SolidBrush(Color.White),
+              thick As New Pen(color, 2.6F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
+            Select Case tool
+                Case PanTool
+                    ' 手掌與四根手指、拇指
+                    For Each f In {(8.0F, 4.5F), (11.0F, 3.0F), (14.0F, 3.5F), (17.0F, 6.0F)}
+                        g.DrawLine(pen, f.Item1, 12.0F, f.Item1, f.Item2)
+                    Next
+                    Using palm As New GraphicsPath()
+                        palm.AddLine(8, 12, 8, 15)
+                        palm.AddLine(8, 15, 5, 12.5F)
+                        palm.AddBezier(5, 12.5F, 3.5F, 13.5F, 6, 17, 8.5F, 20)
+                        palm.AddLine(8.5F, 20, 15.5F, 20)
+                        palm.AddBezier(15.5F, 20, 17, 18, 17, 15, 17, 12)
+                        g.DrawPath(pen, palm)
+                    End Using
+                Case ZoomTool
+                    g.DrawEllipse(pen, 3.5F, 3.5F, 12, 12)
+                    g.DrawLine(thick, 14.5F, 14.5F, 20.5F, 20.5F)
+                    g.DrawLine(pen, 6.5F, 9.5F, 12.5F, 9.5F) : g.DrawLine(pen, 9.5F, 6.5F, 9.5F, 12.5F)
+                Case EyedropperTool
+                    g.DrawLine(pen, 4, 20, 12, 12)
+                    Using body As New Pen(color, 4.2F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
+                        g.DrawLine(body, 11.5F, 12.5F, 16, 8)
+                    End Using
+                    g.FillEllipse(br, 15.5F, 3, 5.5F, 5.5F)
+                    g.DrawLine(pen, 10, 10, 14, 14)
+                Case EraserTool
+                    Dim body = {New PointF(3, 15), New PointF(10.5F, 7.5F), New PointF(18, 15), New PointF(10.5F, 22.5F)}
+                    g.DrawPolygon(pen, body)
+                    g.FillPolygon(br, {New PointF(3, 15), New PointF(6.75F, 11.25F), New PointF(14.25F, 18.75F), New PointF(10.5F, 22.5F)})
+                    g.DrawLine(pen, 12, 22, 21, 22)
+                Case CloneTool
+                    g.DrawEllipse(pen, 9.5F, 2.5F, 5, 5)
+                    g.DrawRectangle(pen, 11, 7.5F, 2, 5)
+                    g.FillRectangle(br, 5, 12.5F, 14, 4.5F)
+                    g.DrawLine(pen, 6, 20, 18, 20)
+                Case HealTool
+                    g.DrawPolygon(pen, {New PointF(4, 15), New PointF(15, 4), New PointF(20, 9), New PointF(9, 20)})
+                    g.FillPolygon(soft, {New PointF(9.5F, 9.5F), New PointF(12, 7), New PointF(17, 12), New PointF(14.5F, 14.5F)})
+                    For Each d In {(10.5F, 12.5F), (12.5F, 10.5F), (13.5F, 13.5F)}
+                        g.FillEllipse(br, d.Item1 - 0.9F, d.Item2 - 0.9F, 1.8F, 1.8F)
+                    Next
+                Case SmudgeTool
+                    Using finger As New Pen(color, 4.6F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
+                        g.DrawLine(finger, 15.5F, 4, 11, 13.5F)
+                    End Using
+                    g.FillEllipse(bg, 12.2F, 4.6F, 2.4F, 2.4F)
+                    Using smear As New Pen(Color.FromArgb(150, color), 2.4F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
+                        g.DrawBezier(smear, 3, 21, 6, 18, 9, 20, 12, 17)
+                    End Using
+                Case MixerTool
+                    g.FillEllipse(soft, 3, 7, 11, 11)
+                    g.DrawEllipse(pen, 3, 7, 11, 11)
+                    g.FillEllipse(br, 10, 7, 11, 11)
+                Case BlurTool
+                    Using drop As New GraphicsPath()
+                        drop.AddBezier(12, 3, 9, 8, 5, 11.5F, 5, 15)
+                        drop.AddBezier(5, 15, 5, 19, 8.5F, 21, 12, 21)
+                        drop.AddBezier(12, 21, 15.5F, 21, 19, 19, 19, 15)
+                        drop.AddBezier(19, 15, 19, 11.5F, 15, 8, 12, 3)
+                        g.FillPath(soft, drop)
+                        g.DrawPath(pen, drop)
+                    End Using
+                Case SharpenTool
+                    g.DrawPolygon(pen, {New PointF(12, 3), New PointF(20, 20), New PointF(4, 20)})
+                    g.FillPolygon(soft, {New PointF(12, 3), New PointF(16, 11.5F), New PointF(8, 11.5F)})
+                Case DodgeTool, BurnTool
+                    g.DrawLine(thick, 11, 12, 5, 21)
+                    If tool = BurnTool Then g.FillEllipse(br, 9, 3, 10, 10) Else g.FillEllipse(bg, 9, 3, 10, 10)
+                    g.DrawEllipse(pen, 9, 3, 10, 10)
+                Case SpongeMinusTool, SpongePlusTool
+                    g.DrawRectangle(pen, 3, 7, 15, 12)
+                    For Each d In {(6.5F, 10.5F), (11.0F, 13.0F), (7.5F, 15.5F), (14.0F, 10.0F), (14.5F, 16.0F)}
+                        g.FillEllipse(soft, d.Item1 - 1.3F, d.Item2 - 1.3F, 2.6F, 2.6F)
+                    Next
+                    g.DrawLine(pen, 17, 3.5F, 22, 3.5F)
+                    If tool = SpongePlusTool Then g.DrawLine(pen, 19.5F, 1, 19.5F, 6)
+                Case ShapeBuilderTool
+                    Using a As New GraphicsPath(), b As New GraphicsPath()
+                        a.AddEllipse(2, 8, 12, 12) : b.AddEllipse(9, 8, 12, 12)
+                        Using r As New Region(a)
+                            r.Intersect(b)
+                            g.FillRegion(br, r)
+                        End Using
+                        g.DrawPath(pen, a) : g.DrawPath(pen, b)
+                    End Using
+                    g.DrawLine(pen, 17, 1.5F, 17, 6.5F) : g.DrawLine(pen, 14.5F, 4, 19.5F, 4)
+                Case KnifeTool
+                    g.FillPolygon(soft, {New PointF(3, 21), New PointF(15, 9), New PointF(18, 12), New PointF(7, 21)})
+                    g.DrawPolygon(pen, {New PointF(3, 21), New PointF(15, 9), New PointF(18, 12), New PointF(7, 21)})
+                    g.DrawLine(thick, 17, 10, 21.5F, 5.5F)
+                Case CInt(DrawShape.Text)
+                    Using t As New Pen(color, 2.2F)
+                        g.DrawLine(t, 5, 5, 19, 5)
+                        g.DrawLine(t, 12, 5, 12, 20)
+                    End Using
+                    g.DrawLine(pen, 9, 20, 15, 20)
+                    g.DrawLine(pen, 5, 5, 5, 7.5F) : g.DrawLine(pen, 19, 5, 19, 7.5F)
+            End Select
+        End Using
+    End Sub
+
     Private Sub Dot(g As Graphics, pen As Pen, x As Single, y As Single, r As Single)
         g.DrawEllipse(pen, x - r, y - r, r * 2, r * 2)
     End Sub
 
     Private Function IconPath(tool As Integer) As GraphicsPath
         Dim p As New GraphicsPath()
+        If tool <= PanTool OrElse tool = CInt(DrawShape.Text) Then Return p ' 在 DrawExtra 畫
         Select Case tool
             Case SelectTool
                 p.AddPolygon({New PointF(6, 3), New PointF(18, 11), New PointF(12.5F, 12.2F), New PointF(10, 18)})
+            Case NodeTool
+                ' 箭頭在 DrawTool 畫（白底），這裡只畫通往節點的一條曲線
+                p.AddBezier(3, 21, 7, 17, 12, 21, 16, 18)
+            Case DrawShape.Path
+                ' 鋼筆筆尖：上寬下尖，中間一道縫
+                p.AddPolygon({New PointF(12, 21), New PointF(6.5F, 12), New PointF(9, 4), New PointF(15, 4), New PointF(17.5F, 12)})
+                p.StartFigure()
+                p.AddLine(12, 21, 12, 12.4F)
+                p.StartFigure()
+                p.AddLine(8.5F, 4, 15.5F, 4)
             Case DrawShape.Freehand
                 p.AddBezier(3, 18, 5, 11.5F, 8, 11, 12, 12)
                 p.AddBezier(12, 12, 16, 13, 18, 8, 21, 6)

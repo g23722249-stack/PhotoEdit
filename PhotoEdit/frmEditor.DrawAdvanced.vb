@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -225,7 +225,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>仿製筆：來源處畫十字準星；拖曳中準星跟著筆移動。</summary>
     Private Sub PaintCloneSource(g As Graphics)
-        If _drawStrip.SelectedTool <> CInt(DrawShape.Raster) OrElse _drawStyle.Brush <> BrushKind.Clone OrElse Not _cloneSource.HasValue Then Return
+        If _drawStrip.SelectedTool <> CInt(DrawShape.Raster) OrElse Not DrawLayer.UsesCloneSource(_drawStyle.Brush) OrElse Not _cloneSource.HasValue Then Return
         Dim src = _cloneSource.Value
         If _dd = DrawDrag.Freehand AndAlso _freePoints IsNot Nothing AndAlso _freePoints.Count > 0 Then
             Dim first = _freePoints(0), last = _freePoints(_freePoints.Count - 1)

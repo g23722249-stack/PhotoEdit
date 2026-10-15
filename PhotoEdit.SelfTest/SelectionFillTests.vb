@@ -152,7 +152,7 @@ Module SelectionFillTests
             Dim tones = Enumerable.Range(0, 100).Select(Function(k) bmp.GetPixel(20 + k, 80).R).Distinct().Count()
             Check("填滿圖層（材質）：整張大理石紋", tones > 8 AndAlso bmp.GetPixel(5, 5).A = 255, tones.ToString())
         End Using
-        Check("工具名稱 22 個（含填滿圖層）", DrawGeometry.ShapeNames.Length = 22 AndAlso DrawGeometry.ShapeNames(21) = "填滿圖層")
+        Check("工具名稱 24 個（含填滿圖層、鋼筆、文字）", DrawGeometry.ShapeNames.Length = 24 AndAlso DrawGeometry.ShapeNames(21) = "填滿圖層")
 
         Dim back = System.Text.Json.JsonSerializer.Deserialize(Of DrawLayer)(System.Text.Json.JsonSerializer.Serialize(keep))
         Check("填滿內容與保留透明度存得回來", back.Ops(1).KeepAlpha AndAlso

@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Drawing.Imaging
 Imports System.Drawing.Text
@@ -204,7 +204,7 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 範圍：外形加上線寬、特效與陰影需要的邊。
         Dim pts = figs.SelectMany(Function(f) f.Points).ToList()
         Dim padL = widthPx * 1.2F + 4, padT = padL, padR = padL, padB = padL
-        Dim stroked = layer.Stroked OrElse Not DrawGeometry.IsClosed(layer.Shape) ' 開放的線條一律畫出；「外框」只管封閉形狀
+        Dim stroked = layer.Stroked OrElse Not DrawGeometry.IsClosedLayer(layer) ' 開放的線條一律畫出；「外框」只管封閉形狀
         If stroked AndAlso layer.Brush = BrushKind.FX Then
             Dim extent = Math.Max(pts.Max(Function(p) p.X) - pts.Min(Function(p) p.X), pts.Max(Function(p) p.Y) - pts.Min(Function(p) p.Y))
             Dim fp = FxPad(layer.Fx, widthPx, extent)
@@ -279,7 +279,7 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
 
         ' 3. 圖說文字
-        If DrawGeometry.IsCallout(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then DrawText(cv, layer, region, scale)
+        If DrawGeometry.HasText(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then DrawText(cv, layer, region, scale)
 
         ' 4. 陰影
         If layer.Shadow Then AddShadow(cv, widthPx)
@@ -999,20 +999,20 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim bands = {Color.FromArgb(232, 69, 90), Color.FromArgb(250, 190, 60), Color.FromArgb(80, 180, 110), Color.FromArgb(60, 130, 220)}
         For y = 0 To h - 1
             For x = 0 To w - 1
-                Dim c = If(layer.Brush = BrushKind.Clone, If((x \ 6 + y \ 6) Mod 2 = 0, Color.FromArgb(70, 72, 80), Color.FromArgb(230, 232, 236)),
+                Dim c = If(Global.PhotoEdit.DrawLayer.UsesCloneSource(layer.Brush), If((x \ 6 + y \ 6) Mod 2 = 0, Color.FromArgb(70, 72, 80), Color.FromArgb(230, 232, 236)),
                            bands(Math.Min(bands.Length - 1, x * bands.Length \ w)))
                 Dim i = (y * w + x) * 4
                 below(i) = c.B : below(i + 1) = c.G : below(i + 2) = c.R : below(i + 3) = 255
             Next
         Next
         layer.Opacity = 100 : layer.Wet = 70 : layer.Softness = 40
-        If layer.Brush = BrushKind.Clone Then layer.CloneDX = 0.37
+        If Global.PhotoEdit.DrawLayer.UsesCloneSource(layer.Brush) Then layer.CloneDX = 0.37
         Dim layerPx(w * h * 4 - 1) As Byte
         ApplySamplingOp(layerPx, below, w, h, layer, 0, 0)
         ' 只顯示改動過的地方（其餘透明），格子底色才看得出來是哪一筆。
         Dim bmp As New Bitmap(w, h, PixelFormat.Format32bppArgb)
         Perspective.WritePixels(bmp, layerPx)
-        If layer.Brush <> BrushKind.Clone Then
+        If Not Global.PhotoEdit.DrawLayer.UsesCloneSource(layer.Brush) Then
             ' 塗抹、混色：底下襯淡淡的條紋，看得出顏色被推開
             Using faint As New Bitmap(w, h, PixelFormat.Format32bppArgb)
                 For i = 3 To below.Length - 1 Step 4

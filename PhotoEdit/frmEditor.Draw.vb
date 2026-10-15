@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -48,9 +48,7 @@ Partial Friend Class frmEditor
         _drawStrip.Dock = DockStyle.Left
         _drawStrip.Visible = False
         AddHandler _drawStrip.ToolSelected, Sub(t) OnDrawToolChanged()
-        For Each b As DrawToolStrip.ToolButton In _drawStrip.Buttons
-            _help.SetHelp(If(b.Tool = DrawIcons.SelectTool, "draw.tool.select", "draw.tool." & b.Tool), b)
-        Next
+        WireToolStrip() ' 工具說明、色彩面板（見 frmEditor.DrawTools.vb）
 
         _drawBar.Dock = DockStyle.Top
         _drawBar.Height = 36
@@ -94,6 +92,9 @@ Partial Friend Class frmEditor
         _eraseMode.Dock = DockStyle.None
         _eraseMode.Margin = New Padding(4, 3, 0, 0)
         eraserGroup.Controls.AddRange({_drawEraser, _eraseMode})
+        _drawBar.Controls.Add(BuildShapeBar()) ' 對齊、均分、焊接修剪、形狀建立（見 frmEditor.DrawShapes.vb）
+        _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
+        _drawBar.Controls.Add(BuildGroupBar()) ' 群組按鈕、所在群組（在橡皮擦右邊；見 frmEditor.DrawGroups.vb）
         _drawBar.Controls.Add(eraserGroup)
         _drawBar.Controls.Add(redo)
         _drawBar.Controls.Add(undo)
@@ -105,10 +106,11 @@ Partial Friend Class frmEditor
     Private Sub BuildDrawPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         AddHeading(L, "筆刷")
-        Dim brushRows = (DrawGeometry.BrushNames.Length + 3) \ 4
+        Dim panelBrushes = Enumerable.Range(0, DrawGeometry.BrushNames.Length).Where(Function(i) Not DrawLayer.IsToolOnlyBrush(CType(i, BrushKind))).ToList()
+        Dim brushRows = (panelBrushes.Count + 3) \ 4
         _brushGrid.SetBounds(8, L.Y, L.Width - 8, brushRows * 42)
         _brushGrid.BackColor = Color.Transparent
-        For i = 0 To DrawGeometry.BrushNames.Length - 1
+        For Each i In panelBrushes ' 模糊、加亮這些修飾筆只從左側工具列選
             Dim t As New BrushTile(CType(i, BrushKind))
             AddHandler t.Click, Sub(s, e) SetDrawBrush(DirectCast(s, BrushTile).Brush)
             _help.SetHelp("draw.brush." & i, t)
@@ -208,7 +210,11 @@ Partial Friend Class frmEditor
             Dim b = MakeButton(names(i).Item1, names(i).Item2)
             b.SetBounds(8 + i * (bw + 4), L.Y + 2, bw, 28)
             Dim index = i
-            AddHandler b.Click, Sub() LayerCommand(index)
+            If i = 0 Then
+                AddHandler b.Click, Sub() _addMenu.Show(b, New Point(0, b.Height)) ' 新增點陣圖層／新增群組
+            Else
+                AddHandler b.Click, Sub() LayerCommand(index)
+            End If
             _layerButtons.Add(b)
             L.Add(b)
         Next
@@ -219,12 +225,12 @@ Partial Friend Class frmEditor
         _layerList.ItemHeight = 28
         _layerList.IntegralHeight = False
         _layerList.BorderStyle = BorderStyle.FixedSingle
-        AddHandler _layerList.DrawItem, AddressOf LayerList_DrawItem
-        AddHandler _layerList.MouseDown, AddressOf LayerList_MouseDown
-        AddHandler _layerList.SelectedIndexChanged, Sub()
-                                                         If _syncing OrElse _layerList.SelectedIndex < 0 Then Return
-                                                         SelectDrawLayer(LayerCount() - 1 - _layerList.SelectedIndex)
-                                                     End Sub
+        ' 樹狀清單：點選、Ctrl／Shift 多選、拖曳都自己處理（見 frmEditor.DrawGroups.vb），反白也自己畫
+        _layerList.SelectionMode = System.Windows.Forms.SelectionMode.None
+        AddHandler _layerList.DrawItem, AddressOf LayerTree_DrawItem
+        AddHandler _layerList.MouseDown, AddressOf LayerTree_MouseDown
+        AddHandler _layerList.MouseMove, AddressOf LayerTree_MouseMove
+        AddHandler _layerList.MouseUp, AddressOf LayerTree_MouseUp
         AddHandler _layerList.DoubleClick, Sub() RenameDrawLayer()
         _help.SetHelp("draw.layers", _layerList)
         L.Add(_layerList)
@@ -249,8 +255,9 @@ Partial Friend Class frmEditor
             .GetValue = Function(r) getter(If(StyleTarget(r), _drawStyle)),
             .SetValue = Sub(r, v)
                             setter(_drawStyle, v)
-                            Dim t = StyleTarget(r)
-                            If t IsNot Nothing Then setter(t, v)
+                            For Each t In StyleTargets(r) ' 多選時一起改
+                                setter(t, v)
+                            Next
                         End Sub}
     End Function
 
@@ -285,8 +292,9 @@ Partial Friend Class frmEditor
         change(_drawStyle)
         If _photo IsNot Nothing Then
             ApplyChange(Sub(r)
-                            Dim t = StyleTarget(r)
-                            If t IsNot Nothing Then change(t)
+                            For Each t In StyleTargets(r) ' 多選時一起改
+                                change(t)
+                            Next
                         End Sub, groupKey)
         End If
         UpdateDrawControls()
@@ -298,6 +306,7 @@ Partial Friend Class frmEditor
             _drawStrip.SelectedTool = CInt(DrawShape.Raster)
             SetStatusMessage($"「{DrawGeometry.BrushNames(CInt(b))}」會讀取照片的顏色，已切換到直接繪製（畫在點陣圖層上）。")
         End If
+        If Not DrawLayer.SamplesCanvas(b) Then _lastPaintBrush = b
         SetDrawProp(Sub(d) d.Brush = b)
         ' 換到特效筆、紋理筆時，線條色換成目前效果／材質的建議顏色。
         Dim cats = CurrentEffectCategories()
@@ -309,6 +318,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub SelectDrawLayer(index As Integer)
+        _drawMulti.Clear() ' 單選（多選用 SetMultiSelection）
         If index >= LayerCount() Then index = LayerCount() - 1
         _drawIndex = index
         Dim t = StyleTarget(_recipe)
@@ -320,11 +330,15 @@ Partial Friend Class frmEditor
 
     Private Sub OnDrawToolChanged()
         _polyPoints = Nothing
+        PathToolChanged() ' 鋼筆畫到一半的完成、節點選取清掉
+        ExitBuilder()
+        ApplyToolVariant() ' 點陣工具：橡皮擦、仿製、模糊…換成對應的筆
         CommitCalloutEditor()
+        If Not KeepsSelection(_drawStrip.SelectedTool) Then _drawMulti.Clear() ' 多選只在選取（與平移、縮放、吸管、形狀建立、刀具）
         ' 換成畫圖工具時放開選取的圖形（像小畫家），之後改筆刷、顏色只影響新畫的。
         ' 直接繪製例外：像 Photoshop 一樣畫在目前選取的圖層上。
         If _drawStrip.SelectedTool <> DrawIcons.SelectTool AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso
-           Not IsFillTool() Then _drawIndex = -1 ' 油漆桶、漸層也畫在目前選取的圖層
+           _drawStrip.SelectedTool <> DrawIcons.NodeTool AndAlso Not KeepsSelection(_drawStrip.SelectedTool) AndAlso Not IsFillTool() Then _drawIndex = -1 ' 油漆桶、漸層也畫在目前選取的圖層
         _drawEraser.Visible = _drawStrip.SelectedTool = CInt(DrawShape.Raster)
         _eraseMode.Visible = _drawEraser.Visible
         _bucketBar.Visible = _drawStrip.SelectedTool = CInt(DrawShape.Bucket)
@@ -332,6 +346,7 @@ Partial Friend Class frmEditor
         ' 換成畫圖工具時，選取中的自由繪製圖層不再是設定對象：同步面板。
         SyncSliders()
         UpdateDrawControls()
+        AfterToolChanged()
         _canvas.Invalidate()
     End Sub
 
@@ -342,14 +357,10 @@ Partial Friend Class frmEditor
         Dim wasSyncing = _syncing
         _syncing = True
         Try
-            If _layerList.Items.Count <> n Then
-                _layerList.Items.Clear()
-                For i = 0 To n - 1
-                    _layerList.Items.Add(i)
-                Next
-            End If
-            _layerList.SelectedIndex = If(_drawIndex < 0, -1, n - 1 - _drawIndex)
-            _layerList.Invalidate()
+            RefreshLayerRows() ' 樹狀清單（群組可收合）
+            UpdateGroupBar()
+            UpdateNodeBar()
+            UpdateShapeBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
             For Each t In _brushTiles
                 t.Selected = t.Brush = st.Brush
@@ -375,6 +386,7 @@ Partial Friend Class frmEditor
             SetSwatch(_drawStrokeColor, st.StrokeColorArgb)
             SetSwatch(_drawFillColor, st.FillColorArgb)
             SetSwatch(_drawTextColor, st.TextColorArgb)
+            SyncToolStrip(st) ' 左側工具列的色彩面板、點陣工具按鈕
             SyncColorWindow()
             SyncQuickPanel()
             _drawStroke.Checked = st.Stroked
@@ -383,9 +395,28 @@ Partial Friend Class frmEditor
             UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
             Dim sel = SelDraw(_recipe)
-            For i = 1 To 4 ' 複製、上移、下移、刪除要先選圖層；新增、填滿不用
-                _layerButtons(i).Enabled = sel IsNot Nothing
+            Dim multi = IsMultiSelected()
+            Dim movable = MovableBlock().HasValue
+            For i = 1 To 4 ' 複製、刪除要先選圖層；上移、下移要選一個圖層或整個群組；新增、填滿不用
+                _layerButtons(i).Enabled = sel IsNot Nothing AndAlso (movable OrElse Not (i = 2 OrElse i = 3))
             Next
+            ' 多選而且顏色不一樣：顏色按鈕顯示「混合」
+            If multi Then
+                Dim ts = StyleTargets(_recipe)
+                For Each sw In {(_drawStrokeColor, "線條色", CType(Function(d As DrawLayer) d.StrokeColorArgb, Func(Of DrawLayer, Integer))),
+                                (_drawFillColor, "填色", CType(Function(d As DrawLayer) d.FillColorArgb, Func(Of DrawLayer, Integer))),
+                                (_drawTextColor, "文字色", CType(Function(d As DrawLayer) d.TextColorArgb, Func(Of DrawLayer, Integer)))}
+                    If ts.Select(sw.Item3).Distinct().Count() > 1 Then
+                        sw.Item1.Text = sw.Item2 & "（混合）"
+                        sw.Item1.BackColor = ThemeManager.Back(Color.FromArgb(244, 245, 248))
+                        sw.Item1.ForeColor = ThemeManager.Fore(Color.FromArgb(70, 76, 88))
+                    Else
+                        sw.Item1.Text = sw.Item2
+                    End If
+                Next
+            Else
+                _drawStrokeColor.Text = "線條色" : _drawFillColor.Text = "填色" : _drawTextColor.Text = "文字色"
+            End If
             UpdateDrawHint()
         Finally
             _syncing = wasSyncing
@@ -488,8 +519,24 @@ Partial Friend Class frmEditor
             text = "先開啟一張照片。"
         ElseIf _polyPoints IsNot Nothing Then
             text = "點一下加一個頂點；點回第一點、按兩下或 Enter 完成，Esc 取消。"
+        ElseIf _builderOn Then
+            text = "形狀建立：在一塊一塊上拖曳，拖過的合成一塊；按住 Alt 點（或拖）刪掉那幾塊。Esc、Enter 或點外面結束。"
+        ElseIf _penContour IsNot Nothing Then
+            text = "鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。"
+        ElseIf tool = DrawIcons.NodeTool Then
+            text = "節點：點選鋼筆路徑後拖曳節點移動（Shift＋點選多選）、拖曳把手改彎曲（Alt：只動一邊）；按兩下路徑加節點、按兩下節點刪除。其他圖形先按「轉成曲線」。"
+        ElseIf tool = CInt(DrawShape.Path) Then
+            text = "鋼筆：點一下加尖角節點、按住拖曳拉出平滑曲線；點回第一個節點封閉，按兩下、Enter 或 Esc 完成。之後用節點工具修改。"
+        ElseIf tool = DrawIcons.SelectTool AndAlso IsMultiSelected() Then
+            text = $"已選 {SelectedIndices().Count} 個物件：拖曳一起移動，藍色方塊縮放（Shift 不等比例）、圓點旋轉；Shift＋點選加選或取消，方向鍵微調，Del 刪除。"
         ElseIf tool = DrawIcons.SelectTool Then
-            text = "點選圖形後可拖曳移動；藍色方塊縮放、圓點旋轉、黃點調整形狀。方向鍵微調，Del 刪除。"
+            text = "點選圖形後可拖曳移動；藍色方塊縮放、圓點旋轉、黃點調整形狀。拖曳空白處框選、Shift＋點選多選、Ctrl+G 群組（雙擊進入群組、Ctrl＋點選群組裡的物件）。"
+        ElseIf ToolHint(tool) IsNot Nothing Then
+            text = ToolHint(tool)
+        ElseIf tool < 0 Then
+            text = ""
+        ElseIf tool = CInt(DrawShape.Raster) AndAlso Not _drawEraser.Checked AndAlso RetouchHint(_drawStyle.Brush) IsNot Nothing Then
+            text = RetouchHint(_drawStyle.Brush) & pen
         Else
             Dim shape = CType(tool, DrawShape)
             Select Case shape
@@ -535,31 +582,6 @@ Partial Friend Class frmEditor
     ' 圖層清單
     '=====================================================================
 
-    Private Sub LayerList_DrawItem(sender As Object, e As DrawItemEventArgs)
-        If e.Index < 0 OrElse e.Index >= LayerCount() Then Return
-        Dim index = LayerCount() - 1 - e.Index
-        Dim d = _recipe.Drawings(index)
-        Dim g = e.Graphics
-        Dim r = e.Bounds
-        Dim selected = index = _drawIndex
-        Using bg As New SolidBrush(ThemeManager.Back(If(selected, Color.FromArgb(210, 228, 250), Color.White)))
-            g.FillRectangle(bg, r)
-        End Using
-        g.SmoothingMode = SmoothingMode.AntiAlias
-        Dim fg = ThemeManager.Fore(If(d.Visible, Color.FromArgb(40, 44, 52), Color.FromArgb(160, 165, 172)))
-        DrawEye(g, New RectangleF(r.X + 4, r.Y + 6, 18, 16), d.Visible)
-        DrawLock(g, New RectangleF(r.X + 26, r.Y + 6, 16, 16), d.Locked)
-        DrawIcons.DrawTool(g, CInt(d.Shape), New RectangleF(r.X + 48, r.Y + 4, 20, 20), fg)
-        Dim name = If(String.IsNullOrEmpty(d.Name), DrawGeometry.ShapeNames(CInt(d.Shape)), d.Name)
-        TextRenderer.DrawText(g, name, _layerList.Font, New Rectangle(r.X + 74, r.Y, r.Width - 74 - 46, r.Height), fg,
-                              TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
-        TextRenderer.DrawText(g, d.Opacity & "%", _layerList.Font, New Rectangle(r.Right - 46, r.Y, 42, r.Height), ThemeManager.Fore(Color.FromArgb(130, 136, 146)),
-                              TextFormatFlags.VerticalCenter Or TextFormatFlags.Right)
-        Using line As New Pen(ThemeManager.Line(Color.FromArgb(232, 235, 240)))
-            g.DrawLine(line, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1)
-        End Using
-    End Sub
-
     Private Shared Sub DrawEye(g As Graphics, r As RectangleF, open As Boolean)
         Dim c = ThemeManager.Fore(If(open, Color.FromArgb(60, 66, 78), Color.FromArgb(175, 180, 188)))
         Using pen As New Pen(c, 1.4F), br As New SolidBrush(c), path As New GraphicsPath()
@@ -584,20 +606,15 @@ Partial Friend Class frmEditor
         End Using
     End Sub
 
-    ''' <summary>點眼睛切換顯示、點鎖頭切換鎖定。</summary>
-    Private Sub LayerList_MouseDown(sender As Object, e As MouseEventArgs)
-        Dim row = _layerList.IndexFromPoint(e.Location)
-        If row < 0 OrElse row >= LayerCount() OrElse e.X > 46 Then Return
-        Dim index = LayerCount() - 1 - row
-        If e.X < 24 Then
-            ApplyChange(Sub(r) r.Drawings(index).Visible = Not r.Drawings(index).Visible)
-        Else
-            ApplyChange(Sub(r) r.Drawings(index).Locked = Not r.Drawings(index).Locked)
-        End If
-        _canvas.Invalidate()
-    End Sub
-
     Private Sub RenameDrawLayer()
+        ' 清單上最後點的是群組列（而且選著）：改群組名稱
+        If _listAnchorRow >= 0 AndAlso _listAnchorRow < _layerRows.Count AndAlso _layerRows(_listAnchorRow).Group IsNot Nothing AndAlso RowSelected(_listAnchorRow) Then
+            Dim gid = _layerRows(_listAnchorRow).Group.Id
+            Dim gname = Microsoft.VisualBasic.Interaction.InputBox("群組名稱：", AppName, GroupName(DrawGroups.Find(_recipe, gid)))
+            If String.IsNullOrWhiteSpace(gname) Then Return
+            ApplyChange(Sub(r) DrawGroups.Find(r, gid).Name = gname.Trim())
+            Return
+        End If
         Dim d = SelDraw(_recipe)
         If d Is Nothing Then Return
         If d.Shape = DrawShape.FillLayer Then EditFillLayer(_drawIndex) : Return ' 填滿圖層：按兩下修改內容（名稱也在對話框裡）
@@ -619,6 +636,7 @@ Partial Friend Class frmEditor
                 _drawStrip.SelectedTool = CInt(DrawShape.Raster)
                 AddDrawLayer(NewRasterLayer())
             Case 1
+                If IsMultiSelected() Then DuplicateSelected() : Return
                 Dim original = SelDraw(_recipe)
                 If original Is Nothing Then Return
                 Dim d = original.Clone()
@@ -631,13 +649,10 @@ Partial Friend Class frmEditor
                             End Sub)
                 SelectDrawLayer(_recipe.Drawings.IndexOf(d))
             Case 2, 3
-                ' 只在繪圖圖層之間上下移動；和文字貼圖交錯的順序在「圖層」分頁調整。
-                Dim target = index + If(command = 2, 1, -1)
-                If index < 0 OrElse target < 0 OrElse target >= LayerCount() Then Return
-                ApplyChange(Sub(r) LayerStack.Swap(r, r.Drawings(index), r.Drawings(target)))
-                SelectDrawLayer(target)
+                ' 在同一層裡上下移動（群組整塊一起，不會移出所在的群組）；和文字貼圖交錯的順序在「圖層」分頁調整。
+                MoveSelectedItem(command = 2, False)
             Case 4
-                DeleteDrawLayer()
+                DeleteSelectedLayers()
         End Select
     End Sub
 
@@ -645,8 +660,9 @@ Partial Friend Class frmEditor
         ApplyChange(Sub(r)
                         If r.Drawings Is Nothing Then r.Drawings = New List(Of DrawLayer)()
                         r.Drawings.Add(d)
+                        PlaceInEnteredGroup(r, d) ' 正在編輯群組時放進那個群組
                     End Sub)
-        SelectDrawLayer(LayerCount() - 1)
+        SelectDrawLayer(_recipe.Drawings.IndexOf(d))
     End Sub
 
     Private Sub DeleteDrawLayer()
@@ -786,6 +802,12 @@ Partial Friend Class frmEditor
         RectScale
         ''' <summary>漸層工具：拖曳起點到終點。</summary>
         GradientLine
+        ''' <summary>選取工具拖曳空白處：框選。</summary>
+        Marquee
+        ''' <summary>多選：一起移動、縮放、旋轉。</summary>
+        GroupMove
+        GroupScale
+        GroupRotate
     End Enum
 
     Private _dd As DrawDrag
@@ -815,6 +837,13 @@ Partial Friend Class frmEditor
             Return
         End If
         CommitCalloutEditor()
+        If BuilderMouseDown(e, ScreenToUnit(e.Location)) Then Return ' 形狀建立（Alt＝刪除那幾塊）
+        If ToolMouseDown(e, ScreenToUnit(e.Location)) Then Return ' 平移、縮放、吸管、刀具（見 frmEditor.DrawTools.vb）
+        ' 節點工具的 Alt 是拖把手轉尖角，不吸色
+        If NodeToolActive AndAlso e.Button = MouseButtons.Left AndAlso Not _pickOnce AndAlso Not ModifierKeys.HasFlag(Keys.Control) Then
+            NodeMouseDown(e, ScreenToUnit(e.Location))
+            Return
+        End If
         ' Alt 吸色（仿製筆的 Alt 例外：設定仿製來源，下面處理）
         If e.Button = MouseButtons.Left AndAlso WantsAltPick() Then
             BeginAltPick(e.Location)
@@ -839,6 +868,7 @@ Partial Friend Class frmEditor
             _canvas.Invalidate()
             Return
         End If
+        If PathMouseDown(e, u) Then Return ' 鋼筆、選取工具的路徑旋轉
         ' 「選取」工具，或按住 Ctrl 暫時切成選取：點選、拖曳移動圖層。其他繪圖工具點下去一律是畫（不會誤拖圖層）。
         If _drawStrip.SelectedTool = DrawIcons.SelectTool OrElse (e.Button = MouseButtons.Left AndAlso ModifierKeys.HasFlag(Keys.Control)) Then
             PickOrMove(e, u)
@@ -853,7 +883,7 @@ Partial Friend Class frmEditor
             _drawStrip.SelectedTool = CInt(DrawShape.Raster)
         End If
         If _drawStrip.SelectedTool = CInt(DrawShape.Raster) Then
-            If _drawStyle.Brush = BrushKind.Clone AndAlso Not _drawEraser.Checked Then
+            If DrawLayer.UsesCloneSource(_drawStyle.Brush) AndAlso Not _drawEraser.Checked Then
                 If ModifierKeys.HasFlag(Keys.Alt) Then
                     SetCloneSource(u)
                     Return
@@ -900,6 +930,7 @@ Partial Friend Class frmEditor
     ''' </summary>
     Private Sub PickOrMove(e As MouseEventArgs, u As PointF)
         If e.Button <> MouseButtons.Left Then Return
+        If MultiMouseDown(e, u) Then Return ' 多選、Shift 加選、框選（見 frmEditor.DrawMulti.vb）
         Dim sel = SelDraw(_recipe)
         If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
             Dim h = HitHandle(sel, e.Location)
@@ -977,6 +1008,10 @@ Partial Friend Class frmEditor
         If _altPicking Then AltPickAt(e.Location) : Return
         Dim u = ScreenToUnit(e.Location)
         Dim shift = ModifierKeys.HasFlag(Keys.Shift)
+        If BuilderMouseMove(u) Then Return
+        If ToolMouseMove(e, u) Then Return
+        If PathMouseMove(e, u) Then Return
+        If MultiMouseMove(e, u) Then Return
         Select Case _dd
             Case DrawDrag.None
                 If _polyPoints IsNot Nothing Then
@@ -996,7 +1031,8 @@ Partial Friend Class frmEditor
                     If ScreenDist(e.Location, _ddDownScreen) < If(_ddPen, 8, 5) Then Return
                     _ddArmed = True
                 End If
-                Dim dx = u.X - _ddStart.X, dy = u.Y - _ddStart.Y
+                Dim dx As Double = u.X - _ddStart.X, dy As Double = u.Y - _ddStart.Y
+                If _ddLayer.Shape <> DrawShape.Raster Then SnapMove(DrawGeometry.Bounds(_ddLayer), {_drawIndex}, dx, dy) ' 智慧參考線
                 ReplaceDragLayer(Sub(d) DrawGeometry.Offset(d, dx, dy))
             Case DrawDrag.Resize
                 ReplaceDragLayer(Sub(d) DrawGeometry.ResizeBox(d, _ddLayer, _ddHandle, u, shift))
@@ -1045,7 +1081,10 @@ Partial Friend Class frmEditor
         If PickingNow() Then
             ' 選取工具或按住 Ctrl：控制點、點到圖層（可移動）時換游標
             c = Cursors.Default
-            If sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
+            Dim mc = MultiCursor(p, u)
+            If mc IsNot Nothing Then
+                c = mc
+            ElseIf sel IsNot Nothing AndAlso sel.Visible AndAlso Not sel.Locked Then
                 Dim h = HitHandle(sel, p)
                 If h.HasValue Then
                     Select Case h.Value.Kind
@@ -1058,7 +1097,7 @@ Partial Friend Class frmEditor
                     c = Cursors.SizeAll
                 End If
             End If
-            If c Is Cursors.Default AndAlso HitLayer(u) >= 0 Then c = Cursors.SizeAll
+            If mc Is Nothing AndAlso c Is Cursors.Default AndAlso HitLayer(u) >= 0 Then c = Cursors.SizeAll
         ElseIf _drawStrip.SelectedTool = CInt(DrawShape.Bucket) Then
             c = BucketCursor()
         Else
@@ -1074,15 +1113,20 @@ Partial Friend Class frmEditor
             Return
         End If
         If _altPicking Then EndAltPick(e.Location) : Return
+        _guides.Clear()
+        If ToolMouseUp(e) Then Return
+        If BuilderMouseUp() Then Return
+        If PathMouseUp() Then Return
         Dim kind = _dd
         _dd = DrawDrag.None
+        If MultiMouseUp(kind) Then AfterBuilderPick() : Return
         Select Case kind
             Case DrawDrag.Create
                 Dim d = NewShape(CType(_drawStrip.SelectedTool, DrawShape), _ddStart, _ddCur, ModifierKeys.HasFlag(Keys.Shift), _drawRandom.Next(1, 100000))
                 If d IsNot Nothing Then
                     d.Name = DrawGeometry.ShapeNames(CInt(d.Shape)) & " " & (LayerCount() + 1)
                     AddDrawLayer(d)
-                    If DrawGeometry.IsCallout(d.Shape) Then OpenCalloutEditor()
+                    If DrawGeometry.HasText(d.Shape) Then OpenCalloutEditor()
                 End If
             Case DrawDrag.Freehand
                 FinishStabilizer(e.Location)
@@ -1100,8 +1144,24 @@ Partial Friend Class frmEditor
             FinishPolygon()
             Return
         End If
+        If PathDoubleClick(e) Then Return
+        ' 雙擊群組裡的物件：進入群組，選到裡面那一層的物件（再雙擊可以再往裡面）
+        If PickingNow() AndAlso Not ModifierKeys.HasFlag(Keys.Control) Then
+            Dim u = ScreenToUnit(e.Location)
+            Dim hit = HitLayer(u)
+            If hit >= 0 Then
+                Dim child = DrawGroups.ChildGroupAt(_recipe, _recipe.Drawings(hit), EnteredGroup())
+                If child IsNot Nothing AndAlso DrawGroups.IsInside(_recipe, _recipe.Drawings(hit), EnteredGroup()) Then
+                    EnterGroup(child)
+                    Dim unit = ExpandToGroups({hit})
+                    SetMultiSelection(unit, hit)
+                    SetStatusMessage("已進入群組：可以選裡面的物件，畫的新圖形會放進這個群組；Esc 或點群組外面離開。")
+                    Return
+                End If
+            End If
+        End If
         Dim sel = SelDraw(_recipe)
-        If sel IsNot Nothing AndAlso DrawGeometry.IsCallout(sel.Shape) AndAlso Not sel.Locked AndAlso
+        If sel IsNot Nothing AndAlso DrawGeometry.HasText(sel.Shape) AndAlso Not sel.Locked AndAlso
            DrawGeometry.HitTest(sel, ScreenToUnit(e.Location), HitTolerance()) Then OpenCalloutEditor()
     End Sub
 
@@ -1145,6 +1205,11 @@ Partial Friend Class frmEditor
                 If DrawGeometry.IsCallout(shape) Then
                     d.Filled = True
                     d.Stroked = True
+                ElseIf shape = DrawShape.Text Then
+                    ' 文字：預設沒有框（勾外框、填色就是文字方塊）；點一下時給一個寬一點的框
+                    d.Filled = False
+                    d.Stroked = False
+                    If dragPx < 6 Then d.W = 0.42 : d.H = 0.12
                 End If
         End Select
         Return d
@@ -1221,6 +1286,8 @@ Partial Friend Class frmEditor
     ''' <summary>繪圖分頁的快捷鍵：Del 刪除、Esc 取消、Enter 完成、方向鍵微調（Shift 10 倍）。</summary>
     Private Function HandleDrawKey(keyData As Keys) As Boolean
         If _tabs.SelectedIndex <> TabDraw OrElse _photo Is Nothing Then Return False
+        If BuilderKey(keyData) Then Return True
+        If PathKey(keyData) Then Return True
         Select Case keyData
             Case Keys.E, Keys.B
                 ' 像 Photoshop：B 畫筆、E 橡皮擦（都是直接繪製）。
@@ -1229,7 +1296,7 @@ Partial Friend Class frmEditor
                 Return True
             Case Keys.Delete
                 If SelDraw(_recipe) Is Nothing Then Return False
-                DeleteDrawLayer()
+                DeleteSelectedLayers()
                 Return True
             Case Keys.Escape
                 If _calloutEditor IsNot Nothing AndAlso _calloutEditor.Visible Then
@@ -1239,11 +1306,21 @@ Partial Friend Class frmEditor
                     _polyPoints = Nothing
                     UpdateDrawHint()
                     _canvas.Invalidate()
+                ElseIf EnteredGroup() IsNot Nothing Then
+                    ExitGroup() ' 離開群組，選取那個群組
                 ElseIf SelDraw(_recipe) IsNot Nothing Then
                     SelectDrawLayer(-1)
                 Else
                     Return False
                 End If
+                Return True
+            Case Keys.Control Or Keys.G
+                If Not CanGroup() Then Return False
+                GroupSelected()
+                Return True
+            Case Keys.Control Or Keys.Shift Or Keys.G
+                If SelectedTopGroups().Count = 0 Then Return False
+                UngroupSelected()
                 Return True
             Case Keys.Enter
                 If _polyPoints Is Nothing AndAlso SelDraw(_recipe) Is Nothing Then Return False
@@ -1252,13 +1329,12 @@ Partial Friend Class frmEditor
             Case Keys.Left, Keys.Right, Keys.Up, Keys.Down,
                  Keys.Shift Or Keys.Left, Keys.Shift Or Keys.Right, Keys.Shift Or Keys.Up, Keys.Shift Or Keys.Down
                 Dim sel = SelDraw(_recipe)
-                If sel Is Nothing OrElse sel.Locked Then Return False
+                If sel Is Nothing OrElse (sel.Locked AndAlso Not IsMultiSelected()) Then Return False
                 Dim stepPx = If(keyData.HasFlag(Keys.Shift), 10, 1) / Math.Max(0.0001, PxPerUnit())
                 Dim k = keyData And Keys.KeyCode
                 Dim dx = If(k = Keys.Left, -stepPx, If(k = Keys.Right, stepPx, 0))
                 Dim dy = If(k = Keys.Up, -stepPx, If(k = Keys.Down, stepPx, 0))
-                Dim index = _drawIndex
-                ApplyChange(Sub(r) DrawGeometry.Offset(r.Drawings(index), dx, dy), "draw-nudge")
+                NudgeSelected(dx, dy) ' 多選時一起（鎖定的不動）
                 Return True
         End Select
         Return False
@@ -1274,7 +1350,7 @@ Partial Friend Class frmEditor
 
     Private Sub OpenCalloutEditor()
         Dim d = SelDraw(_recipe)
-        If d Is Nothing OrElse Not DrawGeometry.IsCallout(d.Shape) Then Return
+        If d Is Nothing OrElse Not DrawGeometry.HasText(d.Shape) Then Return
         If _calloutEditor Is Nothing Then
             _calloutEditor = New TextBox With {.Multiline = True, .AcceptsReturn = True, .BorderStyle = BorderStyle.FixedSingle,
                                                .TextAlign = HorizontalAlignment.Center, .Visible = False}
@@ -1309,8 +1385,18 @@ Partial Friend Class frmEditor
 
     Private Sub CommitCalloutEditor()
         If _calloutEditor Is Nothing OrElse Not _calloutEditor.Visible Then Return
+        Dim index = _calloutEditIndex
         _calloutEditIndex = -1
         _calloutEditor.Visible = False
+        ' 文字圖層沒有輸入任何字：拿掉（圖說保留空的框）
+        If index >= 0 AndAlso index < LayerCount() AndAlso _recipe.Drawings(index).Shape = DrawShape.Text AndAlso
+           String.IsNullOrWhiteSpace(_recipe.Drawings(index).Text) Then
+            ApplyChange(Sub(r)
+                            r.Drawings.RemoveAt(index)
+                            DrawGroups.Prune(r, EnteredGroup())
+                        End Sub)
+            SelectDrawLayer(-1)
+        End If
     End Sub
 
     '=====================================================================
@@ -1323,7 +1409,9 @@ Partial Friend Class frmEditor
         g.SmoothingMode = SmoothingMode.AntiAlias
         Dim px = PxPerUnit()
         Dim sel = SelDraw(_recipe)
-        If sel IsNot Nothing AndAlso sel.Visible Then
+        PaintEnteredGroup(g) ' 正在編輯的群組：紫色虛線框
+        If Not _builderOn Then PaintMulti(g) ' 多選的外框與控制點、框選中的虛線框
+        If sel IsNot Nothing AndAlso sel.Visible AndAlso Not IsMultiSelected() Then
             Using outer As New Pen(Color.FromArgb(150, 0, 0, 0), 3), inner As New Pen(Color.FromArgb(90, 170, 255), 1.3F) With {.DashStyle = DashStyle.Dash}
                 For Each f In DrawGeometry.Figures(sel)
                     Dim pts = f.Points.Select(Function(p) UnitToScreen(p)).ToArray()
@@ -1361,7 +1449,7 @@ Partial Friend Class frmEditor
                     End Using
                 End If
             End Using
-            If Not sel.Locked Then
+            If Not sel.Locked AndAlso Not NodeToolActive Then ' 節點工具只畫節點與把手
                 For Each h In HandlesOf(sel)
                     DrawHandleMark(g, h, sel)
                 Next
@@ -1404,6 +1492,10 @@ Partial Friend Class frmEditor
             g.DrawEllipse(Pens.Black, first.X - 5, first.Y - 5, 10, 10)
         End If
         PaintCloneSource(g)
+        PaintPath(g) ' 鋼筆畫到一半的路徑、節點與把手
+        PaintBuilder(g) ' 形狀建立的一塊一塊
+        PaintGuides(g) ' 移動時的智慧參考線
+        PaintTools(g) ' 刀線、縮放框
     End Sub
 
     ''' <summary>拖曳中的新形狀：用目前的線條色與粗細畫外形（實際筆刷效果放開後才算）。</summary>

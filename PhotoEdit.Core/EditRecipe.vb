@@ -201,6 +201,9 @@ Public Class EditRecipe
     ''' <summary>繪圖圖層（由下而上）；Nothing 或空清單表示沒有。</summary>
     Public Property Drawings As List(Of DrawLayer)
 
+    ''' <summary>繪圖圖層的群組（可巢狀，見 DrawGroups）；Nothing 或空清單表示沒有。</summary>
+    Public Property DrawGroups As List(Of DrawGroup)
+
     ''' <summary>去背；Nothing 表示沒有去背。</summary>
     Public Property Cutout As CutoutSettings
 
@@ -220,6 +223,7 @@ Public Class EditRecipe
         r.LocalAdjustments = LocalAdjustments?.Select(Function(a) a.Clone()).ToList()
         r.Overlays = Overlays?.Select(Function(o) o.Clone()).ToList()
         r.Drawings = Drawings?.Select(Function(d) d.Clone()).ToList()
+        r.DrawGroups = DrawGroups?.Select(Function(g) g.Clone()).ToList()
         r.Cutout = Cutout?.Clone()
         r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))
         r.Selection = Selection?.Clone()
@@ -407,6 +411,7 @@ Public Class EditRecipe
         If r.LocalAdjustments IsNot Nothing AndAlso r.LocalAdjustments.Count = 0 Then r.LocalAdjustments = Nothing
         If r.Overlays IsNot Nothing AndAlso r.Overlays.Count = 0 Then r.Overlays = Nothing
         If r.Drawings IsNot Nothing AndAlso r.Drawings.Count = 0 Then r.Drawings = Nothing
+        If r.DrawGroups IsNot Nothing AndAlso r.DrawGroups.Count = 0 Then r.DrawGroups = Nothing
         If r.LayerOrder IsNot Nothing AndAlso r.LayerOrder.Count = 0 Then r.LayerOrder = Nothing
         If r.Selection IsNot Nothing AndAlso r.Selection.IsEmpty Then r.Selection = Nothing
         If r.Beauty IsNot Nothing AndAlso r.Beauty.IsBlank Then r.Beauty = Nothing

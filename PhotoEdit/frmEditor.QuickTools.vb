@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -199,6 +199,7 @@ Partial Friend Class frmEditor
         Dim menu As New ContextMenuStrip()
         For i = 0 To DrawGeometry.BrushNames.Length - 1
             Dim b = CType(i, BrushKind)
+            If DrawLayer.IsToolOnlyBrush(b) Then Continue For ' 修飾筆只從工具列選
             Dim mi = CType(menu.Items.Add("換成「" & DrawGeometry.BrushNames(i) & "」"), ToolStripMenuItem)
             mi.Checked = b = current
             AddHandler mi.Click, Sub()

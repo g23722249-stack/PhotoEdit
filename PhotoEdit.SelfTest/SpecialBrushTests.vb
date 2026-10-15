@@ -46,7 +46,7 @@ Module SpecialBrushTests
         DrawingRenderer.ClearCache()
 
         ' ---- 模型 ----
-        Check("筆刷名稱 21 個（含混色、塗抹、粒子、仿製、貼圖噴槍）", DrawGeometry.BrushNames.Length = 21 AndAlso DrawGeometry.BrushNames(20) = "貼圖噴槍")
+        Check("筆刷名稱 28 個（含混色、塗抹、粒子、仿製、貼圖噴槍、修飾筆）", DrawGeometry.BrushNames.Length = 28 AndAlso DrawGeometry.BrushNames(20) = "貼圖噴槍")
         Check("只有混色、塗抹、仿製要讀畫布", DrawLayer.SamplesCanvas(BrushKind.Smudge) AndAlso DrawLayer.SamplesCanvas(BrushKind.Clone) AndAlso
               DrawLayer.SamplesCanvas(BrushKind.Mixer) AndAlso Not DrawLayer.SamplesCanvas(BrushKind.Particle))
         Dim p As New DrawPoint(0.1F, 0.2F, 0.5F)
