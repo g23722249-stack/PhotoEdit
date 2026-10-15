@@ -47,6 +47,7 @@ Module Program
             ShapeOpTestsRun()
             ToolBrushTestsRun()
             LineClipTestsRun()
+            Batch2TestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

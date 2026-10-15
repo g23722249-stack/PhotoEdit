@@ -9,7 +9,7 @@ Imports System.Drawing.Drawing2D
 Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>虛線的樣子（線寬的倍數，畫、空、畫、空…；畫的長度是看起來的長度，含圓頭）。</summary>
-    Private Shared Function DashPattern(d As LineDash) As Single()
+    Friend Shared Function DashPattern(d As LineDash) As Single()
         Select Case d
             Case LineDash.Dash : Return {3, 2}
             Case LineDash.Dot : Return {1, 1.6F}

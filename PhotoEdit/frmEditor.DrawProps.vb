@@ -206,7 +206,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>方框類、文字、圖說有自己的角度（屬性列顯示角度）；其他輸入的角度是「再轉幾度」。</summary>
     Private Shared Function HasOwnRotation(d As DrawLayer) As Boolean
-        Return DrawGeometry.IsBox(d.Shape)
+        Return DrawGeometry.IsBoxLayer(d)
     End Function
 
     Private Sub ApplyProp(key As String, tb As TextBox)

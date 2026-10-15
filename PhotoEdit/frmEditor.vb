@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Runtime.InteropServices
 Imports System.Threading.Tasks
 Imports PhotoEdit
@@ -168,6 +168,7 @@ Partial Friend Class frmEditor
         fileMenu.AddItem(Item("save", "存檔 (Ctrl+S)"))
         fileMenu.AddItem(Item("saveas", "另存新檔… (Ctrl+Shift+S)"))
         fileMenu.AddItem(Item("export", "匯出… (Ctrl+E)"))
+        fileMenu.AddItem(Item("exportsvg", "匯出 SVG（向量圖形）…"))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("collage", "拼貼…"))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
@@ -283,6 +284,7 @@ Partial Friend Class frmEditor
             Case "save" : SaveDocument()
             Case "saveas" : SaveAsWithDialog()
             Case "export" : ExportWithDialog()
+            Case "exportsvg" : ExportSvgWithDialog()
             Case "copy" : CopyMergedImage()
             Case "revert"
                 ExitCropMode(apply:=False)

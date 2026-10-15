@@ -217,6 +217,7 @@ Partial Public NotInheritable Class DrawingRenderer
         If layer.Scatter > 0 Then extra = Math.Max(extra, widthPx * 1.6F * layer.Scatter / 100.0F + widthPx * 0.5F)
         If layer.SizeJitter > 0 OrElse figs.Any(Function(f) f.Angle IsNot Nothing) Then extra = Math.Max(extra, widthPx * 0.8F)
         If layer.StartArrow <> ArrowKind.None OrElse layer.EndArrow <> ArrowKind.None Then extra = Math.Max(extra, ArrowSize(widthPx).Half + 2)
+        If DrawGeometry.IsPathText(layer) Then extra = Math.Max(extra, CSng(layer.TextSize * scale * 1.4)) ' 字長在路徑兩邊
         padL += extra : padT += extra : padR += extra : padB += extra
         If layer.Shadow Then
             Dim s = ShadowOffset(widthPx) + ShadowBlur(widthPx) * 2
@@ -236,7 +237,11 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 1. 填色
         If layer.Filled AndAlso closedFigs.Count > 0 Then
             Dim mask = FillMask(closedFigs, region)
-            Shade(cv, mask, Nothing, layer, Color.FromArgb(layer.FillColorArgb), widthPx, h, isFill:=True)
+            If layer.FillGradient IsNot Nothing Then
+                ShadeGradient(cv, mask, layer, region, h) ' 向量漸層填色
+            Else
+                Shade(cv, mask, Nothing, layer, Color.FromArgb(layer.FillColorArgb), widthPx, h, isFill:=True)
+            End If
         End If
 
         ' 2. 線條（虛線切段、箭頭見 LineStyle.vb）
@@ -289,7 +294,9 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
 
         ' 3. 圖說文字
-        If DrawGeometry.HasText(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then DrawText(cv, layer, region, scale)
+        If DrawGeometry.HasText(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then
+            If DrawGeometry.IsPathText(layer) Then DrawPathText(cv, layer, region, scale) Else DrawText(cv, layer, region, scale)
+        End If
 
         ' 4. 陰影
         If layer.Shadow Then AddShadow(cv, widthPx)
@@ -328,6 +335,28 @@ Partial Public NotInheritable Class DrawingRenderer
     End Function
 
     ''' <summary>封閉形狀的填色範圍（反鋸齒，0..1）。</summary>
+    ''' <summary>漸層填色：起點、終點是圖形外接矩形裡的比例，換成照片座標後算 region 的漸層，依填色範圍疊上。</summary>
+    Private Shared Sub ShadeGradient(cv As Canvas, mask As Single(), layer As DrawLayer, region As Rectangle, h As Integer)
+        Dim g = AbsoluteGradient(layer)
+        Dim px = GradientRegion(g, region, h, Color.FromArgb(layer.FillColorArgb), Color.FromArgb(layer.FillColor2Argb))
+        For i = 0 To mask.Length - 1
+            Dim m = mask(i)
+            If m <= 0 Then Continue For
+            Dim a = px(i * 4 + 3) / 255.0F * m
+            If a <= 0 Then Continue For
+            cv.Over(i, px(i * 4 + 2) / 255.0F, px(i * 4 + 1) / 255.0F, px(i * 4) / 255.0F, a)
+        Next
+    End Sub
+
+    ''' <summary>圖形的漸層換成照片座標（照片高度單位）。</summary>
+    Public Shared Function AbsoluteGradient(layer As DrawLayer) As GradientFill
+        Dim g = layer.FillGradient.Clone()
+        Dim b = DrawGeometry.Bounds(layer)
+        g.X1 = b.X + layer.FillGradient.X1 * b.Width : g.Y1 = b.Y + layer.FillGradient.Y1 * b.Height
+        g.X2 = b.X + layer.FillGradient.X2 * b.Width : g.Y2 = b.Y + layer.FillGradient.Y2 * b.Height
+        Return g
+    End Function
+
     ''' <summary>箭頭的實心外形加進線條的範圍。</summary>
     Private Shared Sub AddHeads(cov As Single(), heads As List(Of PointF()), region As Rectangle)
         If heads Is Nothing OrElse heads.Count = 0 Then Return
@@ -864,6 +893,31 @@ Partial Public NotInheritable Class DrawingRenderer
     '=====================================================================
 
     ''' <summary>圖說文字：在文字範圍內置中、自動換行，放不下時縮小字級（最小 40%）。</summary>
+    ''' <summary>路徑文字：每個字沿路徑排好（見 DrawGeometry.PathTextLayout），填文字色。</summary>
+    Private Shared Sub DrawPathText(cv As Canvas, layer As DrawLayer, region As Rectangle, scale As Single)
+        Dim size As Single, family As FontFamily = Nothing
+        Dim places = DrawGeometry.PathTextLayout(layer, scale, size, family)
+        If places.Count = 0 Then Return
+        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Using bmp As New Bitmap(cv.W, cv.H, PixelFormat.Format32bppArgb)
+            Using g = Graphics.FromImage(bmp), br As New SolidBrush(Color.FromArgb(layer.TextColorArgb))
+                g.SmoothingMode = SmoothingMode.AntiAlias
+                g.TranslateTransform(-region.X, -region.Y)
+                For Each gp In places
+                    Using path = DrawGeometry.GlyphPath(gp, family, style, size)
+                        g.FillPath(br, path)
+                    End Using
+                Next
+            End Using
+            Dim px = Perspective.ReadPixels(bmp)
+            For i = 0 To cv.W * cv.H - 1
+                Dim a = px(i * 4 + 3)
+                If a = 0 Then Continue For
+                cv.Over(i, px(i * 4 + 2) / 255.0F, px(i * 4 + 1) / 255.0F, px(i * 4) / 255.0F, a / 255.0F)
+            Next
+        End Using
+    End Sub
+
     Private Shared Sub DrawText(cv As Canvas, layer As DrawLayer, region As Rectangle, scale As Single)
         Dim box = DrawGeometry.TextBox(layer)
         Dim rect = New RectangleF(box.X * scale, box.Y * scale, box.Width * scale, box.Height * scale)

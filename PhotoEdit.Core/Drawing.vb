@@ -343,6 +343,14 @@ Public Class DrawLayer
     Public Property Material As MaterialKind
     Public Property StrokeColorArgb As Integer = Color.FromArgb(232, 69, 90).ToArgb()
     Public Property FillColorArgb As Integer = Color.White.ToArgb()
+    ''' <summary>向量圖形的漸層填色：Nothing＝單色。起點、終點是圖形外接矩形裡的比例（0..1），圖形移動、縮放時跟著走；顏色 填色 → 第二色。</summary>
+    Public Property FillGradient As GradientFill
+    ''' <summary>漸層填色的第二個顏色。</summary>
+    Public Property FillColor2Argb As Integer = Color.FromArgb(55, 138, 221).ToArgb()
+    ''' <summary>路徑文字：文字沿著 Contours 排（Shape = Text 且有 Contours 時）；位置往後移路徑長度的百分比（−50..50）。</summary>
+    Public Property TextPathShift As Integer
+    ''' <summary>路徑文字放在線的另一邊（沿反方向排）。</summary>
+    Public Property TextPathFlip As Boolean
     ''' <summary>線條粗細（照片高度的比例）。</summary>
     Public Property StrokeWidth As Double = 0.008
     ''' <summary>邊緣淡化 0..100。</summary>
@@ -437,6 +445,7 @@ Public Class DrawLayer
         c.Region = Region?.Clone()
         c.Bucket = Bucket?.Clone()
         c.Gradient = Gradient?.Clone()
+        c.FillGradient = FillGradient?.Clone()
         Return c
     End Function
 
@@ -447,6 +456,7 @@ Public Class DrawLayer
         StrokeWidth = s.StrokeWidth : Softness = s.Softness : Opacity = s.Opacity : Flow = s.Flow
         Filled = s.Filled : Stroked = s.Stroked : Shadow = s.Shadow
         Dash = s.Dash : Cap = s.Cap : Join = s.Join : StartArrow = s.StartArrow : EndArrow = s.EndArrow
+        FillGradient = s.FillGradient?.Clone() : FillColor2Argb = s.FillColor2Argb
         FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
         SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
         PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
@@ -523,6 +533,21 @@ Partial Public NotInheritable Class DrawGeometry
 
     Public Shared Function IsCallout(s As DrawShape) As Boolean
         Return s >= DrawShape.CalloutRect AndAlso s <= DrawShape.CalloutShout
+    End Function
+
+    ''' <summary>路徑文字：文字圖層而且有路徑（Contours）。</summary>
+    Public Shared Function IsPathText(d As DrawLayer) As Boolean
+        Return d IsNot Nothing AndAlso d.Shape = DrawShape.Text AndAlso d.Contours IsNot Nothing AndAlso d.Contours.Count > 0
+    End Function
+
+    ''' <summary>有節點可以用節點工具改：鋼筆路徑、路徑文字的路徑。</summary>
+    Public Shared Function HasNodes(d As DrawLayer) As Boolean
+        Return d IsNot Nothing AndAlso d.Contours IsNot Nothing AndAlso (d.Shape = DrawShape.Path OrElse IsPathText(d))
+    End Function
+
+    ''' <summary>用方框（中心、寬高、角度）描述的圖層（路徑文字除外）。</summary>
+    Public Shared Function IsBoxLayer(d As DrawLayer) As Boolean
+        Return IsBox(d.Shape) AndAlso Not IsPathText(d)
     End Function
 
     ''' <summary>有文字的圖形：圖說與文字（按兩下輸入文字）。</summary>
@@ -643,6 +668,7 @@ Partial Public NotInheritable Class DrawGeometry
 
     Private Shared Function BaseFigures(layer As DrawLayer) As List(Of Figure)
         Dim list As New List(Of Figure)()
+        If IsPathText(layer) Then Return PathFigures(layer) ' 路徑文字：外形是它的路徑
         Select Case layer.Shape
             Case DrawShape.Freehand
                 If layer.Strokes IsNot Nothing Then
@@ -1280,7 +1306,7 @@ Partial Public NotInheritable Class DrawGeometry
                 Dim c = map(rb.X + rb.Width / 2, rb.Y + rb.Height / 2)
                 layer.X = start.X + c.X - (rb.X + rb.Width / 2)
                 layer.Y = start.Y + c.Y - (rb.Y + rb.Height / 2)
-            Case IsBox(start.Shape)
+            Case IsBoxLayer(start)
                 Dim c = map(start.X, start.Y)
                 layer.X = c.X : layer.Y = c.Y
                 ' 圖形自己的寬（沿旋轉後的 x 軸）、高（沿旋轉後的 y 軸）各自的縮放
@@ -1307,7 +1333,7 @@ Partial Public NotInheritable Class DrawGeometry
                 Dim cx = rb.X + rb.Width / 2, cy = rb.Y + rb.Height / 2
                 Dim c = rot(cx, cy)
                 layer.X = start.X + c.X - cx : layer.Y = start.Y + c.Y - cy
-            Case IsBox(start.Shape)
+            Case IsBoxLayer(start)
                 Dim c = rot(start.X, start.Y)
                 layer.X = c.X : layer.Y = c.Y
                 Dim deg = start.Rotation + degrees

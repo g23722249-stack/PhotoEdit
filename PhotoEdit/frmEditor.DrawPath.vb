@@ -75,7 +75,7 @@ Partial Friend Class frmEditor
     Private Sub UpdateNodeBar()
         If _nodeButtons.Count = 0 Then Return
         Dim sel = If(IsMultiSelected(), Nothing, SelDraw(_recipe))
-        Dim isPath = sel IsNot Nothing AndAlso sel.Shape = DrawShape.Path
+        Dim isPath = DrawGeometry.HasNodes(sel)
         Dim editing = NodeToolActive AndAlso isPath
         Dim hasNodes = editing AndAlso ValidNodeSel().Count > 0
         For Each k In {"corner", "smooth", "symmetric", "delete", "break"}
@@ -91,7 +91,7 @@ Partial Friend Class frmEditor
 
     Private Function ValidNodeSel() As List(Of (C As Integer, N As Integer))
         Dim sel = SelDraw(_recipe)
-        If sel Is Nothing OrElse sel.Shape <> DrawShape.Path OrElse sel.Contours Is Nothing Then Return New List(Of (C As Integer, N As Integer))()
+        If Not DrawGeometry.HasNodes(sel) Then Return New List(Of (C As Integer, N As Integer))()
         Return _nodeSel.Where(Function(x) x.C < sel.Contours.Count AndAlso x.N < sel.Contours(x.C).Nodes.Count).ToList()
     End Function
 
@@ -116,7 +116,7 @@ Partial Friend Class frmEditor
             ConvertToPath(index)
             Return
         End If
-        If sel.Shape <> DrawShape.Path Then Return
+        If Not DrawGeometry.HasNodes(sel) Then Return
         Dim ns = ValidNodeSel()
         Select Case key
             Case "corner", "smooth", "symmetric"
@@ -303,7 +303,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>選取的鋼筆路徑上，畫面座標的節點與把手位置。</summary>
     Private Function HitNode(d As DrawLayer, p As Point) As (Kind As NodeDrag, C As Integer, N As Integer)
-        If d Is Nothing OrElse d.Shape <> DrawShape.Path OrElse d.Contours Is Nothing Then Return (NodeDrag.None, -1, -1)
+        If Not DrawGeometry.HasNodes(d) Then Return (NodeDrag.None, -1, -1)
         ' 先看選取節點的把手（畫在上面）
         For Each x In ValidNodeSel()
             Dim n = d.Contours(x.C).Nodes(x.N)
@@ -382,7 +382,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>選取工具：單選鋼筆路徑時上方的旋轉圓點（方框類有自己的旋轉）。</summary>
     Private Function PathRotateHandle(d As DrawLayer) As PointF?
-        If d Is Nothing OrElse d.Shape <> DrawShape.Path OrElse d.Locked Then Return Nothing
+        If Not DrawGeometry.HasNodes(d) OrElse d.Locked Then Return Nothing
         Dim b = DrawGeometry.Bounds(d)
         Dim top = UnitToScreen(New PointF(b.X + b.Width / 2, b.Top))
         Return New PointF(top.X, top.Y - RotateHandleOffset)
@@ -408,13 +408,14 @@ Partial Friend Class frmEditor
     ''' <summary>鋼筆、節點工具的按下；回傳 True＝已處理。</summary>
     Private Function PathMouseDown(e As MouseEventArgs, u As PointF) As Boolean
         If ModifierKeys.HasFlag(Keys.Control) Then Return False ' Ctrl：暫時選取（原本的流程）
-        If _drawStrip.SelectedTool = DrawIcons.SelectTool AndAlso e.Button = MouseButtons.Left Then Return BeginPathRotate(e, u)
+        If _drawStrip.SelectedTool = DrawIcons.SelectTool AndAlso e.Button = MouseButtons.Left Then Return BeginGradHandle(e, u) OrElse BeginPathRotate(e, u) ' 漸層控制點、路徑旋轉
         If PenActive Then PenMouseDown(e, u) : Return True
         If NodeToolActive Then NodeMouseDown(e, u) : Return True
         Return False
     End Function
 
     Private Function PathMouseMove(e As MouseEventArgs, u As PointF) As Boolean
+        If _gradDrag <> 0 Then GradHandleMove(u) : Return True
         If _nd <> NodeDrag.None Then NodeMouseMove(e, u) : Return True
         If PenActive AndAlso _penContour IsNot Nothing Then PenMouseMove(e, u) : Return True
         If NodeToolActive AndAlso _dd = DrawDrag.None Then
@@ -431,6 +432,11 @@ Partial Friend Class frmEditor
     End Function
 
     Private Function PathMouseUp() As Boolean
+        If _gradDrag <> 0 Then
+            _gradDrag = 0
+            UpdateDrawControls()
+            Return True
+        End If
         If _nd <> NodeDrag.None Then
             _nd = NodeDrag.None
             _ndLayer = Nothing
@@ -450,7 +456,7 @@ Partial Friend Class frmEditor
         End If
         If Not NodeToolActive Then Return False
         Dim sel = If(IsMultiSelected(), Nothing, SelDraw(_recipe))
-        If sel Is Nothing OrElse sel.Shape <> DrawShape.Path Then Return False
+        If Not DrawGeometry.HasNodes(sel) Then Return False
         Dim index = _drawIndex
         Dim h = HitNode(sel, e.Location)
         If h.Kind = NodeDrag.Anchor Then
@@ -494,6 +500,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>畫面：鋼筆畫到一半的路徑與橡皮筋；節點工具的節點、把手；選取工具的路徑旋轉圓點。</summary>
     Private Sub PaintPath(g As Graphics)
+        PaintGradHandles(g) ' 漸層填色的起點、終點
         Dim blue = Color.FromArgb(24, 95, 165)
         ' 鋼筆畫到一半
         If _penContour IsNot Nothing AndAlso _penContour.Nodes.Count > 0 Then
@@ -524,7 +531,7 @@ Partial Friend Class frmEditor
             End If
         End If
         Dim sel = If(IsMultiSelected(), Nothing, SelDraw(_recipe))
-        If sel Is Nothing OrElse sel.Shape <> DrawShape.Path OrElse sel.Contours Is Nothing OrElse Not sel.Visible Then Return
+        If Not DrawGeometry.HasNodes(sel) OrElse Not sel.Visible Then Return
         If NodeToolActive Then
             Dim chosen = New HashSet(Of (C As Integer, N As Integer))(ValidNodeSel())
             For ci = 0 To sel.Contours.Count - 1

@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -136,6 +136,9 @@ Partial Friend Class frmEditor
                     AltPickAt(e.Location)
                 End If
                 Return True
+            Case DrawIcons.SmartFillTool
+                If e.Button = MouseButtons.Left Then SmartFillAt(u)
+                Return True
             Case DrawIcons.KnifeTool
                 If e.Button = MouseButtons.Left Then
                     _knifeA = u
@@ -169,6 +172,9 @@ Partial Friend Class frmEditor
             Case DrawIcons.EyedropperTool
                 If _canvas.Cursor IsNot DropperCursor() Then _canvas.Cursor = DropperCursor()
                 Return Not _altPicking
+            Case DrawIcons.SmartFillTool
+                If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
+                Return True
             Case DrawIcons.KnifeTool
                 If _knifeA.HasValue Then
                     Dim b = u
@@ -306,6 +312,7 @@ Partial Friend Class frmEditor
             Case DrawIcons.PanTool : Return "平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。"
             Case DrawIcons.ZoomTool : Return "縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。"
             Case DrawIcons.EyedropperTool : Return "吸管：點一下吸成線條色，右鍵（或 Shift＋點）吸成填色；可以按住拖曳看顏色。"
+            Case DrawIcons.SmartFillTool : Return "智慧填色：在線條、圖形圍起來的地方點一下，那塊變成新的圖形（用目前的填色，可以先在右側選漸層）。線條要接起來才填得到。"
             Case DrawIcons.KnifeTool : Return "刀具：拖一條線穿過圖形把它切開（Shift：45°）；有選取時只切選取的。結果是鋼筆路徑。"
             Case DrawIcons.ShapeBuilderTool
                 Return If(_builderOn, Nothing, "形狀建立：先點選或框選兩個以上重疊的封閉圖形，選好就切成一塊一塊。")

@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Imaging
 
 ''' <summary>
@@ -66,7 +66,14 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>整張 w × h 的漸層（BGRA，非預乘）。公開給測試與預覽用。</summary>
     Public Shared Function GradientPixels(g As GradientFill, w As Integer, h As Integer, c1 As Color, c2 As Color) As Byte()
-        Dim px(w * h * 4 - 1) As Byte
+        Return GradientRegion(g, New Rectangle(0, 0, w, h), h, c1, c2)
+    End Function
+
+    ''' <summary>漸層在 region 這一塊的像素（BGRA，region.Width × region.Height）；座標以照片高度 h 換算。</summary>
+    Public Shared Function GradientRegion(g As GradientFill, region As Rectangle, h As Integer, c1 As Color, c2 As Color) As Byte()
+        Dim w = region.Width
+        Dim ox = region.X, oy = region.Y
+        Dim px(w * region.Height * 4 - 1) As Byte
         Dim ax = g.X1 * h, ay = g.Y1 * h, bx = g.X2 * h, by = g.Y2 * h
         Dim dx = bx - ax, dy = by - ay
         Dim len2 = Math.Max(1.0E-06, dx * dx + dy * dy), len = Math.Sqrt(len2)
@@ -74,11 +81,11 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 四色：拖曳範圍當方框（起點 = 左上角的位置，終點 = 右下角）
         Dim left = Math.Min(ax, bx), right = Math.Max(ax, bx), top = Math.Min(ay, by), bottom = Math.Max(ay, by)
         Dim corners = {Color.FromArgb(g.Corner1), Color.FromArgb(g.Corner2), Color.FromArgb(g.Corner3), Color.FromArgb(g.Corner4)}
-        Threading.Tasks.Parallel.For(0, h,
+        Threading.Tasks.Parallel.For(0, region.Height,
             Sub(y)
-                Dim py = y + 0.5
+                Dim py = y + oy + 0.5
                 For x = 0 To w - 1
-                    Dim pxX = x + 0.5
+                    Dim pxX = x + ox + 0.5
                     Dim vx = pxX - ax, vy = py - ay
                     Dim r, gg, b, a As Double
                     If g.Kind = GradientKind.FourColor Then

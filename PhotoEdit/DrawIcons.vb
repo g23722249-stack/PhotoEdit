@@ -30,6 +30,7 @@ Friend Module DrawIcons
     ' 向量
     Public Const ShapeBuilderTool As Integer = -17
     Public Const KnifeTool As Integer = -18
+    Public Const SmartFillTool As Integer = -19
 
     ''' <summary>點陣工具的變化（實際上是「直接繪製」）：橡皮擦、仿製、修復、塗抹、混色、模糊、銳利化、加亮、加深、海綿。</summary>
     Public Function IsRasterVariant(tool As Integer) As Boolean
@@ -77,6 +78,7 @@ Friend Module DrawIcons
             Case EraserTool : Return "橡皮擦"
             Case ShapeBuilderTool : Return "形狀建立"
             Case KnifeTool : Return "刀具"
+            Case SmartFillTool : Return "智慧填色"
             Case CInt(DrawShape.Raster) : Return "筆刷"
         End Select
         Dim b = BrushOf(tool)
@@ -105,6 +107,7 @@ Friend Module DrawIcons
             Case SpongeMinusTool, SpongePlusTool : Return "draw.tool.sponge"
             Case ShapeBuilderTool : Return "draw.builder"
             Case KnifeTool : Return "draw.tool.knife"
+            Case SmartFillTool : Return "draw.tool.smartfill"
         End Select
         Return "draw.tool." & tool
     End Function
@@ -293,6 +296,11 @@ Friend Module DrawIcons
                         g.DrawPath(pen, a) : g.DrawPath(pen, b)
                     End Using
                     g.DrawLine(pen, 17, 1.5F, 17, 6.5F) : g.DrawLine(pen, 14.5F, 4, 19.5F, 4)
+                Case SmartFillTool
+                    ' 兩條交叉的線圍出的一塊被填滿，加一滴顏料
+                    g.FillPolygon(soft, {New PointF(6, 8), New PointF(17, 8), New PointF(17, 19), New PointF(6, 19)})
+                    g.DrawLine(pen, 2, 8, 21, 8) : g.DrawLine(pen, 6, 3, 6, 22) : g.DrawLine(pen, 2, 19, 21, 19) : g.DrawLine(pen, 17, 3, 17, 22)
+                    g.FillEllipse(br, 10, 11, 4, 4)
                 Case KnifeTool
                     g.FillPolygon(soft, {New PointF(3, 21), New PointF(15, 9), New PointF(18, 12), New PointF(7, 21)})
                     g.DrawPolygon(pen, {New PointF(3, 21), New PointF(15, 9), New PointF(18, 12), New PointF(7, 21)})

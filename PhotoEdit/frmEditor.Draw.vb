@@ -93,6 +93,7 @@ Partial Friend Class frmEditor
         _eraseMode.Dock = DockStyle.None
         _eraseMode.Margin = New Padding(4, 3, 0, 0)
         eraserGroup.Controls.AddRange({_drawEraser, _eraseMode})
+        _drawBar.Controls.Add(BuildPathTextBar()) ' 文字沿路徑（見 frmEditor.DrawBatch2.vb）
         _drawBar.Controls.Add(BuildShapeBar()) ' 對齊、均分、焊接修剪、形狀建立（見 frmEditor.DrawShapes.vb）
         _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
         _drawBar.Controls.Add(BuildGroupBar()) ' 群組按鈕、所在群組（在橡皮擦右邊；見 frmEditor.DrawGroups.vb）
@@ -183,6 +184,7 @@ Partial Friend Class frmEditor
         AddHandler _drawFill.CheckedChanged, Sub() If Not _syncing Then SetDrawProp(Sub(d) d.Filled = _drawFill.Checked)
         AddHandler _drawShadow.CheckedChanged, Sub() If Not _syncing Then SetDrawProp(Sub(d) d.Shadow = _drawShadow.Checked)
         L.Y += 32
+        BuildFillStyleRow(L) ' 填色方式：單色、線性漸層、放射漸層（見 frmEditor.DrawBatch2.vb）
 
         Dim pct As Func(Of Integer, String) = Function(v) v & "%"
         AddRow(L, DrawRow("dw_width", "粗細", 1, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.StrokeWidth * 1000)), Sub(d, v) d.StrokeWidth = v / 1000.0))
@@ -365,6 +367,7 @@ Partial Friend Class frmEditor
             UpdateNodeBar()
             UpdateShapeBar()
             UpdatePropBar()
+            UpdatePathTextBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
             For Each t In _brushTiles
                 t.Selected = t.Brush = st.Brush
@@ -397,6 +400,7 @@ Partial Friend Class frmEditor
             _drawFill.Checked = st.Filled
             _drawShadow.Checked = st.Shadow
             SyncLineStyle(st)
+            SyncFillStyle(st)
             UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
             Dim sel = SelDraw(_recipe)
@@ -742,7 +746,7 @@ Partial Friend Class frmEditor
         Dim list As New List(Of DrawHandle)()
         If d.Shape = DrawShape.Raster Then
             ' 點陣圖層只能整個移動，沒有控制點。
-        ElseIf DrawGeometry.IsBox(d.Shape) Then
+        ElseIf DrawGeometry.IsBoxLayer(d) Then
             For i = 0 To 7
                 list.Add(New DrawHandle With {.Kind = HandleKind.Resize, .Index = i, .Pos = UnitToScreen(DrawGeometry.LocalToWorld(d, DrawGeometry.BoxHandleLocal(d, i)))})
             Next
@@ -1438,7 +1442,7 @@ Partial Friend Class frmEditor
                         g.DrawRectangle(outer, box.X, box.Y, box.Width, box.Height)
                         g.DrawRectangle(inner, box.X, box.Y, box.Width, box.Height)
                     End If
-                ElseIf DrawGeometry.IsBox(sel.Shape) Then
+                ElseIf DrawGeometry.IsBoxLayer(sel) Then
                     ' 方框類另外畫出外框與旋轉把手的連線。
                     Dim box = Enumerable.Range(0, 8).Where(Function(i) i Mod 2 = 0).
                         Select(Function(i) UnitToScreen(DrawGeometry.LocalToWorld(sel, DrawGeometry.BoxHandleLocal(sel, i)))).ToArray()

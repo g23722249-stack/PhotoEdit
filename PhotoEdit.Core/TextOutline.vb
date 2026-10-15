@@ -22,6 +22,7 @@ Partial Public NotInheritable Class DrawGeometry
             If bubble IsNot Nothing Then result.Add(bubble)
         End If
         If String.IsNullOrWhiteSpace(layer.Text) Then Return result
+        If IsPathText(layer) Then Return PathTextOutlines(layer)
         Dim box = TextBox(layer)
         Dim rect = New RectangleF(box.X * OutlineScale, box.Y * OutlineScale, box.Width * OutlineScale, box.Height * OutlineScale)
         If rect.Width < 2 OrElse rect.Height < 2 Then Return result
@@ -92,6 +93,130 @@ Partial Public NotInheritable Class DrawGeometry
                 Next
             End Using
         End Using
+        Return result
+    End Function
+
+    ''' <summary>路徑文字每個字的位置與角度（座標：照片高度 = scale 像素）。</summary>
+    Public Structure GlyphPlace
+        Public Ch As String
+        Public X As Single
+        Public Y As Single
+        ''' <summary>角度（度，順時針）。</summary>
+        Public Angle As Single
+        Public Width As Single
+    End Structure
+
+    ''' <summary>
+    ''' 路徑文字的排版：字一個接一個沿路徑排（字級固定），字的底線貼在路徑上。
+    ''' 開放的路徑排在中間；封閉的路徑排在最上面（放在另一邊時排在最下面，字是正的），再依 TextPathShift 往後移。
+    ''' </summary>
+    Public Shared Function PathTextLayout(layer As DrawLayer, scale As Single, ByRef size As Single, ByRef family As FontFamily) As List(Of GlyphPlace)
+        Dim result As New List(Of GlyphPlace)()
+        family = FamilyOf(layer.FontName)
+        size = CSng(Math.Max(0.004, layer.TextSize) * scale)
+        If Not IsPathText(layer) OrElse String.IsNullOrEmpty(layer.Text) Then Return result
+        Dim c = layer.Contours(0)
+        Dim pts = SampleContour(c).Select(Function(p) New PointF(p.X * scale, p.Y * scale)).ToList()
+        If c.Closed AndAlso pts.Count > 0 Then pts.Add(pts(0))
+        If layer.TextPathFlip Then pts.Reverse()
+        If pts.Count < 2 Then Return result
+        Dim cum(pts.Count - 1) As Single
+        For i = 1 To pts.Count - 1
+            cum(i) = cum(i - 1) + CSng(Dist(pts(i - 1), pts(i)))
+        Next
+        Dim total = cum(pts.Count - 1)
+        If total < 1 Then Return result
+        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Dim widths As New List(Of Single)()
+        Using bmp As New Bitmap(8, 8), g = Graphics.FromImage(bmp), font As New Font(family, Math.Max(1, size), style, GraphicsUnit.Pixel),
+              sf = DirectCast(StringFormat.GenericTypographic.Clone(), StringFormat)
+            sf.FormatFlags = sf.FormatFlags Or StringFormatFlags.MeasureTrailingSpaces
+            For Each ch In layer.Text
+                widths.Add(g.MeasureString(ch.ToString(), font, PointF.Empty, sf).Width)
+            Next
+        End Using
+        Dim all = widths.Sum()
+        Dim start As Single
+        If c.Closed Then
+            ' 錨點：最上面（另一邊時最下面）的點
+            Dim idx = 0
+            For i = 1 To pts.Count - 1
+                If If(layer.TextPathFlip, pts(i).Y > pts(idx).Y, pts(i).Y < pts(idx).Y) Then idx = i
+            Next
+            start = cum(idx) - all / 2
+        Else
+            start = (total - all) / 2
+        End If
+        start += total * layer.TextPathShift / 100.0F
+        Dim acc = 0.0F
+        For k = 0 To layer.Text.Length - 1
+            Dim w = widths(k)
+            Dim mid = start + acc + w / 2
+            acc += w
+            If c.Closed Then
+                mid = mid Mod total
+                If mid < 0 Then mid += total
+            ElseIf mid < 0 OrElse mid > total Then
+                Continue For
+            End If
+            If Char.IsWhiteSpace(layer.Text(k)) Then Continue For
+            Dim i = 1
+            While i < pts.Count - 1 AndAlso cum(i) < mid
+                i += 1
+            End While
+            Dim seg = Math.Max(0.0001F, cum(i) - cum(i - 1))
+            Dim t = Math.Max(0, Math.Min(1, (mid - cum(i - 1)) / seg))
+            Dim a = pts(i - 1), b = pts(i)
+            result.Add(New GlyphPlace With {.Ch = layer.Text(k).ToString(), .X = a.X + (b.X - a.X) * t, .Y = a.Y + (b.Y - a.Y) * t,
+                                            .Angle = CSng(Math.Atan2(b.Y - a.Y, b.X - a.X) * 180 / Math.PI), .Width = w})
+        Next
+        Return result
+    End Function
+
+    ''' <summary>一個字的外形（字的底線中點在原點，轉 angle 度後移到 (x, y)）。</summary>
+    Public Shared Function GlyphPath(gp As GlyphPlace, family As FontFamily, style As FontStyle, size As Single) As GraphicsPath
+        Dim path As New GraphicsPath(FillMode.Winding)
+        Dim ascent = size * family.GetCellAscent(style) / Math.Max(1, family.GetEmHeight(style))
+        path.AddString(gp.Ch, family, CInt(style), Math.Max(1, size), New PointF(-gp.Width / 2, -ascent), StringFormat.GenericTypographic)
+        Using m As New Matrix()
+            m.Translate(gp.X, gp.Y)
+            m.Rotate(gp.Angle)
+            path.Transform(m)
+        End Using
+        Return path
+    End Function
+
+    ''' <summary>路徑文字轉外框：每個字一個鋼筆路徑。</summary>
+    Private Shared Function PathTextOutlines(layer As DrawLayer) As List(Of DrawLayer)
+        Dim result As New List(Of DrawLayer)()
+        Dim size As Single, family As FontFamily = Nothing
+        Dim places = PathTextLayout(layer, OutlineScale, size, family)
+        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        For Each gp In places
+            Using path = GlyphPath(gp, family, style, size)
+                Dim cs = PathContours(path)
+                If cs.Count = 0 Then Continue For
+                For Each c In cs
+                    For Each n In c.Nodes
+                        n.Transform(Function(p) New PointF(p.X / OutlineScale, p.Y / OutlineScale))
+                    Next
+                Next
+                Dim d = layer.Clone()
+                d.Shape = DrawShape.Path
+                d.Brush = BrushKind.HardRound
+                d.Filled = True
+                d.FillColorArgb = layer.TextColorArgb
+                d.FillGradient = Nothing
+                d.Stroked = False
+                d.Symmetry = SymmetryKind.None
+                d.Text = ""
+                d.Name = gp.Ch
+                d.Id = Nothing
+                d.Contours = cs
+                d.Rotation = 0
+                result.Add(d)
+            End Using
+        Next
         Return result
     End Function
 
