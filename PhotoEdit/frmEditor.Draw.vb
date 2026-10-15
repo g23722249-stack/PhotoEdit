@@ -82,6 +82,8 @@ Partial Friend Class frmEditor
         full.Dock = DockStyle.Right
         full.Width = 34
         AddHandler full.Click, Sub() ToggleFullScreen()
+        BuildDrawOverflow()
+        _drawBar.Controls.Add(_drawOverflow) ' 放不下的按鈕收在這裡（全螢幕左邊；見 frmEditor.DrawBarFit.vb）
         _drawBar.Controls.Add(full) ' 在「完成」左邊
         _drawBar.Controls.Add(done)
         ' 橡皮擦按鈕＋擦法選單：放在同一個由左到右的小容器裡，順序固定
@@ -359,6 +361,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>配方或選取改變後更新繪圖分頁。</summary>
     Private Sub UpdateDrawControls()
+        RestoreOverflow() ' 上方操作列：先放回收起來的按鈕，最後再依寬度收（FitDrawBar）
         Dim n = LayerCount()
         If _drawIndex >= n Then _drawIndex = n - 1
         Dim wasSyncing = _syncing
@@ -371,6 +374,7 @@ Partial Friend Class frmEditor
             UpdatePropBar()
             UpdatePathTextBar()
             UpdateFxBar()
+            FitDrawBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
             For Each t In _brushTiles
                 t.Selected = t.Brush = st.Brush
@@ -1146,6 +1150,7 @@ Partial Friend Class frmEditor
             Case DrawDrag.Freehand
                 FinishStabilizer(e.Location)
                 CommitFreehand()
+                EndStrokePreview() ' 預覽留到畫面重算完
             Case DrawDrag.GradientLine
                 EndGradientDrag()
         End Select
@@ -1256,7 +1261,7 @@ Partial Friend Class frmEditor
                         End Sub)
             UpdateDrawControls()
         Else
-            Dim d As New DrawLayer With {.Shape = DrawShape.Freehand, .Strokes = New List(Of DrawStroke) From {stroke}, .Seed = _drawRandom.Next(1, 100000)}
+            Dim d As New DrawLayer With {.Shape = DrawShape.Freehand, .Strokes = New List(Of DrawStroke) From {stroke}, .Seed = _strokeSeed} ' 和即時預覽同一個種子
             d.CopyStyleFrom(_drawStyle)
             Dim kind = If(d.Brush = BrushKind.FX, EffectCatalog.FxNames(CInt(d.Fx)), If(d.Brush = BrushKind.Texture, EffectCatalog.MaterialNames(CInt(d.Material)), DrawGeometry.BrushNames(CInt(d.Brush))))
             d.Name = $"筆畫（{kind}）{LayerCount() + 1}"
@@ -1481,18 +1486,15 @@ Partial Friend Class frmEditor
             ' 橡皮擦：半透明白色，看得出擦過的路徑。
             If _freeRaster AndAlso IsErasing() Then c = Color.FromArgb(150, 255, 255, 255)
             Dim w = CSng(Math.Max(1, _drawStyle.StrokeWidth * px))
-            Using pen As New Pen(c, w) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round, .LineJoin = LineJoin.Round}
-                Dim pts = _freePoints.Select(Function(p) UnitToScreen(p.ToPointF())).ToArray()
-                If pts.Length = 1 Then
-                    Using br As New SolidBrush(c)
-                        g.FillEllipse(br, pts(0).X - w / 2, pts(0).Y - w / 2, w, w)
-                    End Using
-                Else
-                    g.DrawLines(pen, pts)
+            ' 真實筆刷的預覽（含對稱）；快速線條或還沒算好時畫依筆壓變粗細的線，再補對稱的複本
+            If Not PaintStrokePreview(g, c, w) AndAlso _freePoints.Count >= 2 Then
+                Using pen As New Pen(c, w) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round, .LineJoin = LineJoin.Round}
                     PaintSymmetryPreview(g, pen, _freePoints)
-                End If
-            End Using
+                End Using
+            End If
             PaintStabilizer(g)
+        Else
+            PaintHeldPreview(g) ' 放開了、畫面還沒重算完
         End If
         PaintGradientDrag(g)
         If _polyPoints IsNot Nothing Then

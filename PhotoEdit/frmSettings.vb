@@ -1,4 +1,4 @@
-''' <summary>
+﻿''' <summary>
 ''' 「設定」視窗（編輯 → 設定…，Ctrl+,）：外觀配色選淺色或深色，點選後立刻套用到所有視窗並記住。
 ''' </summary>
 Friend Class frmSettings
@@ -23,7 +23,7 @@ Friend Class frmSettings
         StartPosition = FormStartPosition.CenterParent
         ShowInTaskbar = False
         KeyPreview = True
-        ClientSize = New Size(520, 744)
+        ClientSize = New Size(520, 860)
         Padding = New Padding(16, 23 + 12, 16, 14)
 
         Dim heading As New Label With {.Text = "外觀", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
@@ -38,7 +38,7 @@ Friend Class frmSettings
         AddHandler _dark.Click, Sub() Choose(True)
 
         Dim close As New Button With {.Text = "關閉", .UseVisualStyleBackColor = True}
-        close.SetBounds(400, 702, 100, 30)
+        close.SetBounds(400, 818, 100, 30)
         AddHandler close.Click, Sub() Me.Close()
         CancelButton = close
 
@@ -46,8 +46,34 @@ Friend Class frmSettings
         BuildDocumentMode()
         BuildPen()
         BuildQuickKeys()
+        BuildStrokePreview()
         UpdateCards()
         ThemeManager.Attach(Me)
+    End Sub
+
+    ''' <summary>筆畫預覽：畫的時候看到的線（真實筆刷／快速線條；逐段筆印保留給之後）。</summary>
+    Private Sub BuildStrokePreview()
+        Dim heading As New Label With {.Text = "筆畫預覽（畫的時候看到的線）", .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
+        heading.SetBounds(20, 708, 480, 22)
+        Controls.Add(heading)
+        Dim options = {(0, "真實筆刷：邊畫邊用筆刷引擎重算，看到的就是放開後的樣子（建議）"),
+                       (1, "快速線條：只畫一條依筆壓變粗細的線（舊電腦、很大的筆刷比較順）"),
+                       (2, "逐段筆印：像 Painter 一樣只算新增的筆印（之後提供）")}
+        Dim y = 734
+        For Each o In options
+            Dim value = o.Item1
+            Dim rb As New RadioButton With {.Text = o.Item2, .AutoSize = False, .BackColor = Color.Transparent,
+                                            .Checked = _settings.StrokePreview = value, .Enabled = value <> 2}
+            rb.SetBounds(24, y, 480, 24)
+            AddHandler rb.CheckedChanged, Sub()
+                                              If Not rb.Checked Then Return
+                                              _settings.StrokePreview = value
+                                              _settings.Save()
+                                          End Sub
+            Controls.Add(rb)
+            y += 26
+        Next
     End Sub
 
     ''' <summary>文件模式：單一文件（SDI）或多文件（MDI）。改了要重開程式才生效，關閉設定時提示。</summary>

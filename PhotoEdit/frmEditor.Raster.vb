@@ -115,7 +115,7 @@ Partial Friend Class frmEditor
     ''' <summary>直接繪製放開：這一筆（或橡皮擦）加進選取的點陣圖層；沒有選圖層時新增一個。</summary>
     Private Sub CommitRasterStroke(stroke As DrawStroke)
         _freeRaster = False
-        Dim op As New DrawLayer With {.Shape = DrawShape.Freehand, .Seed = _drawRandom.Next(1, 100000), .Eraser = IsErasing(), .EraseMode = CType(Math.Max(0, Math.Min(2, _appSettings.EraseMode)), EraseMode)}
+        Dim op As New DrawLayer With {.Shape = DrawShape.Freehand, .Seed = _strokeSeed, .Eraser = IsErasing(), .EraseMode = CType(Math.Max(0, Math.Min(2, _appSettings.EraseMode)), EraseMode)}
         _tempErase = False ' 右鍵、筆的橡皮擦端只擦這一筆
         op.CopyStyleFrom(_drawStyle)
         If op.Eraser Then op.Shadow = False

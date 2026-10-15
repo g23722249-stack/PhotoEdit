@@ -188,6 +188,21 @@ Partial Public NotInheritable Class DrawingRenderer
         End Sub
     End Class
 
+    ''' <summary>
+    ''' 畫筆畫時的即時預覽：用和最後結果相同的引擎算一次（不進快取），回傳圖層在 w × h 畫布上的圖與位置；沒有內容時 Bitmap 是 Nothing。
+    ''' 可以在背景執行緒呼叫（紙紋設定是每個執行緒各自的）。不透明度、混合模式由呼叫的人在畫的時候套用。
+    ''' </summary>
+    Public Shared Function RenderPreview(layer As DrawLayer, w As Integer, h As Integer, paper As PaperSettings) As (Bitmap As Bitmap, Region As Rectangle)
+        Dim saved = CurrentPaper
+        CurrentPaper = paper
+        Try
+            Dim r = Render(layer, w, h)
+            Return (r.Bitmap, r.Region)
+        Finally
+            CurrentPaper = saved
+        End Try
+    End Function
+
     Private Shared Function Render(layer As DrawLayer, w As Integer, h As Integer) As Rendered
         Dim scale = CSng(h)
         PreparePaper(w, h)

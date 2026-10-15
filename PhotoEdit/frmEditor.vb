@@ -575,6 +575,7 @@ Partial Friend Class frmEditor
         UpdatePresetThumbnails()
         ScheduleHiRes()
         UpdateStatus()
+        StrokePreviewRendered() ' 放開筆後留著的即時預覽，畫面重算完才拿掉
     End Sub
 
     ''' <summary>畫布顯示：原圖對照 &gt; 全尺寸預覽（若與目前配方相符）&gt; 一般預覽。</summary>

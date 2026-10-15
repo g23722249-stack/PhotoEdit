@@ -33,6 +33,9 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private ReadOnly _alignMenu As New ContextMenuStrip()
+    Private Shared ReadOnly GlyphNames As New Dictionary(Of String, String) From {
+        {"left", "靠左對齊"}, {"hcenter", "水平置中"}, {"top", "靠上對齊"}, {"more", "更多對齊…"},
+        {"weld", "焊接"}, {"trim", "修剪"}, {"intersect", "相交"}, {"exclude", "排除"}}
 
     Private Function BuildShapeBar() As Control
         ' 常用的三個對齊直接放，其餘（靠右、垂直置中、靠下、均分）在「⋯」選單；形狀建立在左側工具列
@@ -48,6 +51,7 @@ Partial Friend Class frmEditor
             b.Size = New Size(If(key = "builder", 30, 28), 28)
             b.Margin = New Padding(0, 0, 2, 0)
             b.Visible = False
+            b.AccessibleName = GlyphNames(key) ' 收進「»」選單時顯示的名稱
             AddHandler b.Paint, Sub(s, e) PaintShapeGlyph(e.Graphics, key, DirectCast(s, Button))
             AddHandler b.Click, Sub() ShapeCommand(key)
             _shapeButtons(key) = b
@@ -150,7 +154,8 @@ Partial Friend Class frmEditor
             Case "intersect" : CombineSelected(ShapeOp.Intersect)
             Case "exclude" : CombineSelected(ShapeOp.Exclude)
             Case "builder" : If _builderOn Then ExitBuilder() Else EnterBuilder()
-            Case "more" : _alignMenu.Show(_shapeButtons("more"), New Point(0, _shapeButtons("more").Height))
+            Case "more"
+                If _shapeButtons("more").Visible Then _alignMenu.Show(_shapeButtons("more"), New Point(0, _shapeButtons("more").Height)) Else _alignMenu.Show(Cursor.Position)
             Case "clipin" : ClipIntoShape()
             Case "clipout" : ClipOut()
             Case "photoclip" : TogglePhotoClip()
