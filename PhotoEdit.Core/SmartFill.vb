@@ -81,7 +81,7 @@ Public NotInheritable Class SmartFill
     End Function
 
     ''' <summary>格子的範圍描成外形線（格線上的頂點；內部在左邊）。</summary>
-    Private Shared Function Trace(mask As Boolean(), w As Integer, h As Integer) As List(Of PointF())
+    Friend Shared Function Trace(mask As Boolean(), w As Integer, h As Integer) As List(Of PointF())
         Dim at = Function(x As Integer, y As Integer) x >= 0 AndAlso y >= 0 AndAlso x < w AndAlso y < h AndAlso mask(y * w + x)
         Dim key = Function(x As Integer, y As Integer) CLng(y) * (w + 1) + x
         ' 每一條邊界邊：由 (ax, ay) 到 (bx, by)

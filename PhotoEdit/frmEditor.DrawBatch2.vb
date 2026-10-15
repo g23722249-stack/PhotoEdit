@@ -140,7 +140,8 @@ Partial Friend Class frmEditor
         If sel Is Nothing OrElse sel.FillGradient Is Nothing Then Return
         Dim b = DrawGeometry.Bounds(sel)
         If b.Width < 0.0001 OrElse b.Height < 0.0001 Then Return
-        Dim fx = (u.X - b.X) / b.Width, fy = (u.Y - b.Y) / b.Height
+        Dim fr = DrawGeometry.GradientFraction(sel, u) ' 方框類用自己的方框（旋轉時漸層跟著轉）
+        Dim fx = fr.X, fy = fr.Y
         Dim which = _gradDrag
         ApplyChange(Sub(r)
                         Dim g = r.Drawings(index).FillGradient
@@ -290,8 +291,16 @@ Partial Friend Class frmEditor
         Dim ti = c.Value.Text, pi = c.Value.PathLayer
         Dim path = DrawGeometry.ToPath(_recipe.Drawings(pi))
         Dim b = DrawGeometry.Bounds(path)
+        Dim textLayer = _recipe.Drawings(ti), srcLayer = _recipe.Drawings(pi)
+        Dim entered = EnteredGroup()
         ApplyChange(Sub(r)
                         Dim t = r.Drawings(ti)
+                        If r.Drawings(pi).Id Is Nothing Then r.Drawings(pi).Id = Guid.NewGuid().ToString("N")
+                        t.TextPathSource = r.Drawings(pi).Id ' 跟著這個圖形
+                        ' 文字和圖形組成群組：一起移動、縮放
+                        If DrawGroups.ChildGroupAt(r, t, entered) Is Nothing OrElse DrawGroups.ChildGroupAt(r, t, entered) <> DrawGroups.ChildGroupAt(r, r.Drawings(pi), entered) Then
+                            DrawGroups.Create(r, {t, r.Drawings(pi)}, entered, "路徑文字")
+                        End If
                         t.Contours = path.Contours.Select(Function(x) x.Clone()).ToList()
                         t.TextPathShift = 0
                         t.TextPathFlip = False
@@ -299,8 +308,8 @@ Partial Friend Class frmEditor
                         t.X = b.X + b.Width / 2 : t.Y = b.Y + b.Height / 2 ' 輸入框的位置
                         t.W = Math.Max(0.05, b.Width) : t.H = Math.Max(0.05, b.Height)
                     End Sub)
-        SelectDrawLayer(ti)
-        SetStatusMessage("文字已沿著路徑排：用節點工具改路徑的形狀，上方可以調位置、換到另一邊；原本的圖形還在，不要時可以刪掉或隱藏。")
+        SelectDrawLayer(_recipe.Drawings.IndexOf(textLayer))
+        SetStatusMessage("文字已沿著路徑排，和原本的圖形組成群組（一起移動、縮放）：用節點工具改那個圖形，文字跟著走；上方可以調位置、換到另一邊。")
     End Sub
 
     Private Sub DetachTextFromPath()
@@ -309,6 +318,7 @@ Partial Friend Class frmEditor
         If Not DrawGeometry.IsPathText(sel) Then Return
         ApplyChange(Sub(r)
                         r.Drawings(index).Contours = Nothing
+                        r.Drawings(index).TextPathSource = Nothing
                         r.Drawings(index).TextPathShift = 0
                         r.Drawings(index).TextPathFlip = False
                     End Sub)

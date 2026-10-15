@@ -9,7 +9,7 @@
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Shared ReadOnly ColorTargets As String() = {"線條", "填色", "文字", "第二色"}
+    Private Shared ReadOnly ColorTargets As String() = {"線條", "填色", "文字", "第二色", "陰影"}
     Private Const TargetStroke As Integer = 0, TargetFill As Integer = 1, TargetText As Integer = 2
 
     Private _colorWin As Aqua.ColorPickerWindow
@@ -38,6 +38,7 @@ Partial Friend Class frmEditor
             Case TargetFill : Return d.FillColorArgb
             Case TargetText : Return d.TextColorArgb
             Case TargetFill2 : Return d.FillColor2Argb
+            Case TargetShadow : Return d.ShadowColorArgb
             Case Else : Return d.StrokeColorArgb
         End Select
     End Function
@@ -49,6 +50,7 @@ Partial Friend Class frmEditor
                 d.Filled = True ' 同原本的填色按鈕：選了填色就打開填色
             Case TargetText : d.TextColorArgb = argb
             Case TargetFill2 : d.FillColor2Argb = argb ' 漸層填色的第二個顏色
+            Case TargetShadow : d.ShadowColorArgb = argb
             Case Else : d.StrokeColorArgb = argb
         End Select
     End Sub

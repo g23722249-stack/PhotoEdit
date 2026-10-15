@@ -31,6 +31,9 @@ Friend Module DrawIcons
     Public Const ShapeBuilderTool As Integer = -17
     Public Const KnifeTool As Integer = -18
     Public Const SmartFillTool As Integer = -19
+    Public Const ShadowTool As Integer = -20
+    Public Const TransparencyTool As Integer = -21
+    Public Const EnvelopeTool As Integer = -22
 
     ''' <summary>點陣工具的變化（實際上是「直接繪製」）：橡皮擦、仿製、修復、塗抹、混色、模糊、銳利化、加亮、加深、海綿。</summary>
     Public Function IsRasterVariant(tool As Integer) As Boolean
@@ -79,6 +82,9 @@ Friend Module DrawIcons
             Case ShapeBuilderTool : Return "形狀建立"
             Case KnifeTool : Return "刀具"
             Case SmartFillTool : Return "智慧填色"
+            Case ShadowTool : Return "陰影"
+            Case TransparencyTool : Return "透明度"
+            Case EnvelopeTool : Return "封套"
             Case CInt(DrawShape.Raster) : Return "筆刷"
         End Select
         Dim b = BrushOf(tool)
@@ -108,6 +114,9 @@ Friend Module DrawIcons
             Case ShapeBuilderTool : Return "draw.builder"
             Case KnifeTool : Return "draw.tool.knife"
             Case SmartFillTool : Return "draw.tool.smartfill"
+            Case ShadowTool : Return "draw.tool.shadow"
+            Case TransparencyTool : Return "draw.tool.fade"
+            Case EnvelopeTool : Return "draw.tool.envelope"
         End Select
         Return "draw.tool." & tool
     End Function
@@ -296,6 +305,36 @@ Friend Module DrawIcons
                         g.DrawPath(pen, a) : g.DrawPath(pen, b)
                     End Using
                     g.DrawLine(pen, 17, 1.5F, 17, 6.5F) : g.DrawLine(pen, 14.5F, 4, 19.5F, 4)
+                Case ShadowTool
+                    ' 方塊與右下的陰影
+                    g.FillRectangle(soft, 9, 9, 12, 12)
+                    g.FillRectangle(bg, 3, 3, 12, 12)
+                    g.DrawRectangle(pen, 3, 3, 12, 12)
+                Case TransparencyTool
+                    ' 由實到透明的方塊（棋盤格露出來）
+                    For i = 0 To 3
+                        For j = 0 To 3
+                            If (i + j) Mod 2 = 0 Then g.FillRectangle(soft, 4 + i * 4, 4 + j * 4, 4, 4)
+                        Next
+                    Next
+                    For k = 0 To 3
+                        Using fb As New SolidBrush(Color.FromArgb(230 - k * 70, color))
+                            g.FillRectangle(fb, 4 + k * 4, 4, 4, 16)
+                        End Using
+                    Next
+                    g.DrawRectangle(pen, 4, 4, 16, 16)
+                Case EnvelopeTool
+                    ' 被拉彎的方框與控制點
+                    Using p As New GraphicsPath()
+                        p.AddBezier(4, 6, 9, 2, 15, 2, 20, 6)
+                        p.AddLine(20, 6, 20, 18)
+                        p.AddBezier(20, 18, 15, 21, 9, 21, 4, 18)
+                        p.CloseFigure()
+                        g.DrawPath(pen, p)
+                    End Using
+                    For Each q In {(4.0F, 6.0F), (12.0F, 3.0F), (20.0F, 6.0F), (20.0F, 18.0F), (4.0F, 18.0F)}
+                        g.FillRectangle(br, q.Item1 - 1.6F, q.Item2 - 1.6F, 3.2F, 3.2F)
+                    Next
                 Case SmartFillTool
                     ' 兩條交叉的線圍出的一塊被填滿，加一滴顏料
                     g.FillPolygon(soft, {New PointF(6, 8), New PointF(17, 8), New PointF(17, 19), New PointF(6, 19)})

@@ -207,6 +207,7 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(New Aqua.MenuItem("-"))
         imageMenu.AddItem(Item("airedraw", "宮崎風 AI 重繪…"))
         imageMenu.AddItem(Item("morph", "變形動畫…"))
+        imageMenu.AddItem(Item("trace", "描圖（轉成向量）…"))
         imageMenu.AddItem(Item("facechange", "川劇變臉…"))
 
         Dim selectMenu = root.AddItem(New Aqua.MenuItem("選取"))
@@ -262,6 +263,7 @@ Partial Friend Class frmEditor
             Case "fullscreen" : ToggleFullScreen()
             Case "airedraw" : ShowAnimeRedraw()
             Case "morph" : ShowMorph()
+            Case "trace" : ShowTrace()
             Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
             Case "togglehelp"
@@ -478,6 +480,7 @@ Partial Friend Class frmEditor
     Private Sub ApplyChange(mutate As Action(Of EditRecipe), Optional groupKey As String = Nothing)
         Dim before = _recipe.Clone()
         mutate(_recipe)
+        DrawGeometry.SyncPathText(_recipe) ' 路徑文字跟著它的圖形（同一步復原）
         If _recipe.Equals(before) Then Return
         _history.Record(before, groupKey)
         OnRecipeChanged()

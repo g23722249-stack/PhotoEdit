@@ -22,7 +22,8 @@ Partial Friend Class frmEditor
 
     Private Shared Function KeepsSelection(tool As Integer) As Boolean
         Return tool = DrawIcons.SelectTool OrElse tool = DrawIcons.PanTool OrElse tool = DrawIcons.ZoomTool OrElse
-               tool = DrawIcons.EyedropperTool OrElse tool = DrawIcons.ShapeBuilderTool OrElse tool = DrawIcons.KnifeTool
+               tool = DrawIcons.EyedropperTool OrElse tool = DrawIcons.ShapeBuilderTool OrElse tool = DrawIcons.KnifeTool OrElse
+               tool = DrawIcons.ShadowTool OrElse tool = DrawIcons.TransparencyTool OrElse tool = DrawIcons.EnvelopeTool
     End Function
 
     '---------------------------------------------------------------------
@@ -119,6 +120,7 @@ Partial Friend Class frmEditor
             _panLast = e.Location
             Return True
         End If
+        If FxMouseDown(e, u) Then Return True ' 陰影、透明度、封套（見 frmEditor.DrawBatch3.vb）
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.PanTool
                 _panLast = e.Location
@@ -158,6 +160,7 @@ Partial Friend Class frmEditor
             _panLast = e.Location
             Return True
         End If
+        If FxMouseMove(e, u) Then Return True
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.PanTool
                 If _canvas.Cursor IsNot Cursors.Hand Then _canvas.Cursor = Cursors.Hand
@@ -199,6 +202,7 @@ Partial Friend Class frmEditor
             _panLast = Nothing
             Return True
         End If
+        If FxMouseUp() Then Return True
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.ZoomTool
                 If Not _zoomStart.HasValue Then Return True
@@ -308,6 +312,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>新工具的操作提示；不是新工具時回傳 Nothing。</summary>
     Private Function ToolHint(tool As Integer) As String
+        If FxHint(tool) IsNot Nothing Then Return FxHint(tool)
         Select Case tool
             Case DrawIcons.PanTool : Return "平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。"
             Case DrawIcons.ZoomTool : Return "縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。"

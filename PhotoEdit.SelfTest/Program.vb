@@ -48,6 +48,7 @@ Module Program
             ToolBrushTestsRun()
             LineClipTestsRun()
             Batch2TestsRun()
+            Batch3TestsRun()
             NewImageTestsRun(tempDir)
             ProjectTestsRun(tempDir)
             LayerTestsRun()

@@ -351,6 +351,8 @@ Public Class DrawLayer
     Public Property TextPathShift As Integer
     ''' <summary>路徑文字放在線的另一邊（沿反方向排）。</summary>
     Public Property TextPathFlip As Boolean
+    ''' <summary>路徑文字跟著的圖形（圖層 Id）：那個圖形改了，文字的路徑跟著更新。Nothing＝自己的路徑。</summary>
+    Public Property TextPathSource As String
     ''' <summary>線條粗細（照片高度的比例）。</summary>
     Public Property StrokeWidth As Double = 0.008
     ''' <summary>邊緣淡化 0..100。</summary>
@@ -369,6 +371,16 @@ Public Class DrawLayer
     Public Property StartArrow As ArrowKind
     Public Property EndArrow As ArrowKind
     Public Property Shadow As Boolean
+    ''' <summary>陰影的位移（照片高度單位）；Nothing＝依線寬自動（右下）。互動式陰影工具拖曳設定。</summary>
+    Public Property ShadowOffsetX As Double?
+    Public Property ShadowOffsetY As Double?
+    ''' <summary>陰影柔邊（照片高度的千分比）；0＝依線寬自動。</summary>
+    Public Property ShadowSoft As Integer
+    ''' <summary>陰影不透明度（%）。</summary>
+    Public Property ShadowOpacity As Integer = 45
+    Public Property ShadowColorArgb As Integer = Color.Black.ToArgb()
+    ''' <summary>透明度漸層（互動式透明度工具）：起點不透明、終點透明；座標同 FillGradient（圖形方框的比例）。Nothing＝沒有。</summary>
+    Public Property FadeGradient As GradientFill
     ''' <summary>紋理與特效的亂數種子：同一個圖層每次畫出來都一樣。</summary>
     Public Property Seed As Integer = 1
 
@@ -446,6 +458,7 @@ Public Class DrawLayer
         c.Bucket = Bucket?.Clone()
         c.Gradient = Gradient?.Clone()
         c.FillGradient = FillGradient?.Clone()
+        c.FadeGradient = FadeGradient?.Clone()
         Return c
     End Function
 
@@ -457,6 +470,7 @@ Public Class DrawLayer
         Filled = s.Filled : Stroked = s.Stroked : Shadow = s.Shadow
         Dash = s.Dash : Cap = s.Cap : Join = s.Join : StartArrow = s.StartArrow : EndArrow = s.EndArrow
         FillGradient = s.FillGradient?.Clone() : FillColor2Argb = s.FillColor2Argb
+        ShadowOffsetX = s.ShadowOffsetX : ShadowOffsetY = s.ShadowOffsetY : ShadowSoft = s.ShadowSoft : ShadowOpacity = s.ShadowOpacity : ShadowColorArgb = s.ShadowColorArgb
         FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
         SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
         PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
@@ -542,7 +556,82 @@ Partial Public NotInheritable Class DrawGeometry
 
     ''' <summary>有節點可以用節點工具改：鋼筆路徑、路徑文字的路徑。</summary>
     Public Shared Function HasNodes(d As DrawLayer) As Boolean
-        Return d IsNot Nothing AndAlso d.Contours IsNot Nothing AndAlso (d.Shape = DrawShape.Path OrElse IsPathText(d))
+        Return d IsNot Nothing AndAlso d.Contours IsNot Nothing AndAlso (d.Shape = DrawShape.Path OrElse (IsPathText(d) AndAlso d.TextPathSource Is Nothing))
+    End Function
+
+    ''' <summary>
+    ''' 漸層的一個端點（比例 fx、fy）在照片上的位置：方框類圖形用自己的方框（跟著旋轉），其他用外接矩形。
+    ''' </summary>
+    Public Shared Function GradientPoint(layer As DrawLayer, fx As Double, fy As Double) As PointF
+        If IsBoxLayer(layer) Then
+            Dim w = Math.Abs(layer.W), h = Math.Abs(layer.H)
+            Return LocalToWorld(layer, New PointF(CSng(-w / 2 + fx * w), CSng(-h / 2 + fy * h)))
+        End If
+        Dim b = Bounds(layer)
+        Return New PointF(CSng(b.X + fx * b.Width), CSng(b.Y + fy * b.Height))
+    End Function
+
+    ''' <summary>GradientPoint 的反算：照片上的點換成漸層的比例。</summary>
+    Public Shared Function GradientFraction(layer As DrawLayer, p As PointF) As PointF
+        If IsBoxLayer(layer) Then
+            Dim w = Math.Max(0.000001, Math.Abs(layer.W)), h = Math.Max(0.000001, Math.Abs(layer.H))
+            Dim l = WorldToLocal(layer, p)
+            Return New PointF(CSng((l.X + w / 2) / w), CSng((l.Y + h / 2) / h))
+        End If
+        Dim b = Bounds(layer)
+        Return New PointF(CSng((p.X - b.X) / Math.Max(0.000001, b.Width)), CSng((p.Y - b.Y) / Math.Max(0.000001, b.Height)))
+    End Function
+
+    ''' <summary>非方框類圖形旋轉後：漸層的兩個端點一起轉（方框類有自己的角度，不必處理）。</summary>
+    Private Shared Sub RotateGradient(layer As DrawLayer, start As DrawLayer, center As PointF, degrees As Double)
+        If IsBoxLayer(start) Then Return
+        Dim turn = Function(p As PointF)
+                       Dim r = Rotate(New PointF(p.X - center.X, p.Y - center.Y), degrees)
+                       Return New PointF(center.X + r.X, center.Y + r.Y)
+                   End Function
+        Dim conv = Function(src As GradientFill) As GradientFill
+                       If src Is Nothing Then Return Nothing
+                       Dim a = GradientFraction(layer, turn(GradientPoint(start, src.X1, src.Y1)))
+                       Dim b = GradientFraction(layer, turn(GradientPoint(start, src.X2, src.Y2)))
+                       Dim g = src.Clone()
+                       g.X1 = Math.Round(a.X, 4) : g.Y1 = Math.Round(a.Y, 4) : g.X2 = Math.Round(b.X, 4) : g.Y2 = Math.Round(b.Y, 4)
+                       Return g
+                   End Function
+        layer.FillGradient = conv(start.FillGradient)
+        layer.FadeGradient = conv(start.FadeGradient)
+    End Sub
+
+    ''' <summary>
+    ''' 路徑文字跟著原本的圖形：TextPathSource 指的圖形還在時，文字的路徑換成它目前的形狀；圖形刪掉了就保留最後的路徑、不再連動。
+    ''' 每次修改配方後呼叫（復原紀錄裡和那次修改算同一步）。
+    ''' </summary>
+    Public Shared Sub SyncPathText(r As EditRecipe)
+        If r.Drawings Is Nothing Then Return
+        For Each d In r.Drawings
+            If d.TextPathSource Is Nothing Then Continue For
+            Dim id = d.TextPathSource
+            Dim src = r.Drawings.FirstOrDefault(Function(x) x.Id = id AndAlso x IsNot d)
+            If src Is Nothing OrElse d.Shape <> DrawShape.Text Then
+                d.TextPathSource = Nothing
+                Continue For
+            End If
+            Dim p = ToPath(src)
+            If p Is Nothing OrElse p.Contours Is Nothing Then Continue For
+            If Not SameContours(d.Contours, p.Contours) Then d.Contours = p.Contours.Select(Function(c) c.Clone()).ToList()
+        Next
+    End Sub
+
+    Private Shared Function SameContours(a As List(Of PathContour), b As List(Of PathContour)) As Boolean
+        If a Is Nothing OrElse b Is Nothing OrElse a.Count <> b.Count Then Return False
+        For i = 0 To a.Count - 1
+            If a(i).Closed <> b(i).Closed OrElse a(i).Nodes.Count <> b(i).Nodes.Count Then Return False
+            For k = 0 To a(i).Nodes.Count - 1
+                Dim x = a(i).Nodes(k), y = b(i).Nodes(k)
+                If Math.Abs(x.X - y.X) > 0.000001 OrElse Math.Abs(x.Y - y.Y) > 0.000001 OrElse Math.Abs(x.InX - y.InX) > 0.000001 OrElse
+                   Math.Abs(x.InY - y.InY) > 0.000001 OrElse Math.Abs(x.OutX - y.OutX) > 0.000001 OrElse Math.Abs(x.OutY - y.OutY) > 0.000001 Then Return False
+            Next
+        Next
+        Return True
     End Function
 
     ''' <summary>用方框（中心、寬高、角度）描述的圖層（路徑文字除外）。</summary>
@@ -1216,6 +1305,7 @@ Partial Public NotInheritable Class DrawGeometry
                                       Dim r = Rotate(New PointF(p.X - center.X, p.Y - center.Y), degrees)
                                       Return New PointF(center.X + r.X, center.Y + r.Y)
                                   End Function)
+        RotateGradient(layer, start, center, degrees)
     End Sub
 
     ''' <summary>方框的 8 個縮放控制點（0 左上、1 上、2 右上、3 右、4 右下、5 下、6 左下、7 左）的未旋轉位置。</summary>
@@ -1350,6 +1440,7 @@ Partial Public NotInheritable Class DrawGeometry
                     layer.Strokes = start.Strokes.Select(Function(s) New DrawStroke With {.Points = s.Points.Select(map).ToList()}).ToList()
                 End If
                 MapContours(layer, start, Function(p) rot(p.X, p.Y))
+                RotateGradient(layer, start, center, degrees)
         End Select
     End Sub
 

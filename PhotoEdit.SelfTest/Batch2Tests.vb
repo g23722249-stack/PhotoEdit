@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports PhotoEdit
 
 ''' <summary>智慧填色、向量漸層、路徑文字、SVG 匯出。</summary>
@@ -97,6 +97,29 @@ Module Batch2Tests
         Check("位置往後移 25%：從上面移到右邊", places.Count = 3 AndAlso places(1).X > 125, $"{places(1).X:0}")
         Dim outs = DrawGeometry.TextOutlines(pt)
         Check("路徑文字轉外框：每個字一個", outs.Count = 4 AndAlso outs.All(Function(o) o.Shape = DrawShape.Path) AndAlso outs(0).Name = "A")
+        ' ---- 漸層跟著旋轉 ----
+        Dim rot = rect.Clone() : rot.Rotation = 90
+        Dim ag = DrawingRenderer.AbsoluteGradient(rot)
+        Check("方框轉 90°：漸層從左右變成上下", Math.Abs(ag.X1 - ag.X2) < 0.001 AndAlso ag.Y2 - ag.Y1 > 1.5, $"({ag.X1:0.00},{ag.Y1:0.00})→({ag.X2:0.00},{ag.Y2:0.00})")
+        Dim pathG = DrawGeometry.ToPath(rect) : pathG.FillGradient = rect.FillGradient.Clone()
+        Dim pathR = pathG.Clone()
+        Dim pb = DrawGeometry.Bounds(pathG)
+        DrawGeometry.RotatePath(pathR, pathG, New PointF(pb.X + pb.Width / 2, pb.Y + pb.Height / 2), 90)
+        Dim ag2 = DrawingRenderer.AbsoluteGradient(pathR)
+        Check("鋼筆路徑轉 90°：漸層端點一起轉", Math.Abs(ag2.X1 - ag2.X2) < 0.01 AndAlso ag2.Y2 - ag2.Y1 > 1.5, $"({ag2.X1:0.00},{ag2.Y1:0.00})→({ag2.X2:0.00},{ag2.Y2:0.00})")
+        Dim fr = DrawGeometry.GradientFraction(rot, DrawGeometry.GradientPoint(rot, 0.25, 0.75))
+        Check("漸層比例與位置互相換算", Math.Abs(fr.X - 0.25) < 0.0001 AndAlso Math.Abs(fr.Y - 0.75) < 0.0001)
+        ' ---- 路徑文字跟著圖形 ----
+        Dim srcLine = Ln(0.2F, 0.5F, 1.2F, 0.5F) : srcLine.Id = "src-1"
+        Dim linked = pt.Clone() : linked.TextPathSource = "src-1" : linked.Contours = DrawGeometry.ToPath(srcLine).Contours
+        Dim lr As New EditRecipe With {.Drawings = New List(Of DrawLayer) From {srcLine, linked}}
+        Check("跟著圖形的路徑文字不能直接改節點", Not DrawGeometry.HasNodes(linked) AndAlso DrawGeometry.IsPathText(linked))
+        DrawGeometry.Offset(srcLine, 0, 0.2)
+        DrawGeometry.SyncPathText(lr)
+        Check("圖形移動：文字的路徑跟著", Math.Abs(linked.Contours(0).Nodes(0).Y - 0.7) < 0.0001, $"{linked.Contours(0).Nodes(0).Y}")
+        lr.Drawings.Remove(srcLine)
+        DrawGeometry.SyncPathText(lr)
+        Check("圖形刪掉：文字保留路徑、不再連動", linked.TextPathSource Is Nothing AndAlso DrawGeometry.IsPathText(linked) AndAlso DrawGeometry.HasNodes(linked))
         ' ---- SVG ----
         Dim layers As New List(Of DrawLayer) From {
             rect,

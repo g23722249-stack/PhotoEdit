@@ -350,6 +350,11 @@ Partial Friend Class frmEditor
         End If
         ' 點到圖層：選它（群組裡的也直接選，方便改節點）
         Dim hit = HitLayer(u)
+        If hit >= 0 AndAlso _recipe.Drawings(hit).TextPathSource IsNot Nothing Then
+            Dim sid = _recipe.Drawings(hit).TextPathSource
+            Dim src = _recipe.Drawings.FindIndex(Function(x) x.Id = sid)
+            If src >= 0 Then hit = src ' 路徑文字跟著圖形：改那個圖形的節點
+        End If
         _nodeSel.Clear()
         If hit <> _drawIndex OrElse IsMultiSelected() Then SelectDrawLayer(hit)
         UpdateDrawControls()

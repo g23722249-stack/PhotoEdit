@@ -65,7 +65,7 @@ Friend Class DrawToolStrip
                           V(S(DrawShape.Polygon), S(DrawShape.Star4), S(DrawShape.Star5), S(DrawShape.Star6)),
                           V(S(DrawShape.Arrow), S(DrawShape.Heart), S(DrawShape.Lightning)),
                           V(S(DrawShape.CalloutRect), S(DrawShape.CalloutEllipse), S(DrawShape.CalloutCloud), S(DrawShape.CalloutBubble), S(DrawShape.CalloutShout)),
-                          V(S(DrawShape.Text)), V(DrawIcons.ShapeBuilderTool, DrawIcons.SmartFillTool), V(DrawIcons.KnifeTool)})
+                          V(S(DrawShape.Text)), V(DrawIcons.ShapeBuilderTool, DrawIcons.SmartFillTool), V(DrawIcons.ShadowTool, DrawIcons.TransparencyTool, DrawIcons.EnvelopeTool), V(DrawIcons.KnifeTool)})
         Dim y = 4
         For gi = 0 To _groups.Count - 1
             Dim grp = _groups(gi)

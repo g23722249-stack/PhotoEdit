@@ -93,6 +93,7 @@ Partial Friend Class frmEditor
         _eraseMode.Dock = DockStyle.None
         _eraseMode.Margin = New Padding(4, 3, 0, 0)
         eraserGroup.Controls.AddRange({_drawEraser, _eraseMode})
+        _drawBar.Controls.Add(BuildFxBar()) ' 陰影、透明度、封套、調和（見 frmEditor.DrawBatch3.vb）
         _drawBar.Controls.Add(BuildPathTextBar()) ' 文字沿路徑（見 frmEditor.DrawBatch2.vb）
         _drawBar.Controls.Add(BuildShapeBar()) ' 對齊、均分、焊接修剪、形狀建立（見 frmEditor.DrawShapes.vb）
         _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
@@ -338,6 +339,7 @@ Partial Friend Class frmEditor
         PathToolChanged() ' 鋼筆畫到一半的完成、節點選取清掉
         ExitBuilder()
         ApplyToolVariant() ' 點陣工具：橡皮擦、仿製、模糊…換成對應的筆
+        If _drawStrip.SelectedTool <> DrawIcons.EnvelopeTool Then EndEnvelope()
         CommitCalloutEditor()
         If Not KeepsSelection(_drawStrip.SelectedTool) Then _drawMulti.Clear() ' 多選只在選取（與平移、縮放、吸管、形狀建立、刀具）
         ' 換成畫圖工具時放開選取的圖形（像小畫家），之後改筆刷、顏色只影響新畫的。
@@ -368,6 +370,7 @@ Partial Friend Class frmEditor
             UpdateShapeBar()
             UpdatePropBar()
             UpdatePathTextBar()
+            UpdateFxBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
             For Each t In _brushTiles
                 t.Selected = t.Brush = st.Brush
@@ -965,6 +968,9 @@ Partial Friend Class frmEditor
 
     ''' <summary>點到圖層了嗎：點陣圖層看實際畫過的像素（框內空白不算），其他看外形。</summary>
     Private Function LayerHit(d As DrawLayer, u As PointF, tol As Double) As Boolean
+        ' PowerClip 的內容：框外面看不到，也點不到
+        Dim clip = ClipRender.ClipOf(_recipe, d)
+        If clip.HasValue AndAlso Not PathBoolean.Contains(PathBoolean.RegionOf(clip.Value.Frame), u) Then Return False
         If d.Shape = DrawShape.Raster Then Return DrawingRenderer.RasterHit(d, PhotoAspect(), u, tol)
         Return DrawGeometry.HitTest(d, u, tol)
     End Function
@@ -1458,7 +1464,8 @@ Partial Friend Class frmEditor
                     End Using
                 End If
             End Using
-            If Not sel.Locked AndAlso Not NodeToolActive Then ' 節點工具只畫節點與把手
+            Dim fxTool = _drawStrip.SelectedTool = DrawIcons.ShadowTool OrElse _drawStrip.SelectedTool = DrawIcons.TransparencyTool OrElse _drawStrip.SelectedTool = DrawIcons.EnvelopeTool
+            If Not sel.Locked AndAlso Not NodeToolActive AndAlso Not fxTool Then ' 節點工具只畫節點與把手；陰影、透明度、封套有自己的控制點
                 For Each h In HandlesOf(sel)
                     DrawHandleMark(g, h, sel)
                 Next
@@ -1505,6 +1512,7 @@ Partial Friend Class frmEditor
         PaintBuilder(g) ' 形狀建立的一塊一塊
         PaintGuides(g) ' 移動時的智慧參考線
         PaintTools(g) ' 刀線、縮放框
+        PaintFx(g) ' 陰影方向、透明度起訖、封套
     End Sub
 
     ''' <summary>拖曳中的新形狀：用目前的線條色與粗細畫外形（實際筆刷效果放開後才算）。</summary>

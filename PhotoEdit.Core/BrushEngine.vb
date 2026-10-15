@@ -220,8 +220,10 @@ Partial Public NotInheritable Class DrawingRenderer
         If DrawGeometry.IsPathText(layer) Then extra = Math.Max(extra, CSng(layer.TextSize * scale * 1.4)) ' 字長在路徑兩邊
         padL += extra : padT += extra : padR += extra : padB += extra
         If layer.Shadow Then
-            Dim s = ShadowOffset(widthPx) + ShadowBlur(widthPx) * 2
-            padR += s : padB += s
+            Dim sh = ShadowGeometry(layer, widthPx, scale)
+            Dim bl = sh.Blur * 2 + 2
+            padL += Math.Max(0, -sh.DX) + bl : padR += Math.Max(0, sh.DX) + bl
+            padT += Math.Max(0, -sh.DY) + bl : padB += Math.Max(0, sh.DY) + bl
         End If
         Dim region = Rectangle.FromLTRB(CInt(Math.Floor(pts.Min(Function(p) p.X) - padL)), CInt(Math.Floor(pts.Min(Function(p) p.Y) - padT)),
                                         CInt(Math.Ceiling(pts.Max(Function(p) p.X) + padR)), CInt(Math.Ceiling(pts.Max(Function(p) p.Y) + padB)))
@@ -299,7 +301,10 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
 
         ' 4. 陰影
-        If layer.Shadow Then AddShadow(cv, widthPx)
+        If layer.Shadow Then AddShadow(cv, layer, widthPx, scale)
+
+        ' 5. 透明度漸層
+        If layer.FadeGradient IsNot Nothing Then ApplyFade(cv, layer, region, h)
 
         Return New Rendered With {.Bitmap = ToBitmap(cv), .Region = region}
     End Function
@@ -350,10 +355,15 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>圖形的漸層換成照片座標（照片高度單位）。</summary>
     Public Shared Function AbsoluteGradient(layer As DrawLayer) As GradientFill
-        Dim g = layer.FillGradient.Clone()
-        Dim b = DrawGeometry.Bounds(layer)
-        g.X1 = b.X + layer.FillGradient.X1 * b.Width : g.Y1 = b.Y + layer.FillGradient.Y1 * b.Height
-        g.X2 = b.X + layer.FillGradient.X2 * b.Width : g.Y2 = b.Y + layer.FillGradient.Y2 * b.Height
+        Return AbsoluteGradient(layer, layer.FillGradient)
+    End Function
+
+    ''' <summary>圖形上的漸層（比例座標）換成照片座標。</summary>
+    Public Shared Function AbsoluteGradient(layer As DrawLayer, src As GradientFill) As GradientFill
+        Dim g = src.Clone()
+        Dim a = DrawGeometry.GradientPoint(layer, src.X1, src.Y1)
+        Dim b = DrawGeometry.GradientPoint(layer, src.X2, src.Y2)
+        g.X1 = a.X : g.Y1 = a.Y : g.X2 = b.X : g.Y2 = b.Y
         Return g
     End Function
 
@@ -967,20 +977,53 @@ Partial Public NotInheritable Class DrawingRenderer
     End Function
 
     ''' <summary>右下方的柔和陰影，墊在圖層下面。</summary>
-    Private Shared Sub AddShadow(cv As Canvas, widthPx As Single)
-        Dim off = CInt(Math.Round(ShadowOffset(widthPx)))
-        Dim blur = BoxBlur(cv.A, cv.W, cv.H, CInt(ShadowBlur(widthPx)))
-        For y = cv.H - 1 To 0 Step -1
-            For x = cv.W - 1 To 0 Step -1
-                Dim sx = x - off, sy = y - off
-                If sx < 0 OrElse sy < 0 Then Continue For
-                Dim sa = Math.Min(1, blur(sy * cv.W + sx)) * 0.45F
-                If sa <= 0.002F Then Continue For
-                Dim i = y * cv.W + x
-                ' 陰影在下：結果 = 圖層 + 陰影 × (1 − 圖層 alpha)
-                Dim k = 1 - cv.A(i)
-                cv.A(i) += sa * k
+    ''' <summary>陰影的位移與柔邊（像素）：沒有自訂時依線寬，右下方。</summary>
+    Public Shared Function ShadowGeometry(layer As DrawLayer, widthPx As Single, scale As Single) As (DX As Single, DY As Single, Blur As Single)
+        Dim auto = ShadowOffset(widthPx)
+        Dim dx = If(layer.ShadowOffsetX.HasValue, CSng(layer.ShadowOffsetX.Value * scale), auto)
+        Dim dy = If(layer.ShadowOffsetY.HasValue, CSng(layer.ShadowOffsetY.Value * scale), auto)
+        Dim blur = If(layer.ShadowSoft > 0, CSng(layer.ShadowSoft / 1000.0 * scale), ShadowBlur(widthPx))
+        Return (dx, dy, Math.Max(0, blur))
+    End Function
+
+    ''' <summary>陰影墊在圖層下面（位移、柔邊、不透明度、顏色可以調）。</summary>
+    Private Shared Sub AddShadow(cv As Canvas, layer As DrawLayer, widthPx As Single, scale As Single)
+        Dim sh = ShadowGeometry(layer, widthPx, scale)
+        Dim offX = CInt(Math.Round(sh.DX)), offY = CInt(Math.Round(sh.DY))
+        Dim blur = If(sh.Blur >= 1, BoxBlur(cv.A, cv.W, cv.H, CInt(sh.Blur)), DirectCast(cv.A.Clone(), Single()))
+        Dim op = Math.Max(0, Math.Min(100, layer.ShadowOpacity)) / 100.0F
+        Dim c = Color.FromArgb(layer.ShadowColorArgb)
+        Dim cr = c.R / 255.0F, cg = c.G / 255.0F, cb = c.B / 255.0F
+        Dim sa(cv.W * cv.H - 1) As Single
+        For y = 0 To cv.H - 1
+            Dim sy = y - offY
+            If sy < 0 OrElse sy >= cv.H Then Continue For
+            For x = 0 To cv.W - 1
+                Dim sx = x - offX
+                If sx < 0 OrElse sx >= cv.W Then Continue For
+                sa(y * cv.W + x) = Math.Min(1, blur(sy * cv.W + sx)) * op
             Next
+        Next
+        For i = 0 To sa.Length - 1
+            Dim a = sa(i)
+            If a <= 0.002F Then Continue For
+            ' 陰影在下：結果 = 圖層 + 陰影 × (1 − 圖層 alpha)（顏色是預乘的）
+            Dim k = 1 - cv.A(i)
+            cv.R(i) += cr * a * k : cv.G(i) += cg * a * k : cv.B(i) += cb * a * k
+            cv.A(i) += a * k
+        Next
+    End Sub
+
+    ''' <summary>透明度漸層：起點不透明、終點透明（整個圖層含陰影一起變淡）。</summary>
+    Private Shared Sub ApplyFade(cv As Canvas, layer As DrawLayer, region As Rectangle, h As Integer)
+        Dim g = AbsoluteGradient(layer, layer.FadeGradient)
+        g.Colors = GradientColors.StrokeToFill
+        g.Dither = False
+        Dim px = GradientRegion(g, region, h, Color.FromArgb(255, 255, 255, 255), Color.FromArgb(0, 255, 255, 255))
+        For i = 0 To cv.A.Length - 1
+            Dim k = px(i * 4 + 3) / 255.0F
+            If k >= 1 Then Continue For
+            cv.R(i) *= k : cv.G(i) *= k : cv.B(i) *= k : cv.A(i) *= k
         Next
     End Sub
 

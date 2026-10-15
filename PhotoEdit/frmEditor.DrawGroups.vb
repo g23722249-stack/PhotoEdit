@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -545,7 +545,22 @@ Partial Friend Class frmEditor
         If entered Is Nothing Then Return
         Dim m = DrawGroups.MemberIndices(_recipe, entered)
         Dim b = DrawGeometry.GroupBounds(m.Select(Function(i) _recipe.Drawings(i)).Where(Function(d) d.Visible))
-        If b.IsEmpty AndAlso b.Width <= 0 Then Return
+        If b.IsEmpty AndAlso b.Width <= 0 Then
+            ' 空的群組（剛新增）：照片整個變淡，左上角標出所在的群組
+            Dim img0 = _canvas.ImageBounds()
+            Using br As New SolidBrush(Color.FromArgb(150, 255, 255, 255))
+                g.FillRectangle(br, img0)
+            End Using
+            Dim label0 = "群組：" & GroupName(DrawGroups.Find(_recipe, entered)) & "（空的，畫的圖形會放進來）"
+            Using f As New Font(_panelFont.FontFamily, 9), bb As New SolidBrush(Color.FromArgb(230, 238, 237, 254)), tb As New SolidBrush(Color.FromArgb(60, 52, 137)),
+                  pen As New Pen(Color.FromArgb(127, 119, 221), 1.4F) With {.DashStyle = DashStyle.Dash}
+                g.DrawRectangle(pen, img0.X + 4, img0.Y + 4, img0.Width - 8, img0.Height - 8)
+                Dim sz = g.MeasureString(label0, f)
+                g.FillRectangle(bb, img0.X + 8, img0.Y + 8, sz.Width + 6, sz.Height + 2)
+                g.DrawString(label0, f, tb, img0.X + 11, img0.Y + 9)
+            End Using
+            Return
+        End If
         ' 群組以外的東西（照片、其他圖形）蓋一層半透明白色，群組裡的物件挖空（同 Illustrator 的隔離模式）
         Dim img = _canvas.ImageBounds()
         Using veil As New Region(img)
