@@ -1,4 +1,4 @@
-Imports System.Drawing.Imaging
+﻿Imports System.Drawing.Imaging
 Imports PhotoEdit
 
 ''' <summary>美顏（勻膚、去紅、美白、膚色、去油光、去痘、黑眼圈、大眼、牙齒、腮紅、修容）、個別臉設定、液化。</summary>
@@ -218,7 +218,8 @@ Module BeautyTests
         End Using
 
         ' 一鍵美顏
-        Check("一鍵美顏：27 組預設都有效果", BeautySettings.PresetNames.Length = 27 AndAlso Enumerable.Range(0, 27).All(Function(i) Not BeautySettings.Preset(i).IsEmpty))
+        Check("一鍵美顏：22 組預設都有效果（戲曲不在一鍵美顏）", BeautySettings.PresetNames.Length = 22 AndAlso Enumerable.Range(0, 22).All(Function(i) Not BeautySettings.Preset(i).IsEmpty) AndAlso
+              Not BeautySettings.PresetNames.Any(Function(n) n.StartsWith("戲曲")))
         OperaTests()
 
         DenseTests()
@@ -274,8 +275,21 @@ Module BeautyTests
                 Check("戲曲：沒有特徵點時不畫", Mean(out, 86, 100, 2, AddressOf Luma) > 150)
             End Using
         End Using
-        Dim p = BeautySettings.Preset(Array.IndexOf(BeautySettings.PresetNames, "戲曲・關公"))
-        Check("一鍵美顏「戲曲・關公」＝關公、濃度 100、有髯口", p.OperaRole = OperaRoles.IdOf("關公") AndAlso p.Opera = 100 AndAlso p.OperaBeard)
+        Dim p As New BeautySettings()
+        p.SetOperaRole(OperaRoles.IdOf("關公"))
+        Check("手動調整套用「關公」＝關公、濃度 100、有髯口", p.OperaRole = OperaRoles.IdOf("關公") AndAlso p.Opera = 100 AndAlso p.OperaBeard)
+        ' 舊檔（一鍵美顏清單第 1 版：22..26 是戲曲、我的妝容從 27 起）讀進來換成目前的索引
+        Dim oldIndex = Function(i As Integer) System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)("{""PresetIndex"":" & i & ",""Opera"":100}").PresetIndex.GetValueOrDefault(-1)
+        Check("舊檔：109 白辣妹（19）、Y2K 辣妹（21）索引不變", oldIndex(19) = 19 AndAlso oldIndex(21) = 21)
+        Check("舊檔：戲曲（22..26）變成自訂，戲曲妝本身保留", oldIndex(22) = -1 AndAlso oldIndex(26) = -1 AndAlso
+              System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)("{""PresetIndex"":24,""Opera"":100}").Opera = 100)
+        Check("舊檔：我的妝容（27、28）往前挪到 22、23", oldIndex(27) = 22 AndAlso oldIndex(28) = 23)
+        Dim cur = BeautySettings.Preset(21)
+        Dim again = System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)(System.Text.Json.JsonSerializer.Serialize(cur))
+        Check("新存的檔讀回來索引不變（不會被當成舊檔再挪一次）", again.PresetIndex.GetValueOrDefault(-1) = 21 AndAlso again.PresetLayout = BeautySettings.CurrentPresetLayout)
+        Dim look = New BeautySettings With {.PresetIndex = 23}
+        Dim lookBack = System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)(System.Text.Json.JsonSerializer.Serialize(look))
+        Check("新存的我的妝容（23）讀回來還是 23", lookBack.PresetIndex.GetValueOrDefault(-1) = 23)
         Dim s As New BeautySettings()
         s.SetOperaRole(OperaRoles.IdOf("京劇青衣"))
         s.OperaShade = 40

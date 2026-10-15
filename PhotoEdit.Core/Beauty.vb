@@ -17,6 +17,7 @@ End Enum
 ''' 數值都是 0..100（Tone、Chin 為 -100..100），0 表示不套用。
 ''' </summary>
 Public Class BeautySettings
+    Implements System.Text.Json.Serialization.IJsonOnDeserializing, System.Text.Json.Serialization.IJsonOnDeserialized
     ' ---- 肌膚 ----
     ''' <summary>磨皮（雙邊濾波，保留部分紋理）。</summary>
     Public Property Smoothing As Integer
@@ -180,6 +181,32 @@ Public Class BeautySettings
     Public Property PresetIndex As Integer?
     ''' <summary>一鍵美顏的強度 0..100（%）。</summary>
     Public Property PresetStrength As Integer = 100
+    ''' <summary>
+    ''' PresetIndex 用的是哪一版的一鍵美顏清單。舊檔沒有這個欄位（讀進來是 0）：
+    ''' 第 1 版（到 2026-10）有 27 組，最後 5 組是戲曲（22..26），我的妝容從 27 開始；
+    ''' 第 2 版拿掉戲曲，只剩 22 組，我的妝容從 22 開始。
+    ''' </summary>
+    Public Property PresetLayout As Integer = CurrentPresetLayout
+
+    Public Const CurrentPresetLayout As Integer = 2
+    Private Const OldOperaFirst As Integer = 22, OldOperaCount As Integer = 5
+
+    ''' <summary>讀進舊檔（沒有 PresetLayout）時換成目前清單的索引。</summary>
+    Private Sub OnDeserializing() Implements System.Text.Json.Serialization.IJsonOnDeserializing.OnDeserializing
+        PresetLayout = 1
+    End Sub
+
+    Private Sub OnDeserialized() Implements System.Text.Json.Serialization.IJsonOnDeserialized.OnDeserialized
+        If PresetLayout < 2 AndAlso PresetIndex.HasValue Then
+            Dim i = PresetIndex.Value
+            If i >= OldOperaFirst + OldOperaCount Then
+                PresetIndex = i - OldOperaCount ' 我的妝容往前挪
+            ElseIf i >= OldOperaFirst Then
+                PresetIndex = Nothing ' 戲曲：妝還在，只是不再對應一鍵美顏的小圖（自訂）
+            End If
+        End If
+        PresetLayout = CurrentPresetLayout
+    End Sub
     ' ---- 個別臉 ----
     ''' <summary>這組參數屬於哪張臉（臉框中心，已轉正原圖 0..1）；全部的臉共用時為 Nothing。</summary>
     Public Property FaceX As Double?
@@ -318,8 +345,8 @@ Public Class BeautySettings
         Lang.T("自然"), Lang.T("甜美"), Lang.T("證件照"), Lang.T("男性"),
         Lang.T("清透"), Lang.T("好氣色"), Lang.T("嬰兒肌"), Lang.T("冷白皮"), Lang.T("小麥肌"), Lang.T("精緻小臉"), Lang.T("減齡"), Lang.T("自拍補光"), Lang.T("清爽男生"),
         Lang.T("韓系淡妝"), Lang.T("桃花妝"), Lang.T("歐美妝"), Lang.T("柔光"), Lang.T("林布蘭光"), Lang.T("側光"),
-        Lang.T("109 白辣妹"), Lang.T("109 黑辣妹"), Lang.T("Y2K 辣妹"),
-        Lang.T("戲曲・京劇青衣"), Lang.T("戲曲・京劇小生"), Lang.T("戲曲・關公"), Lang.T("戲曲・包公"), Lang.T("戲曲・京劇文丑")}
+        Lang.T("109 白辣妹"), Lang.T("109 黑辣妹"), Lang.T("Y2K 辣妹")}
+    ' 戲曲妝不放在一鍵美顏（不常用，小圖少算幾張比較快）：在「手動調整… → 戲曲」裡套用。
 
     Private Shared Function Argb(r As Integer, g As Integer, b As Integer) As Integer
         Return Color.FromArgb(r, g, b).ToArgb()
@@ -439,10 +466,8 @@ Public Class BeautySettings
                                              .Highlight = 40, .HighlightStyle = HighlightStyle.All, .Blush = 40, .BlushStyle = BlushStyle.Tipsy, .BlushColorArgb = Argb(240, 160, 160),
                                              .Brows = 40, .BrowStyle = BrowStyle.Arch, .BrowThick = 40, .BrowColorArgb = Argb(138, 106, 80),
                                              .Hair = 50, .HairColorArgb = Argb(168, 120, 80)}
-            Case Else ' 戲曲：名稱「戲曲・角色」對應 OperaRoles
+            Case Else
                 b = New BeautySettings()
-                Dim roleName = PresetNames(Math.Max(0, Math.Min(PresetNames.Length - 1, index))).Replace(Lang.T("戲曲・"), "")
-                b.SetOperaRole(OperaRoles.IdOf(roleName))
         End Select
         b.PresetIndex = Math.Max(0, Math.Min(PresetNames.Length - 1, index))
         Return b
