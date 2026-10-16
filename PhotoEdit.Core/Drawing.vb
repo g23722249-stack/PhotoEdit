@@ -37,6 +37,30 @@ Public Enum DrawShape
     Path = 22
     ''' <summary>文字：方框裡的文字（沒有圖說的框與尖角；勾外框、填色時就是文字方塊）。</summary>
     Text = 23
+    ''' <summary>正多邊形：Sides 個邊（3..64）。</summary>
+    RegularPolygon = 24
+    ''' <summary>星形：Sides 個角，Param1 為內徑比例。</summary>
+    Star = 25
+    ''' <summary>螺旋：Param1 圈（開放線條）。</summary>
+    Spiral = 26
+    ''' <summary>格紙：Sides 欄 × Rows 列的格子（每格一個封閉外形）。</summary>
+    Grid = 27
+    ''' <summary>弧形／扇形：從 Param1 度開始、掃過 Param2 度（0° 在右邊、順時針）；ArcMode 決定扇形、弧線或弓形。</summary>
+    Arc = 28
+    ''' <summary>尺寸線：Points 兩個量測點，Param1 尺寸線離量測點的位移，DimKind 方向，標籤見 DimensionLabel。</summary>
+    Dimension = 29
+    ''' <summary>連接線：Points 是算好的折線（SyncConnectors），ConnStart／ConnEnd 是兩端物件的 Id，ConnElbow＝直角。</summary>
+    Connector = 30
+End Enum
+
+''' <summary>弧形工具的樣子。</summary>
+Public Enum ArcKind
+    ''' <summary>扇形（連到中心）。</summary>
+    Pie = 0
+    ''' <summary>弧線（開放）。</summary>
+    Arc = 1
+    ''' <summary>弓形（兩端直接連起來）。</summary>
+    Chord = 2
 End Enum
 
 ''' <summary>漸層的形狀。</summary>
@@ -323,6 +347,14 @@ Public Class DrawLayer
     ''' <summary>圖說的指示尖端：相對中心、未旋轉的位移。</summary>
     Public Property TailX As Double
     Public Property TailY As Double
+    ''' <summary>正多邊形的邊數、星形的角數、格紙的欄數。</summary>
+    Public Property Sides As Integer = 5
+    ''' <summary>格紙的列數。</summary>
+    Public Property Rows As Integer = 4
+    ''' <summary>弧形工具：扇形、弧線或弓形。</summary>
+    Public Property ArcMode As ArcKind
+    ''' <summary>左右鏡射（只用在本身不對稱、靠旋轉做不出鏡像的形狀：閃電）。</summary>
+    Public Property MirrorX As Boolean
 
     ' ---- 點類 ----
     Public Property Points As List(Of DrawPoint)
@@ -448,8 +480,34 @@ Public Class DrawLayer
     ''' <summary>保留透明度（同 Photoshop）：這一筆只改有內容的像素的顏色，透明度不變（透明的地方不會被畫上）。</summary>
     Public Property KeepAlpha As Boolean
 
+    ' ---- 排版工具（見 LayoutTools.vb） ----
+    ''' <summary>尺寸線的方向。</summary>
+    Public Property DimKind As DimensionKind
+    ''' <summary>尺寸線標籤的單位文字（px、cm…）。</summary>
+    Public Property DimUnit As String = "px"
+    ''' <summary>每個照片像素是多少單位（px 為 1；例如 1 公分 = 40 像素時是 0.025）。</summary>
+    Public Property DimScale As Double = 1
+    ''' <summary>畫尺寸線時的照片高度（像素）：照片高度單位換成像素用。</summary>
+    Public Property DimPhotoPx As Double
+    ''' <summary>標籤的小數位數。</summary>
+    Public Property DimDecimals As Integer
+    ''' <summary>連接線起點、終點連到的物件 Id（Nothing＝自由的端點）。</summary>
+    Public Property ConnStart As String
+    Public Property ConnEnd As String
+    ''' <summary>連接線走直角（水平、垂直）；否則直線。</summary>
+    Public Property ConnElbow As Boolean
+    ''' <summary>圖樣填色（Nothing＝單色或漸層）：填色是底色，第二色是花樣。</summary>
+    Public Property FillPattern As PatternFill
+    ''' <summary>填色、線條色連到的文件色票 Id（全域色）。</summary>
+    Public Property FillSwatch As String
+    Public Property StrokeSwatch As String
+    ''' <summary>可變寬度線條的控制點（Nothing＝均勻）。</summary>
+    Public Property WidthProfile As List(Of WidthStop)
+
     Public Function Clone() As DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
+        c.FillPattern = FillPattern?.Clone()
+        c.WidthProfile = WidthProfile?.Select(Function(w) w.Clone()).ToList()
         c.Points = Points?.Select(Function(p) p.Clone()).ToList()
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
         c.Contours = Contours?.Select(Function(p) p.Clone()).ToList()
@@ -477,6 +535,8 @@ Public Class DrawLayer
         PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
         Symmetry = s.Symmetry : SymCount = s.SymCount : SymX = s.SymX : SymY = s.SymY
         Particle = s.Particle : HoseTheme = s.HoseTheme
+        FillPattern = s.FillPattern?.Clone() : WidthProfile = s.WidthProfile?.Select(Function(w) w.Clone()).ToList()
+        FillSwatch = s.FillSwatch : StrokeSwatch = s.StrokeSwatch
     End Sub
 
     ''' <summary>和另一個圖層的筆觸設定相同（自由繪製時決定要不要接著畫在同一圖層）。</summary>
@@ -522,7 +582,8 @@ Partial Public NotInheritable Class DrawGeometry
 
     Public Shared ReadOnly ShapeNames As String() = {
         Lang.T("自由繪製（向量）"), Lang.T("直線"), Lang.T("貝茲曲線"), Lang.T("矩形"), Lang.T("圓角矩形"), Lang.T("橢圓"), Lang.T("多邊形"), Lang.T("箭頭"), Lang.T("愛心"),
-        Lang.T("四角星形"), Lang.T("五角星形"), Lang.T("六角星形"), Lang.T("圓角矩形圖說"), Lang.T("橢圓圖說"), Lang.T("雲朵圖說"), Lang.T("氣泡圖說"), Lang.T("吶喊框"), Lang.T("閃電"), Lang.T("直接繪製"), Lang.T("油漆桶"), Lang.T("漸層"), Lang.T("填滿圖層"), Lang.T("鋼筆"), Lang.T("文字")}
+        Lang.T("四角星形"), Lang.T("五角星形"), Lang.T("六角星形"), Lang.T("圓角矩形圖說"), Lang.T("橢圓圖說"), Lang.T("雲朵圖說"), Lang.T("氣泡圖說"), Lang.T("吶喊框"), Lang.T("閃電"), Lang.T("直接繪製"), Lang.T("油漆桶"), Lang.T("漸層"), Lang.T("填滿圖層"), Lang.T("鋼筆"), Lang.T("文字"),
+        Lang.T("正多邊形"), Lang.T("星形"), Lang.T("螺旋"), Lang.T("格紙"), Lang.T("弧形"), Lang.T("尺寸線"), Lang.T("連接線")}
 
     Public Shared ReadOnly BrushNames As String() = {
         Lang.T("硬筆"), Lang.T("軟筆"), Lang.T("鉛筆"), Lang.T("炭筆"), Lang.T("粉筆"), Lang.T("蠟筆"), Lang.T("水彩"), Lang.T("油畫"), Lang.T("壓克力"), Lang.T("墨水"), Lang.T("毛筆"), Lang.T("麥克筆"), Lang.T("噴槍"), Lang.T("乾刷"), Lang.T("紋理筆"), Lang.T("特效筆"),
@@ -543,7 +604,8 @@ Partial Public NotInheritable Class DrawGeometry
     End Property
 
     Public Shared Function IsBox(s As DrawShape) As Boolean
-        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer AndAlso s <> DrawShape.Path
+        Return s >= DrawShape.Rectangle AndAlso s <> DrawShape.Polygon AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer AndAlso s <> DrawShape.Path AndAlso
+               s <> DrawShape.Dimension AndAlso s <> DrawShape.Connector
     End Function
 
     Public Shared Function IsCallout(s As DrawShape) As Boolean
@@ -647,11 +709,23 @@ Partial Public NotInheritable Class DrawGeometry
 
     ''' <summary>以點描述、可個別拖曳各點的形狀。</summary>
     Public Shared Function IsPointShape(s As DrawShape) As Boolean
-        Return s = DrawShape.Line OrElse s = DrawShape.Bezier OrElse s = DrawShape.Polygon
+        Return s = DrawShape.Line OrElse s = DrawShape.Bezier OrElse s = DrawShape.Polygon OrElse s = DrawShape.Dimension OrElse s = DrawShape.Connector
     End Function
 
     Public Shared Function IsClosed(s As DrawShape) As Boolean
-        Return s <> DrawShape.Freehand AndAlso s <> DrawShape.Line AndAlso s <> DrawShape.Bezier AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer
+        Return s <> DrawShape.Freehand AndAlso s <> DrawShape.Line AndAlso s <> DrawShape.Bezier AndAlso s <> DrawShape.Raster AndAlso s <> DrawShape.Bucket AndAlso s <> DrawShape.Gradient AndAlso s <> DrawShape.FillLayer AndAlso
+               s <> DrawShape.Spiral AndAlso s <> DrawShape.Dimension AndAlso s <> DrawShape.Connector
+    End Function
+
+    ''' <summary>星形的角數（四角、五角、六角星與可調角數的星形）；不是星形時 0。</summary>
+    Public Shared Function StarPointCount(layer As DrawLayer) As Integer
+        Select Case layer.Shape
+            Case DrawShape.Star4 : Return 4
+            Case DrawShape.Star5 : Return 5
+            Case DrawShape.Star6 : Return 6
+            Case DrawShape.Star : Return Math.Max(3, Math.Min(64, layer.Sides))
+        End Select
+        Return 0
     End Function
 
     ''' <summary>新圖層的預設形狀參數。</summary>
@@ -662,6 +736,18 @@ Partial Public NotInheritable Class DrawGeometry
             Case DrawShape.Star5 : layer.Param1 = 0.45
             Case DrawShape.Star6 : layer.Param1 = 0.58
             Case DrawShape.Arrow : layer.Param1 = 0.4 : layer.Param2 = 0.45
+            Case DrawShape.RegularPolygon : layer.Sides = 6
+            Case DrawShape.Star : layer.Sides = 5 : layer.Param1 = 0.45
+            Case DrawShape.Spiral : layer.Param1 = 3
+            Case DrawShape.Grid : layer.Sides = 4 : layer.Rows = 3
+            Case DrawShape.Dimension
+                layer.Param1 = 0.04 : layer.StartArrow = ArrowKind.Triangle : layer.EndArrow = ArrowKind.Triangle
+                layer.Filled = False : layer.Stroked = True : layer.Dash = LineDash.Solid
+                If layer.TextSize <= 0 OrElse layer.TextSize > 0.08 Then layer.TextSize = 0.03
+            Case DrawShape.Connector
+                layer.EndArrow = ArrowKind.Triangle : layer.StartArrow = ArrowKind.None
+                layer.Filled = False : layer.Stroked = True
+            Case DrawShape.Arc : layer.Param1 = -90 : layer.Param2 = 270 : layer.ArcMode = ArcKind.Pie
         End Select
         If IsCallout(layer.Shape) Then
             layer.TailX = -layer.W * 0.3
@@ -797,6 +883,12 @@ Partial Public NotInheritable Class DrawGeometry
                 End If
             Case DrawShape.Path
                 list.AddRange(PathFigures(layer))
+            Case DrawShape.Dimension
+                list.AddRange(DimensionFigures(layer))
+            Case DrawShape.Connector
+                If layer.Points IsNot Nothing AndAlso layer.Points.Count >= 2 Then
+                    list.Add(New Figure With {.Points = layer.Points.Select(Function(p) p.ToPointF()).ToArray()})
+                End If
             Case DrawShape.Raster, DrawShape.Bucket, DrawShape.Gradient, DrawShape.FillLayer
                 ' 點陣圖層沒有外形線，範圍見 RasterBounds。
             Case Else
@@ -833,12 +925,40 @@ Partial Public NotInheritable Class DrawGeometry
                     path.Flatten(Nothing, 0.002F)
                     list.Add(Closed(FitTo(path.PathPoints, w, h)))
                 End Using
-            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6
-                Dim n = If(layer.Shape = DrawShape.Star4, 4, If(layer.Shape = DrawShape.Star5, 5, 6))
-                list.Add(Closed(StarPoints(n, hw, hh, Math.Max(0.05, Math.Min(0.95, layer.Param1)))))
+            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Star
+                list.Add(Closed(StarPoints(StarPointCount(layer), hw, hh, Math.Max(0.05, Math.Min(0.95, layer.Param1)))))
+            Case DrawShape.RegularPolygon
+                Dim n = Math.Max(3, Math.Min(64, layer.Sides))
+                Dim pts(n - 1) As PointF
+                For i = 0 To n - 1
+                    Dim t = -Math.PI / 2 + i * 2 * Math.PI / n
+                    pts(i) = New PointF(CSng(hw * Math.Cos(t)), CSng(hh * Math.Sin(t)))
+                Next
+                list.Add(Closed(pts))
+            Case DrawShape.Spiral
+                Dim sp = SpiralPoints(hw, hh, layer.Param1)
+                If layer.MirrorX Then sp = sp.Select(Function(p) New PointF(-p.X, p.Y)).ToArray() ' 逆時針
+                list.Add(New Figure With {.Points = sp})
+            Case DrawShape.Grid
+                Dim cols = Math.Max(1, Math.Min(50, layer.Sides)), rows = Math.Max(1, Math.Min(50, layer.Rows))
+                For r = 0 To rows - 1
+                    For c = 0 To cols - 1
+                        Dim x0 = -hw + w * c / cols, x1 = -hw + w * (c + 1) / cols
+                        Dim y0 = -hh + h * r / rows, y1 = -hh + h * (r + 1) / rows
+                        list.Add(Closed({New PointF(x0, y0), New PointF(x1, y0), New PointF(x1, y1), New PointF(x0, y1)}))
+                    Next
+                Next
+            Case DrawShape.Arc
+                Dim pts = ArcPoints(hw, hh, layer.Param1, layer.Param2)
+                Select Case layer.ArcMode
+                    Case ArcKind.Arc : list.Add(New Figure With {.Points = pts})
+                    Case ArcKind.Chord : list.Add(Closed(pts))
+                    Case Else : list.Add(Closed(pts.Concat({New PointF(0, 0)}).ToArray()))
+                End Select
             Case DrawShape.Lightning
                 Dim bolt = {New PointF(-0.1F, -0.5F), New PointF(0.28F, -0.5F), New PointF(0.06F, -0.12F), New PointF(0.32F, -0.12F),
                             New PointF(-0.22F, 0.5F), New PointF(-0.04F, 0.02F), New PointF(-0.3F, 0.02F)}
+                If layer.MirrorX Then bolt = bolt.Select(Function(p) New PointF(-p.X, p.Y)).Reverse().ToArray()
                 list.Add(Closed(FitTo(bolt, w, h)))
             Case DrawShape.CalloutRect
                 list.Add(Closed(InsertTail(RoundRectPoints(w, h, CSng(layer.Param1 * Math.Min(w, h))), tail, curved:=False, baseFrac:=0.045)))
@@ -876,6 +996,32 @@ Partial Public NotInheritable Class DrawGeometry
 
     Private Shared Function Closed(pts As List(Of PointF)) As Figure
         Return Closed(pts.ToArray())
+    End Function
+
+    ''' <summary>阿基米德螺旋：從中心往外 turns 圈（由上方開始、順時針），每圈 72 點。</summary>
+    Public Shared Function SpiralPoints(rx As Single, ry As Single, turns As Double) As PointF()
+        turns = Math.Max(0.25, Math.Min(30, turns))
+        Dim n = Math.Max(8, CInt(Math.Ceiling(turns * 72)))
+        Dim pts(n) As PointF
+        For i = 0 To n
+            Dim t = i / CDbl(n)
+            Dim a = -Math.PI / 2 + t * turns * 2 * Math.PI
+            pts(i) = New PointF(CSng(rx * t * Math.Cos(a)), CSng(ry * t * Math.Sin(a)))
+        Next
+        Return pts
+    End Function
+
+    ''' <summary>橢圓上從 startDeg 掃過 sweepDeg 度的弧（0° 在右邊、順時針）。</summary>
+    Public Shared Function ArcPoints(rx As Single, ry As Single, startDeg As Double, sweepDeg As Double) As PointF()
+        sweepDeg = Math.Max(-360, Math.Min(360, sweepDeg))
+        If Math.Abs(sweepDeg) < 1 Then sweepDeg = If(sweepDeg < 0, -1, 1)
+        Dim n = Math.Max(4, CInt(Math.Ceiling(Math.Abs(sweepDeg) / 3)))
+        Dim pts(n) As PointF
+        For i = 0 To n
+            Dim a = (startDeg + sweepDeg * i / n) * Math.PI / 180
+            pts(i) = New PointF(CSng(rx * Math.Cos(a)), CSng(ry * Math.Sin(a)))
+        Next
+        Return pts
     End Function
 
     Public Shared Function EllipsePoints(rx As Single, ry As Single, n As Integer) As PointF()
@@ -1478,24 +1624,42 @@ Partial Public NotInheritable Class DrawGeometry
             Case DrawShape.RoundRect, DrawShape.CalloutRect
                 Dim r = layer.Param1 * Math.Min(w, h)
                 list.Add(LocalToWorld(layer, New PointF(CSng(-w / 2 + r), CSng(-h / 2))))
-            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6
-                Dim n = If(layer.Shape = DrawShape.Star4, 4, If(layer.Shape = DrawShape.Star5, 5, 6))
+            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Star
+                Dim n = StarPointCount(layer)
                 Dim a = -Math.PI / 2 + Math.PI / n
                 list.Add(LocalToWorld(layer, New PointF(CSng(w / 2 * layer.Param1 * Math.Cos(a)), CSng(h / 2 * layer.Param1 * Math.Sin(a)))))
             Case DrawShape.Arrow
                 list.Add(LocalToWorld(layer, New PointF(CSng(w / 2 - layer.Param1 * w), CSng(-layer.Param2 * h / 2))))
+            Case DrawShape.Arc
+                ' 起點、終點（拖曳改角度）
+                For Each deg In {layer.Param1, layer.Param1 + layer.Param2}
+                    Dim a = deg * Math.PI / 180
+                    list.Add(LocalToWorld(layer, New PointF(CSng(w / 2 * Math.Cos(a)), CSng(h / 2 * Math.Sin(a)))))
+                Next
         End Select
         If IsCallout(layer.Shape) Then list.Add(LocalToWorld(layer, New PointF(CSng(layer.TailX), CSng(layer.TailY))))
+        If layer.Shape = DrawShape.Dimension Then
+            ' 尺寸線中間：拖曳改尺寸線離量測點的距離
+            Dim g = Dimension(layer)
+            If g.HasValue Then list.Add(New PointF((g.Value.A2.X + g.Value.B2.X) / 2, (g.Value.A2.Y + g.Value.B2.Y) / 2))
+        End If
         Return list
+    End Function
+
+    ''' <summary>弧形掃過的角度換成 1..360（順時針）。</summary>
+    Private Shared Function NormalizeSweep(d As Double) As Double
+        d = d Mod 360
+        If d <= 0 Then d += 360
+        Return Math.Max(1, d)
     End Function
 
     ''' <summary>拖曳第 index 個黃點到 world。</summary>
     Public Shared Sub SetParamHandle(layer As DrawLayer, index As Integer, world As PointF)
+        If layer.Shape = DrawShape.Dimension Then SetDimensionOffset(layer, world) : Return
         Dim local = WorldToLocal(layer, world)
         Dim w = Math.Max(0.000001, Math.Abs(layer.W)), h = Math.Max(0.000001, Math.Abs(layer.H))
         Dim hasShapeParam = layer.Shape = DrawShape.RoundRect OrElse layer.Shape = DrawShape.CalloutRect OrElse
-                            layer.Shape = DrawShape.Star4 OrElse layer.Shape = DrawShape.Star5 OrElse layer.Shape = DrawShape.Star6 OrElse
-                            layer.Shape = DrawShape.Arrow
+                            StarPointCount(layer) > 0 OrElse layer.Shape = DrawShape.Arrow
         If IsCallout(layer.Shape) AndAlso (index = 1 OrElse Not hasShapeParam) Then
             layer.TailX = local.X : layer.TailY = local.Y
             Return
@@ -1503,7 +1667,17 @@ Partial Public NotInheritable Class DrawGeometry
         Select Case layer.Shape
             Case DrawShape.RoundRect, DrawShape.CalloutRect
                 layer.Param1 = Math.Max(0, Math.Min(0.5, (local.X + w / 2) / Math.Min(w, h)))
-            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6
+            Case DrawShape.Arc
+                ' 角度在「正規化」的圓上算（橢圓拉長時拖的點才會跟著游標）
+                Dim deg = Math.Atan2(local.Y / (h / 2), local.X / (w / 2)) * 180 / Math.PI
+                If index = 0 Then
+                    Dim endDeg = layer.Param1 + layer.Param2
+                    layer.Param1 = deg
+                    layer.Param2 = NormalizeSweep(endDeg - deg)
+                Else
+                    layer.Param2 = NormalizeSweep(deg - layer.Param1)
+                End If
+            Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Star
                 Dim nx = local.X / (w / 2), ny = local.Y / (h / 2)
                 layer.Param1 = Math.Max(0.05, Math.Min(0.95, Math.Sqrt(nx * nx + ny * ny)))
             Case DrawShape.Arrow

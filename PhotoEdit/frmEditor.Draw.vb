@@ -101,7 +101,11 @@ Partial Friend Class frmEditor
         _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
         _drawBar.Controls.Add(BuildGroupBar()) ' 群組按鈕、所在群組（在橡皮擦右邊；見 frmEditor.DrawGroups.vb）
         _drawBar.Controls.Add(eraserGroup)
-        _drawBar.Controls.Add(BuildPropBar()) ' 位置、大小、角度（見 frmEditor.DrawProps.vb）
+        _drawBar.Controls.Add(BuildWidthBar()) ' 寬度工具的樣式（見 frmEditor.DrawBatch6.vb）
+        _drawBar.Controls.Add(BuildPatternBar()) ' 圖樣填色
+        _drawBar.Controls.Add(BuildTouchBar()) ' 修飾筆刷的模式、大小、力道（見 frmEditor.DrawBatch5.vb）
+        _drawBar.Controls.Add(BuildShapeParamBar()) ' 邊數、角數、圈數、欄列、弧形（見 frmEditor.DrawBatch4.vb）
+        _drawBar.Controls.Add(BuildPropBar()) ' 位置、大小、角度、鏡射（見 frmEditor.DrawProps.vb）
         _drawBar.Controls.Add(redo)
         _drawBar.Controls.Add(undo)
         BuildBucketBar(done)
@@ -342,6 +346,9 @@ Partial Friend Class frmEditor
         ExitBuilder()
         ApplyToolVariant() ' 點陣工具：橡皮擦、仿製、模糊…換成對應的筆
         If _drawStrip.SelectedTool <> DrawIcons.EnvelopeTool Then EndEnvelope()
+        If _drawStrip.SelectedTool <> DrawIcons.AttrDropperTool Then _attrSource = Nothing
+        If _drawStrip.SelectedTool <> DrawIcons.TouchUpTool Then TouchUp()
+        If _drawStrip.SelectedTool <> DrawIcons.WidthTool Then WidthUp()
         CommitCalloutEditor()
         If Not KeepsSelection(_drawStrip.SelectedTool) Then _drawMulti.Clear() ' 多選只在選取（與平移、縮放、吸管、形狀建立、刀具）
         ' 換成畫圖工具時放開選取的圖形（像小畫家），之後改筆刷、顏色只影響新畫的。
@@ -764,7 +771,13 @@ Partial Friend Class frmEditor
             Next
         ElseIf DrawGeometry.IsPointShape(d.Shape) AndAlso d.Points IsNot Nothing Then
             For i = 0 To d.Points.Count - 1
+                ' 連接線只有兩端可以拖（中間的轉角是自動算的）
+                If d.Shape = DrawShape.Connector AndAlso i > 0 AndAlso i < d.Points.Count - 1 Then Continue For
                 list.Add(New DrawHandle With {.Kind = HandleKind.Vertex, .Index = i, .Pos = UnitToScreen(d.Points(i).ToPointF())})
+            Next
+            Dim ps = DrawGeometry.ParamHandles(d) ' 尺寸線：拖中間改位置
+            For i = 0 To ps.Count - 1
+                list.Add(New DrawHandle With {.Kind = HandleKind.Param, .Index = i, .Pos = UnitToScreen(ps(i))})
             Next
         Else
             Dim b = DrawGeometry.Bounds(d)
@@ -853,6 +866,7 @@ Partial Friend Class frmEditor
             Return
         End If
         CommitCalloutEditor()
+        If GuideMouseDown(e) Then Return ' 尺規拉參考線、拖曳參考線（見 frmEditor.DrawBatch6.vb）
         If BuilderMouseDown(e, ScreenToUnit(e.Location)) Then Return ' 形狀建立（Alt＝刪除那幾塊）
         If ToolMouseDown(e, ScreenToUnit(e.Location)) Then Return ' 平移、縮放、吸管、刀具（見 frmEditor.DrawTools.vb）
         ' 節點工具的 Alt 是拖把手轉尖角，不吸色
@@ -878,13 +892,13 @@ Partial Friend Class frmEditor
             If _polyPoints.Count >= 3 AndAlso ScreenDist(UnitToScreen(_polyPoints(0)), e.Location) <= 9 Then
                 FinishPolygon()
             Else
-                _polyPoints.Add(u)
+                _polyPoints.Add(SnapUnit(u))
             End If
             UpdateDrawHint()
             _canvas.Invalidate()
             Return
         End If
-        If PathMouseDown(e, u) Then Return ' 鋼筆、選取工具的路徑旋轉
+        If PathMouseDown(e, If(_drawStrip.SelectedTool = CInt(DrawShape.Path), SnapUnit(u), u)) Then Return ' 鋼筆、選取工具的路徑旋轉（鋼筆會貼齊）
         ' 「選取」工具，或按住 Ctrl 暫時切成選取：點選、拖曳移動圖層。其他繪圖工具點下去一律是畫（不會誤拖圖層）。
         If _drawStrip.SelectedTool = DrawIcons.SelectTool OrElse (e.Button = MouseButtons.Left AndAlso ModifierKeys.HasFlag(Keys.Control)) Then
             PickOrMove(e, u)
@@ -929,13 +943,13 @@ Partial Friend Class frmEditor
                 _freeRaster = False
                 StartFreehand(u, e.Location)
             Case DrawShape.Polygon
-                _polyPoints = New List(Of PointF) From {u}
+                _polyPoints = New List(Of PointF) From {SnapUnit(u)}
                 _polyHover = u
                 UpdateDrawHint()
             Case Else
                 _dd = DrawDrag.Create
-                _ddStart = u
-                _ddCur = u
+                _ddStart = SnapUnit(u) ' 參考線、格線（見 frmEditor.DrawBatch6.vb）
+                _ddCur = _ddStart
         End Select
         _canvas.Invalidate()
     End Sub
@@ -1025,11 +1039,12 @@ Partial Friend Class frmEditor
         If _photo Is Nothing Then Return
         If _tabs.SelectedIndex = TabSelect Then SelMouseMove(e) : Return
         If _altPicking Then AltPickAt(e.Location) : Return
+        If GuideMouseMove(e) Then Return
         Dim u = ScreenToUnit(e.Location)
         Dim shift = ModifierKeys.HasFlag(Keys.Shift)
         If BuilderMouseMove(u) Then Return
         If ToolMouseMove(e, u) Then Return
-        If PathMouseMove(e, u) Then Return
+        If PathMouseMove(e, If(_drawStrip.SelectedTool = CInt(DrawShape.Path), SnapUnit(u), u)) Then Return
         If MultiMouseMove(e, u) Then Return
         Select Case _dd
             Case DrawDrag.None
@@ -1040,9 +1055,17 @@ Partial Friend Class frmEditor
                 SyncCtrlBox()
                 UpdateDrawCursor(e.Location, u)
             Case DrawDrag.Create
-                _ddCur = u
+                _ddCur = SnapUnit(u)
                 _canvas.Invalidate()
             Case DrawDrag.Freehand
+                If e.Button = MouseButtons.None AndAlso _freePoints IsNot Nothing AndAlso _freePoints.Count > 0 Then
+                    ' 筆（或滑鼠）早就放開了，只是放開的訊息漏掉：在最後一點收筆，
+                    ' 不能把懸空的移動當成筆畫（會畫出一條從邊緣連到下筆處的直線）
+                    Dim last = Point.Round(UnitToScreen(_freePoints(_freePoints.Count - 1).ToPointF()))
+                    _stabilizer = Nothing
+                    DrawMouseUp(New MouseEventArgs(MouseButtons.Left, 1, last.X, last.Y, 0))
+                    Return
+                End If
                 FreehandMove(e.Location)
             Case DrawDrag.Move
                 ' 拖曳門檻：滑鼠 5 像素、繪圖筆 8 像素以內不算移動（輕點只是選取）
@@ -1054,7 +1077,8 @@ Partial Friend Class frmEditor
                 If _ddLayer.Shape <> DrawShape.Raster Then SnapMove(DrawGeometry.Bounds(_ddLayer), {_drawIndex}, dx, dy) ' 智慧參考線
                 ReplaceDragLayer(Sub(d) DrawGeometry.Offset(d, dx, dy))
             Case DrawDrag.Resize
-                ReplaceDragLayer(Sub(d) DrawGeometry.ResizeBox(d, _ddLayer, _ddHandle, u, shift))
+                Dim su = SnapUnit(u)
+                ReplaceDragLayer(Sub(d) DrawGeometry.ResizeBox(d, _ddLayer, _ddHandle, su, shift))
             Case DrawDrag.Rotate
                 Dim deg = Math.Atan2(u.Y - _ddLayer.Y, u.X - _ddLayer.X) * 180 / Math.PI + 90
                 If shift Then deg = Math.Round(deg / 15) * 15
@@ -1063,7 +1087,8 @@ Partial Friend Class frmEditor
             Case DrawDrag.Param
                 ReplaceDragLayer(Sub(d) DrawGeometry.SetParamHandle(d, _ddHandle, u))
             Case DrawDrag.Vertex
-                ReplaceDragLayer(Sub(d) d.Points(_ddHandle) = New DrawPoint(u.X, u.Y))
+                Dim su = SnapUnit(u)
+                ReplaceDragLayer(Sub(d) MoveVertex(d, _ddHandle, su)) ' 連接線的端點會連上物件
             Case DrawDrag.RectScale
                 Dim nb = DrawGeometry.DragRect(_ddBounds, _ddHandle, u, shift)
                 ReplaceDragLayer(Sub(d) DrawGeometry.ScalePoints(d, _ddLayer, _ddBounds, nb))
@@ -1132,6 +1157,7 @@ Partial Friend Class frmEditor
             Return
         End If
         If _altPicking Then EndAltPick(e.Location) : Return
+        If GuideMouseUp(e) Then Return
         _guides.Clear()
         If ToolMouseUp(e) Then Return
         If BuilderMouseUp() Then Return
@@ -1191,6 +1217,19 @@ Partial Friend Class frmEditor
         Dim d As New DrawLayer With {.Shape = shape, .Seed = seed}
         d.CopyStyleFrom(_drawStyle)
         Select Case shape
+            Case DrawShape.Dimension, DrawShape.Connector
+                If dragPx < 4 Then Return Nothing
+                If shift Then b = Snap45(a, b)
+                d.Points = New List(Of DrawPoint) From {New DrawPoint(a.X, a.Y), New DrawPoint(b.X, b.Y)}
+                DrawGeometry.ApplyDefaults(d)
+                ApplyShapeParamDefaults(d) ' 尺寸線的方向、單位；連接線直線或直角
+                If shape = DrawShape.Dimension Then
+                    d.DimPhotoPx = PhotoPixelSize().Height
+                    If d.TextSize <= 0 OrElse d.TextSize > 0.08 Then d.TextSize = 0.03
+                Else
+                    d.ConnStart = ConnectTargetAt(a)?.Id
+                    d.ConnEnd = ConnectTargetAt(b)?.Id
+                End If
             Case DrawShape.Line, DrawShape.Bezier
                 If dragPx < 4 Then Return Nothing
                 If shift Then b = Snap45(a, b)
@@ -1209,7 +1248,8 @@ Partial Friend Class frmEditor
                 Dim w = Math.Abs(b.X - a.X), h = Math.Abs(b.Y - a.Y)
                 Dim cx, cy As Single
                 If dragPx < 6 Then
-                    Dim square = shape = DrawShape.Heart OrElse shape = DrawShape.Star4 OrElse shape = DrawShape.Star5 OrElse shape = DrawShape.Star6
+                    Dim square = shape = DrawShape.Heart OrElse shape = DrawShape.Star4 OrElse shape = DrawShape.Star5 OrElse shape = DrawShape.Star6 OrElse
+                                 shape = DrawShape.Star OrElse shape = DrawShape.RegularPolygon OrElse shape = DrawShape.Spiral OrElse shape = DrawShape.Arc
                     w = If(square, 0.18F, 0.24F) : h = If(square, 0.18F, 0.15F)
                     cx = a.X : cy = a.Y
                 Else
@@ -1222,6 +1262,7 @@ Partial Friend Class frmEditor
                 End If
                 d.X = cx : d.Y = cy : d.W = Math.Max(0.004, w) : d.H = Math.Max(0.004, h)
                 DrawGeometry.ApplyDefaults(d)
+                ApplyShapeParamDefaults(d) ' 圖形參數列的設定（邊數、圈數…）
                 If DrawGeometry.IsCallout(shape) Then
                     d.Filled = True
                     d.Stroked = True
@@ -1308,6 +1349,9 @@ Partial Friend Class frmEditor
         If _tabs.SelectedIndex <> TabDraw OrElse _photo Is Nothing Then Return False
         If BuilderKey(keyData) Then Return True
         If PathKey(keyData) Then Return True
+        If Batch4Key(keyData) Then Return True
+        If Batch5Key(keyData) Then Return True ' 修飾筆刷的 [ ]
+        If Batch6Key(keyData) Then Return True ' 尺規、格線 ' Ctrl+J 再製、屬性吸管的 Esc
         Select Case keyData
             Case Keys.E, Keys.B
                 ' 像 Photoshop：B 畫筆、E 橡皮擦（都是直接繪製）。
@@ -1429,6 +1473,7 @@ Partial Friend Class frmEditor
         g.SmoothingMode = SmoothingMode.AntiAlias
         Dim px = PxPerUnit()
         Dim sel = SelDraw(_recipe)
+        PaintGridAndGuides(g) ' 格線、參考線（見 frmEditor.DrawBatch6.vb）
         PaintEnteredGroup(g) ' 正在編輯的群組：紫色虛線框
         If Not _builderOn Then PaintMulti(g) ' 多選的外框與控制點、框選中的虛線框
         If sel IsNot Nothing AndAlso sel.Visible AndAlso Not IsMultiSelected() Then
@@ -1515,6 +1560,7 @@ Partial Friend Class frmEditor
         PaintGuides(g) ' 移動時的智慧參考線
         PaintTools(g) ' 刀線、縮放框
         PaintFx(g) ' 陰影方向、透明度起訖、封套
+        PaintRulers(g) ' 尺規（最上面）
     End Sub
 
     ''' <summary>拖曳中的新形狀：用目前的線條色與粗細畫外形（實際筆刷效果放開後才算）。</summary>

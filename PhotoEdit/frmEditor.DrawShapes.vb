@@ -57,7 +57,8 @@ Partial Friend Class frmEditor
             _shapeButtons(key) = b
             _shapeBar.Controls.Add(b)
         Next
-        For Each t In {("clipin", Lang.T("放進形狀"), "draw.clip.in"), ("clipout", Lang.T("取出內容"), "draw.clip.out"), ("photoclip", Lang.T("照片放進形狀"), "draw.clip.photo")}
+        For Each t In {("clipin", Lang.T("放進形狀"), "draw.clip.in"), ("clipout", Lang.T("取出內容"), "draw.clip.out"), ("photoclip", Lang.T("照片放進形狀"), "draw.clip.photo"),
+                       ("outline", Lang.T("外框轉物件"), "draw.outline"), ("effects", Lang.T("效果 ▾"), "draw.effects")}
             Dim key = t.Item1
             Dim b = MakeButton(t.Item2, t.Item3)
             b.Height = 28
@@ -134,6 +135,8 @@ Partial Friend Class frmEditor
         _shapeButtons("clipout").Visible = picking AndAlso Not _builderOn AndAlso SelectedClipGroups().Count > 0
         Dim pc = If(picking AndAlso Not _builderOn, PhotoClipCandidate(), Nothing)
         _shapeButtons("photoclip").Visible = pc IsNot Nothing
+        _shapeButtons("outline").Visible = picking AndAlso Not _builderOn AndAlso OutlineCandidates().Count > 0
+        _shapeButtons("effects").Visible = picking AndAlso Not _builderOn AndAlso EffectTargets().Count > 0
         If pc IsNot Nothing Then _shapeButtons("photoclip").Text = If(pc.Id IsNot Nothing AndAlso _recipe.PhotoClip = pc.Id, Lang.T("取消照片裁切"), Lang.T("照片放進形狀"))
         ' 分隔
         Dim seps = _shapeBar.Controls.OfType(Of Panel)().ToList()
@@ -159,6 +162,8 @@ Partial Friend Class frmEditor
             Case "clipin" : ClipIntoShape()
             Case "clipout" : ClipOut()
             Case "photoclip" : TogglePhotoClip()
+            Case "outline" : OutlineSelected() ' 外框轉物件（見 frmEditor.DrawBatch4.vb）
+            Case "effects" : ShowEffectsMenu() ' 輪廓圖、變形、立體化、簡化（見 frmEditor.DrawBatch5.vb）
         End Select
         UpdateDrawControls()
         _canvas.Invalidate()
@@ -431,6 +436,7 @@ Partial Friend Class frmEditor
         Dim tol = 6 / Math.Max(0.0001, PxPerUnit())
         Dim m = New RectangleF(CSng(moving.X + dx), CSng(moving.Y + dy), moving.Width, moving.Height)
         Dim targets As New List(Of RectangleF) From {New RectangleF(0, 0, CSng(PhotoAspect()), 1)}
+        targets.AddRange(LayoutSnapTargets(m)) ' 參考線、格線（見 frmEditor.DrawBatch6.vb）
         For i = 0 To LayerCount() - 1
             Dim d = _recipe.Drawings(i)
             If exclude.Contains(i) OrElse Not d.Visible OrElse d.Shape = DrawShape.FillLayer OrElse d.Shape = DrawShape.Raster Then Continue For

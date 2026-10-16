@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Drawing.Imaging
 Imports System.Runtime.InteropServices
 
@@ -15,6 +15,11 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Const MaxRasterCache As Integer = 64
     Private Const RasterCacheBudget As Long = 600L * 1024 * 1024
     Private Shared ReadOnly _rasterCache As New Dictionary(Of ULong, Bitmap)()
+    ''' <summary>
+    ''' 快取裡每張圖的位元組數（放進去時記下）：算總量時不能去讀快取圖的 Width，別的執行緒可能正鎖著那張圖合成，
+    ''' GDI+ 會丟「Object is currently in use elsewhere」。
+    ''' </summary>
+    Private Shared ReadOnly _rasterBytes As New Dictionary(Of ULong, Long)()
     Private Shared ReadOnly _rasterOrder As New LinkedList(Of ULong)()
 
     Private Shared Sub DrawRasterLayer(dst As Bitmap, layer As DrawLayer, w As Integer, h As Integer)
@@ -43,13 +48,17 @@ Partial Public NotInheritable Class DrawingRenderer
                 AboveDrawer = drawAbove
             End Try
         End If
-        Dim bmp = RasterBitmap(layer, w, h, below, dest.X, dest.Y, above)
-        If bmp Is Nothing Then Return
-        SyncLock bmp
-            Using shaded = SurfaceOnDrawing(bmp, dest, w, h) ' 表面紋理「只有繪圖」
-                LayerBlend.Composite(dst, If(shaded, bmp), dest, opacity, layer.Blend)
-            End Using
-        End SyncLock
+        For attempt = 1 To 3
+            Dim bmp = RasterBitmap(layer, w, h, below, dest.X, dest.Y, above)
+            If bmp Is Nothing Then Return
+            SyncLock bmp
+                If IsEvicted(bmp) Then Continue For ' 剛被別的執行緒擠出快取釋放了：重算
+                Using shaded = SurfaceOnDrawing(bmp, dest, w, h) ' 表面紋理「只有繪圖」
+                    LayerBlend.Composite(dst, If(shaded, bmp), dest, opacity, layer.Blend)
+                End Using
+                Return
+            End SyncLock
+        Next
     End Sub
 
     ''' <summary>點陣圖層合成好的像素（w × h、未加位移與不透明度）；結果放在快取裡，呼叫端不可釋放。</summary>
@@ -85,7 +94,12 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim bmp As Bitmap
         If baseBmp IsNot Nothing Then
             SyncLock baseBmp
-                bmp = baseBmp.Clone(New Rectangle(0, 0, w, h), PixelFormat.Format32bppArgb)
+                If IsEvicted(baseBmp) Then
+                    bmp = New Bitmap(w, h, PixelFormat.Format32bppArgb) ' 接續的那張剛被釋放：從頭畫
+                    start = 0
+                Else
+                    bmp = baseBmp.Clone(New Rectangle(0, 0, w, h), PixelFormat.Format32bppArgb)
+                End If
             End SyncLock
         Else
             bmp = New Bitmap(w, h, PixelFormat.Format32bppArgb)
@@ -125,14 +139,17 @@ Partial Public NotInheritable Class DrawingRenderer
                 Return existing
             End If
             _rasterCache(keys(ops.Count)) = bmp
+            _rasterBytes(keys(ops.Count)) = CLng(w) * h * 4
             _rasterOrder.AddFirst(keys(ops.Count))
             While _rasterOrder.Count > MaxRasterCache OrElse (_rasterOrder.Count > MinRasterCache AndAlso RasterCacheBytes() > RasterCacheBudget)
                 Dim old = _rasterOrder.Last.Value
                 _rasterOrder.RemoveLast()
                 Dim oldBmp = _rasterCache(old)
                 _rasterCache.Remove(old)
+                _rasterBytes.Remove(old)
                 SyncLock oldBmp
                     oldBmp.Dispose()
+                    _evicted.AddOrUpdate(oldBmp, Nothing)
                 End SyncLock
             End While
         End SyncLock
@@ -158,11 +175,15 @@ Partial Public NotInheritable Class DrawingRenderer
         End If
         If op.Shape = DrawShape.Raster Then
             If op.Ops Is Nothing OrElse op.Ops.Count = 0 Then Return
-            Dim nested = RasterBitmap(op, w, h)
-            If nested Is Nothing Then Return
-            SyncLock nested
-                LayerBlend.Composite(bmp, nested, New Rectangle(CInt(Math.Round(op.X * h)), CInt(Math.Round(op.Y * h)), w, h), opacity, op.Blend)
-            End SyncLock
+            For attempt = 1 To 3
+                Dim nested = RasterBitmap(op, w, h)
+                If nested Is Nothing Then Return
+                SyncLock nested
+                    If IsEvicted(nested) Then Continue For
+                    LayerBlend.Composite(bmp, nested, New Rectangle(CInt(Math.Round(op.X * h)), CInt(Math.Round(op.Y * h)), w, h), opacity, op.Blend)
+                    Return
+                End SyncLock
+            Next
             Return
         End If
         Dim item = Render(op, w, h)
@@ -265,18 +286,30 @@ Partial Public NotInheritable Class DrawingRenderer
 
     Private Shared Function RasterCacheBytes() As Long
         Dim total = 0L
-        For Each b In _rasterCache.Values
-            total += CLng(b.Width) * b.Height * 4
+        For Each n In _rasterBytes.Values
+            total += n
         Next
         Return total
+    End Function
+
+    ' 擠出快取而釋放的圖：別的執行緒可能已經拿到它，鎖住後要先檢查（弱參照，不會留住圖）
+    Private Shared ReadOnly _evicted As New Runtime.CompilerServices.ConditionalWeakTable(Of Bitmap, Object)()
+
+    Private Shared Function IsEvicted(b As Bitmap) As Boolean
+        Dim o As Object = Nothing
+        Return _evicted.TryGetValue(b, o)
     End Function
 
     Private Shared Sub ClearRasterCache()
         SyncLock _rasterCache
             For Each b In _rasterCache.Values
-                b.Dispose()
+                SyncLock b
+                    b.Dispose()
+                    _evicted.AddOrUpdate(b, Nothing)
+                End SyncLock
             Next
             _rasterCache.Clear()
+            _rasterBytes.Clear()
             _rasterOrder.Clear()
         End SyncLock
     End Sub

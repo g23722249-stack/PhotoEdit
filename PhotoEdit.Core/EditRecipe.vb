@@ -218,8 +218,15 @@ Public Class EditRecipe
     ''' <summary>選取區（選取分頁）；不影響算圖，只決定複製、剪下、填色、局部調整等操作的範圍。Nothing 表示沒有選取。</summary>
     Public Property Selection As SelectionSpec
 
+    ''' <summary>參考線（從尺規拖出來的；排版用，跟著文件存）。</summary>
+    Public Property Guides As List(Of Guide)
+    ''' <summary>文件色票（全域色）。</summary>
+    Public Property Swatches As List(Of ColorSwatch)
+
     Public Function Clone() As EditRecipe
         Dim r = DirectCast(MemberwiseClone(), EditRecipe)
+        r.Guides = Guides?.Select(Function(g) g.Clone()).ToList()
+        r.Swatches = Swatches?.Select(Function(s) s.Clone()).ToList()
         r.Crop = Crop?.Clone()
         r.Spots = Spots?.Select(Function(s) s.Clone()).ToList()
         r.LocalAdjustments = LocalAdjustments?.Select(Function(a) a.Clone()).ToList()

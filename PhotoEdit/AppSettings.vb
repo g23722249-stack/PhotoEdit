@@ -35,10 +35,18 @@ Friend Class AppSettings
     Public Property QuickRadialHotkey As String = "F10"
     ''' <summary>橡皮擦的擦法：0 擦掉、1 漂白、2 加深。</summary>
     Public Property EraseMode As Integer
-    ''' <summary>畫筆畫時的預覽：0 真實筆刷（邊畫邊用筆刷引擎重算）、1 快速線條、2 逐段筆印（Painter 式，保留給之後）。</summary>
+    ''' <summary>畫筆畫時的預覽：0 真實筆刷（每次整筆重算，預設）、1 快速線條、2 逐段筆印（Painter 式，只疊新的筆印）。設定頁依負載排成 1、2、0。</summary>
     Public Property StrokePreview As Integer
     ''' <summary>介面語言：0 依系統、1 繁體中文、2 簡體中文、3 英文（UiLanguage）。改了重新開啟才生效。</summary>
     Public Property Language As Integer
+    ''' <summary>視窗風格：0 macOS（按鈕在左、藍蘋果）、1 KDE Plasma（按鈕在右、小鳥）。立刻套用到所有視窗。</summary>
+    Public Property WindowStyle As Integer
+    ''' <summary>繪圖分頁：尺規、格線、貼齊格線、貼齊參考線、格線間距（照片像素）。</summary>
+    Public Property ShowRulers As Boolean
+    Public Property ShowGrid As Boolean
+    Public Property SnapGrid As Boolean
+    Public Property SnapGuides As Boolean = True
+    Public Property GridSpacing As Integer = 50
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
     ''' <summary>我的妝容（美顏手動調整「存成我的妝容」）：名稱＋整組設定，出現在一鍵美顏小圖的最後面。</summary>

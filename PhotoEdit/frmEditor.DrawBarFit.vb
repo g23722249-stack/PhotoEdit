@@ -27,6 +27,8 @@ Partial Friend Class frmEditor
                                  If dict.ContainsKey(k) Then list.Add({dict(k)})
                              Next
                          End Sub
+        ' 外框轉物件（較寬、不常用）先收：在「»」選單裡一樣能用
+        addButtons(_shapeButtons, {"outline", "effects"})
         addButtons(_shapeButtons, {"exclude", "intersect", "trim", "weld"})
         addButtons(_shapeButtons, {"more", "top", "hcenter", "left"})
         addButtons(_shapeButtons, {"photoclip", "clipout", "clipin"})
@@ -43,6 +45,10 @@ Partial Friend Class frmEditor
                 list.Add({_fxControls(k)})
             Next
         End If
+        ' 鏡射（小、常用）晚一點收
+        If _btnMirrorV IsNot Nothing Then list.Add({_btnMirrorV}) : list.Add({_btnMirrorH})
+        list.Add({_patternBar}) ' 圖樣列
+        list.Add({_shapeParamBar}) ' 圖形參數列（輸入框，整列藏起來）
         ' 最後：屬性列的角度欄（輸入框不能放進選單，直接藏）
         If _propBoxes.ContainsKey("angle") Then
             Dim lbl = _propBar.Controls.OfType(Of Label)().FirstOrDefault(Function(l) l.Text = "∠")

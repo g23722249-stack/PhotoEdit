@@ -47,10 +47,16 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim bmp = RasterBitmap(local, w, h, below)
         Dim map As New CoverageMap With {.W = w, .H = h, .Mask = New Byte(w * h - 1) {}, .Bounds = RectangleF.Empty}
         If bmp IsNot Nothing Then
-            Dim px As Byte()
-            SyncLock bmp
-                px = Perspective.ReadPixels(bmp)
-            End SyncLock
+            Dim px As Byte() = Nothing
+            For attempt = 1 To 3
+                SyncLock bmp
+                    If Not IsEvicted(bmp) Then px = Perspective.ReadPixels(bmp)
+                End SyncLock
+                If px IsNot Nothing Then Exit For
+                bmp = RasterBitmap(local, w, h, below) ' 剛被擠出快取釋放了：重算
+                If bmp Is Nothing Then Exit For
+            Next
+            If px Is Nothing Then px = New Byte(w * h * 4 - 1) {}
             Dim l = w, t = h, r = -1, b = -1
             For y = 0 To h - 1
                 For x = 0 To w - 1

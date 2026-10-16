@@ -110,11 +110,13 @@ Friend Class frmNewImage
 
         BuildLayout()
         LoadSettings()
-        AddHandler FormClosed, Sub()
-                                   _picture?.Dispose()
-                                   _preview?.Dispose()
-                                   _boldFont.Dispose()
-                               End Sub
+        ' 底圖要等呼叫端用完 CreateImage 才能釋放：對話框按確定時 FormClosed 就觸發了（ShowDialog 還沒回傳），
+        ' 在那裡釋放的話，之後建立新影像會用到已經釋放的底圖（GDI+「Parameter is not valid」）。
+        AddHandler Disposed, Sub()
+                                 _picture?.Dispose()
+                                 _preview?.Dispose()
+                                 _boldFont.Dispose()
+                             End Sub
         ThemeManager.Attach(Me)
     End Sub
 

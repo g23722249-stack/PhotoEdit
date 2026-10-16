@@ -2696,3 +2696,195 @@ picker|加入「	Add to "
 picker|」	"
 picker|新增色票…	New swatch set…
 picker|無法擷取螢幕畫面:	Can't capture the screen: 
+筆畫預覽	Stroke preview
+三種方式依電腦的負載由輕到重排列；畫起來不順時往上選。	The three modes are listed from lightest to heaviest load; if drawing feels sluggish, choose one higher up.
+快速線條（負載最輕）	Quick line (lightest)
+只畫一條依筆壓變粗細的線，放開後才看到筆刷的質感。舊電腦、很大的筆刷最順。	Draws only a line whose width follows pressure; the brush texture appears when you release. Smoothest on old computers and with very large brushes.
+逐段筆印（負載中等）	Incremental dabs (medium)
+像 Painter：邊畫邊只把新增的筆印疊上去，筆畫再長也不會越畫越慢；混色、塗抹、仿製、模糊等會讀畫布的筆也看得到效果。收尾變細、筆毛乾掉等要知道整筆長度的效果放開時才出現；特效筆、粒子、乾刷、陰影自動改用真實筆刷。	Like Painter: only the new dabs are added as you draw, so even long strokes stay fast; brushes that read the canvas (blender, smudge, clone, blur…) show their effect too. Effects that need the whole stroke length (tapering ends, bristles running dry) appear when you release; effect brushes, particles, dry brush and shadows use Real brush automatically.
+真實筆刷（負載最重，預設）	Real brush (heaviest, default)
+每次把整筆重新算一遍，看到的就是放開後的樣子；筆畫越長越吃力。混色、塗抹等讀畫布的筆畫的時候用快速線條。	Recomputes the whole stroke every time, so you see exactly the final result; longer strokes take more work. Brushes that read the canvas (blender, smudge…) show a quick line while drawing.
+視窗風格	Window style
+macOS（按鈕在左）	macOS (buttons on the left)
+KDE Plasma（按鈕在右）	KDE Plasma (buttons on the right)
+標題列的最小化、最大化、關閉按鈕與選單列的標誌；點了立刻套用。	The minimize, maximize and close buttons in the title bar and the logo in the menu bar; applies as soon as you click.
+屬性吸管	Attribute Eyedropper
+先選取向量圖形（點陣圖層、填滿圖層不能鏡射）。	Select vector shapes first (raster and fill layers can't be mirrored).
+先選取要再製的物件。	Select the objects to duplicate first.
+已再製。把複本移到想要的位置（或旋轉）後再按 Ctrl+J，會照同樣的距離與角度一直排下去。	Duplicated. Move (or rotate) the copy where you want it, then press Ctrl+J again to keep repeating the same offset and angle.
+先選取要重複的物件。	Select the objects to repeat first.
+步驟與重複	Step and Repeat
+份數	Copies
+水平距離（像素）	Horizontal offset (px)
+垂直距離（像素）	Vertical offset (px)
+每份旋轉（度）	Rotation per copy (°)
+已做 {0} 份。	Made {0} copies.
+點在向量圖形上（點陣圖層、填滿圖層沒有這些屬性）。	Click a vector shape (raster and fill layers have no such attributes).
+已把「{0}」的外觀套到選取的 {1} 個物件。	Applied the appearance of "{0}" to {1} selected objects.
+已吸取「{0}」的外觀：點其他圖形套用；Shift＋點或 Esc 重新吸取。	Picked up the appearance of "{0}": click other shapes to apply it; Shift+click or Esc to pick again.
+已套用「{0}」的外觀。	Applied the appearance of "{0}".
+先選取有線條的向量圖形（特效筆、粒子、點陣圖層不能轉）。	Select vector shapes with an outline first (effect pens, particles and raster layers can't be converted).
+線條太細或是空的，沒有可以轉的。	The outline is too thin or empty; nothing to convert.
+已把外框轉成物件：可以填色、焊接、用節點工具修改。	Converted the outline to an object: you can fill it, weld it, or edit it with the node tool.
+扇形	Pie
+弧線	Arc
+弓形	Chord
+邊數	Sides
+內徑	Inner
+圈數	Turns
+欄	Columns
+列	Rows
+起點	Start
+角數	Points
+屬性吸管：點一個圖形吸取它的外觀。	Attribute Eyedropper: click a shape to pick up its appearance.
+水平鏡射	Mirror Horizontally
+垂直鏡射	Mirror Vertically
+外框轉物件	Outline to Object
+屬性吸管：點一個圖形吸取它的外觀（填色、線條、陰影、透明度…）；先選好物件時，點來源就直接套到選取的物件。	Attribute Eyedropper: click a shape to pick up its appearance (fill, outline, shadow, transparency…); if objects are already selected, clicking the source applies it to them directly.
+屬性吸管：已吸取「{0}」，點其他圖形套用；Shift＋點或 Esc 重新吸取。	Attribute Eyedropper: picked up "{0}"; click other shapes to apply it; Shift+click or Esc to pick again.
+再製 (Ctrl+J)	Duplicate (Ctrl+J)
+步驟與重複…	Step and Repeat…
+正多邊形	Regular Polygon
+拖曳畫出正多邊形；上方的「邊數」可以設 3～64 邊。	Drag to draw a regular polygon; set 3–64 sides with "Sides" above.
+按住 Shift 拖曳畫成正的（不壓扁）。	Hold Shift while dragging to keep it unsquashed.
+拖曳畫出星形；上方設定角數（3～64）和內徑（尖角的深淺），也可以拖曳黃點調整。	Drag to draw a star; set the points (3–64) and inner radius (how deep the points are) above, or drag the yellow handle.
+螺旋	Spiral
+拖曳畫出由中心往外繞的螺旋線；上方設定圈數。	Drag to draw a spiral winding out from the center; set the turns above.
+螺旋是開放的線，只有線條沒有填色。	A spiral is an open line: outline only, no fill.
+格紙	Graph Paper
+拖曳畫出一張格子（表格線）；上方設定欄數和列數。	Drag to draw a grid; set the columns and rows above.
+拖曳畫出扇形、弧線或弓形；上方設定起點角度和張開的角度，也可以拖曳兩個黃點。	Drag to draw a pie, arc or chord; set the start angle and sweep above, or drag the two yellow handles.
+點一個圖形吸取它的外觀（填色、漸層、線條、筆刷、陰影、透明度），再點其他圖形套上去（同 CorelDRAW 的屬性滴管、Illustrator 的滴管）。	Click a shape to pick up its appearance (fill, gradient, outline, brush, shadow, transparency), then click other shapes to apply it (like CorelDRAW's Attributes Eyedropper or Illustrator's Eyedropper).
+先選好幾個物件，再用屬性吸管點來源，就一次套到全部。Shift＋點或 Esc 重新吸取。	Select several objects first, then click the source with the Attribute Eyedropper to apply it to all of them at once. Shift+click or Esc to pick again.
+邊數／角數	Sides / Points
+正多邊形的邊數、星形的角數（3～64）。	Number of sides of a regular polygon, or points of a star (3–64).
+有選取圖形時改選取的圖形；沒有選取時改下一個要畫的圖形。	Changes the selected shape; with nothing selected, changes the next shape you draw.
+星形凹進去的點離中心多遠（外徑的百分比）；越小尖角越尖。	How far the star's inner points are from the center (percent of the outer radius); smaller means sharper points.
+螺旋繞幾圈（0.5～20）。	How many turns the spiral makes (0.5–20).
+欄與列	Columns and Rows
+格紙的欄數和列數（1～50）。	Number of columns and rows in the graph paper (1–50).
+弧形樣式	Arc Style
+扇形：連到中心的封閉圖形；弧線：只有弧線；弓形：弧的兩端直接連起來。	Pie: a closed shape joined to the center; Arc: the curve only; Chord: the two ends joined directly.
+起點與角度	Start and Sweep
+起點：弧從幾度開始（0 度在右邊、順時針）；角度：張開幾度（1～359）。	Start: the angle where the arc begins (0° is on the right, clockwise); Sweep: how many degrees it opens (1–359).
+把選取的物件左右翻轉（同 CorelDRAW 屬性列的水平鏡射）。	Flip the selected objects left to right (like CorelDRAW's Mirror Horizontally on the property bar).
+選很多個時以它們的整體中心翻轉，相對位置也跟著翻；漸層、文字方向一起正確處理。	With several selected, they flip around their combined center and their positions flip too; gradients and text direction are handled correctly.
+把選取的物件上下翻轉。	Flip the selected objects top to bottom.
+選很多個時以它們的整體中心翻轉。	With several selected, they flip around their combined center.
+把線條變成一個可以填色的封閉圖形（同 CorelDRAW 的「外框轉換為物件」、Illustrator 的「外框筆畫」）。	Turn the outline into a closed shape you can fill (like CorelDRAW's Convert Outline to Object or Illustrator's Outline Stroke).
+結果是鋼筆路徑，填色就是原本的線條色；原本有填色的話，填色部分保留成沒有線條的圖形。	The result is a pen path filled with the original outline color; if the original had a fill, the fill is kept as a shape without an outline.
+ 外框	 Outline
+修飾筆刷	Touch-up Brush
+先選取向量圖形或文字（點陣圖層、填滿圖層不能套效果）。	Select vector shapes or text first (raster and fill layers can't take effects).
+輪廓圖	Contour
+外擴	Outside
+內縮	Inside
+每圈間隔（像素）	Offset per step (px)
+最後一圈的顏色	Color of the last step
+算不出輪廓（內縮得太多？）。	Couldn't make a contour (inset too far?).
+已做輪廓圖：{0} 圈，和原本的組成群組。	Contour made: {0} steps, grouped with the original.
+變形效果	Distort
+收縮與膨脹	Pucker & Bloat
+粗糙	Roughen
+鋸齒	Zig Zag
+扭轉	Twist
+收縮 − ／膨脹 +（%）	Pucker − / Bloat + (%)
+起伏大小（%）	Size (%)
+細節（每 100 像素幾點）	Detail (points per 100 px)
+每段起伏數	Ridges per segment
+角度（度）	Angle (°)
+平滑（曲線）	Smooth (curves)
+隨機種子	Random seed
+已套用變形效果（{0} 個物件，變成鋼筆路徑）。	Distortion applied ({0} objects, now pen paths).
+立體化	Extrude
+方向（度，0＝右、90＝下）	Direction (°, 0 = right, 90 = down)
+深度（像素）	Depth (px)
+側面顏色	Side color
+由前往後漸暗	Darken toward the back
+已立體化：側面在原本的下面，兩個組成群組。	Extruded: the sides are under the original, grouped together.
+簡化路徑	Simplify Path
+容許誤差（像素）	Tolerance (px)
+節點：{0} → {1}	Nodes: {0} → {1}
+已簡化路徑：節點 {0} → {1}。	Path simplified: nodes {0} → {1}.
+輪廓圖…	Contour…
+變形效果…	Distort…
+立體化…	Extrude…
+簡化路徑…	Simplify Path…
+轉動	Twirl
+吸引	Attract
+排斥	Repel
+修飾筆刷：先選取（或在上面按下）要修飾的向量圖形。	Touch-up Brush: select (or press on) the vector shape to touch up first.
+效果 ▾	Effects ▾
+修飾筆刷（{0}）：在選取的圖形邊緣拖曳推拉外形；轉動、吸引等按住不動會繼續作用。Alt＝反方向轉，[ ] 調大小。	Touch-up Brush ({0}): drag along the edge of the selected shape to push and pull it; Twirl, Attract and the others keep working while you hold still. Alt = reverse twirl, [ ] = size.
+選取的向量圖形或文字套用效果：輪廓圖、變形效果、立體化、簡化路徑（編輯選單裡也有）。	Apply effects to the selected vector shapes or text: Contour, Distort, Extrude, Simplify Path (also in the Edit menu).
+每個效果都有設定視窗，右邊即時預覽；按「確定」才套用，可以復原。	Each effect has a settings window with a live preview on the right; it's applied only when you click OK, and can be undone.
+用筆刷推拉向量圖形的邊（同 CorelDRAW 的塗抹、轉動、吸引、排斥、粗糙筆刷，Illustrator 的平滑工具）。	Push and pull the edges of vector shapes with a brush (like CorelDRAW's Smear, Twirl, Attract, Repel and Roughen brushes, or Illustrator's Smooth tool).
+先選取圖形（或直接在圖形上按下），沿著邊緣拖曳。放開時會簡化成平滑的曲線，拖一次算一步復原。	Select a shape (or press directly on it) and drag along its edge. On release it's simplified into smooth curves; each drag is one undo step.
+筆刷模式	Brush Mode
+塗抹：把邊往拖的方向推；轉動：繞著筆刷中心旋轉（Alt 反方向）；吸引／排斥：往中心拉、往外推；粗糙：邊變得凹凸；平滑：撫平抖動的邊。	Smear: pushes the edge the way you drag; Twirl: spins around the brush center (Alt reverses); Attract / Repel: pulls toward or pushes away from the center; Roughen: makes the edge bumpy; Smooth: evens out shaky edges.
+筆刷圓的直徑（照片像素）；[ ] 鍵也可以調。	Diameter of the brush circle (photo pixels); the [ ] keys also change it.
+每次作用的強弱（1～100%）。	How strong each application is (1–100%).
+輪廓 {0}	Contour {0}
+ 立體	 Extrude
+寬度工具	Width Tool
+（左鍵線條、右鍵填色；按兩下編輯）	 (left-click: outline, right-click: fill; double-click to edit)
+加入色票：左鍵加入目前的線條色、右鍵加入填色	Add swatch: left-click adds the current outline color, right-click adds the fill
+色票	Swatches
+圖樣	Pattern
+直角	Elbow
+單位	Unit
+每單位像素	Pixels per unit
+小數	Decimals
+顯示尺規 (Ctrl+Alt+R)	Show Rulers (Ctrl+Alt+R)
+顯示格線 (Ctrl+')	Show Grid (Ctrl+')
+貼齊格線	Snap to Grid
+貼齊參考線	Snap to Guides
+格線間距…	Grid Spacing…
+清除參考線	Clear Guides
+格線間距	Grid Spacing
+間距（照片像素）	Spacing (photo pixels)
+參考線：{0} 像素	Guide: {0} px
+之後畫的線條用「{0}」寬度。	Lines you draw next use the "{0}" width.
+寬度工具：在線條上按住往外拖。	Width Tool: press on a line and drag outward.
+寬度：{0}%	Width: {0}%
+條紋	Stripes
+棋盤	Checkerboard
+斜格	Crosshatch
+波浪	Waves
+色票 {0}	Swatch {0}
+已加入色票：改色票的顏色時，用到它的物件一起變（按兩下色票改顏色、名稱或刪除）。	Swatch added: change its color and every object using it changes too (double-click the swatch to change its color or name, or delete it).
+「{0}」：{1} 個物件	"{0}": {1} objects
+改顏色…	Change Color…
+改名稱…	Rename…
+色票名稱	Swatch Name
+刪除色票	Delete Swatch
+寬度工具：在線條上按住往外拖讓那裡變粗、往內拖變細；Alt＋點菱形刪掉控制點。上方可以套用寬度樣式。	Width Tool: press on a line and drag outward to thicken it there, inward to thin it; Alt+click a diamond to remove that point. Width styles are available above.
+尺寸線	Dimension Line
+從一點拖到另一點量距離，標上長度（同 CorelDRAW 的尺度工具）；拖中間的黃點把尺寸線移開。	Drag from one point to another to measure and label the distance (like CorelDRAW's Dimension tools); drag the yellow handle in the middle to move the line away.
+上方可以選平行、水平、垂直，單位（像素、公釐、公分、公尺、英吋）和小數位數；文字欄填「寬 {0}」可以自訂標籤。	Above you can choose aligned, horizontal or vertical, the unit (px, mm, cm, m, in) and decimals; type e.g. "Width {0}" as the text for a custom label.
+連接線	Connector
+從一個物件拖到另一個物件：兩端連上之後，移動物件時線會跟著（畫流程圖用）。	Drag from one object to another: once both ends are attached, the line follows when the objects move (for flowcharts).
+上方可以選直線或直角；拖曳選取的連接線兩端可以改連到別的物件，放在空白處就是自由的端點。	Choose straight or elbow above; drag either end of a selected connector onto another object to reattach it, or onto empty space for a free end.
+在線條上按住往外拖讓那裡變粗、往內拖變細（同 Illustrator 的寬度工具）；菱形是控制點，Alt＋點刪掉。	Press on a line and drag outward to thicken it there, inward to thin it (like Illustrator's Width tool); diamonds are width points, Alt+click removes one.
+上方可以一次套用寬度樣式：尾端變尖、兩端尖、中間粗、毛筆…；沒有選取時給之後畫的線。	Apply a width style in one go above: taper end, taper both, thick middle, brush…; with nothing selected it applies to lines you draw next.
+寬度樣式	Width Style
+套到選取的線條：均勻、尾端變尖、起點變尖、兩端尖、中間粗、中間細、毛筆、水滴。	Applies to the selected lines: uniform, taper end, taper start, taper both, thick middle, thin middle, brush, teardrop.
+填色方式選「圖樣」時的花樣：條紋、圓點、棋盤、格線、斜格、磚牆、波浪、菱形，或紋理筆的材質。	The pattern used when the fill type is "Pattern": stripes, dots, checkerboard, grid, crosshatch, bricks, waves, diamonds, or a Texture-brush material.
+填色是底色、第二色是花樣的顏色；圖形移動時圖樣跟著。	The fill is the background and the second color is the pattern color; the pattern moves with the shape.
+圖樣大小	Pattern Size
+一格花樣的大小（照片像素）。	Size of one pattern tile (photo pixels).
+圖樣角度	Pattern Angle
+花樣轉幾度。	Rotation of the pattern in degrees.
+尺寸線方向	Dimension Direction
+平行：沿兩點量；水平：只量左右距離；垂直：只量上下距離。	Aligned: measures along the two points; Horizontal: only the left-right distance; Vertical: only the up-down distance.
+標籤的單位。不是像素時，填「每單位像素」換算（預設 96 dpi：1 公分 ＝ 37.8 像素）。	The label's unit. For units other than pixels, set "Pixels per unit" for the conversion (default 96 dpi: 1 cm = 37.8 px).
+小數位數	Decimal Places
+標籤的數字顯示到小數第幾位。	How many decimal places the label shows.
+連接線樣式	Connector Style
+直線：兩個物件中心的連線（切在物件邊上）；直角：水平、垂直轉彎。	Straight: the line between the two objects' centers (cut at their edges); Elbow: turns horizontally and vertically.
+均勻	Uniform
+尾端變尖	Taper End
+起點變尖	Taper Start
+兩端尖	Taper Both
+中間粗	Thick Middle
+中間細	Thin Middle

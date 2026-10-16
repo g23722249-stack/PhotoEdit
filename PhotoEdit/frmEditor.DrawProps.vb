@@ -131,6 +131,18 @@ Partial Friend Class frmEditor
             _propBar.Controls.Add(lbl)
             _propBar.Controls.Add(tb)
         Next
+        ' 鏡射（同 CorelDRAW 屬性列的水平鏡射、垂直鏡射）
+        For Each m In {(True, "draw.prop.mirrorh", Lang.T("水平鏡射")), (False, "draw.prop.mirrorv", Lang.T("垂直鏡射"))}
+            Dim horizontal = m.Item1
+            Dim b = MakeButton("", m.Item2)
+            b.Size = New Size(28, 28)
+            b.Margin = New Padding(If(horizontal, 6, 0), 0, 2, 0)
+            b.AccessibleName = m.Item3
+            AddHandler b.Paint, Sub(s, e) PaintMirrorGlyph(e.Graphics, DirectCast(s, Button), horizontal)
+            AddHandler b.Click, Sub() MirrorSelected(horizontal)
+            _propBar.Controls.Add(b)
+            If horizontal Then _btnMirrorH = b Else _btnMirrorV = b
+        Next
         _propBar.Visible = False
         Return _propBar
     End Function
@@ -180,8 +192,13 @@ Partial Friend Class frmEditor
     End Sub
 
     ''' <summary>屬性列跟著選取：選取工具選了東西時顯示（提示文字讓出位置）。</summary>
+    Private _btnMirrorH As Button, _btnMirrorV As Button
+
     Private Sub UpdatePropBar(Optional force As Boolean = False)
         If _propBoxes.Count = 0 Then Return
+        UpdateShapeParamBar() ' 邊數、圈數…（見 frmEditor.DrawBatch4.vb）
+        UpdateTouchBar() ' 修飾筆刷（見 frmEditor.DrawBatch5.vb）
+        UpdateWidthBar() : UpdatePatternBar() ' 寬度工具、圖樣填色（見 frmEditor.DrawBatch6.vb）
         Dim idx = If(_drawStrip.SelectedTool = DrawIcons.SelectTool AndAlso Not _builderOn AndAlso _photo IsNot Nothing,
                      SelectedIndices().Where(Function(i) _recipe.Drawings(i).Shape <> DrawShape.FillLayer).ToList(), New List(Of Integer)())
         Dim b = If(idx.Count > 0, DrawGeometry.GroupBounds(idx.Select(Function(i) _recipe.Drawings(i))), RectangleF.Empty)

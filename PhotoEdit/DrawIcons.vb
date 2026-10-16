@@ -34,6 +34,12 @@ Friend Module DrawIcons
     Public Const ShadowTool As Integer = -20
     Public Const TransparencyTool As Integer = -21
     Public Const EnvelopeTool As Integer = -22
+    ''' <summary>屬性吸管（吸管工具的第二個）：吸取一個圖形的外觀，套到其他圖形。</summary>
+    Public Const AttrDropperTool As Integer = -23
+    ' 向量修飾筆刷：塗抹、轉動、吸引、排斥、粗糙、平滑（模式在上方選）
+    Public Const TouchUpTool As Integer = -24
+    ' 可變寬度：在線上拖曳讓那裡變粗變細（同 Illustrator 的寬度工具）
+    Public Const WidthTool As Integer = -25
 
     ''' <summary>點陣工具的變化（實際上是「直接繪製」）：橡皮擦、仿製、修復、塗抹、混色、模糊、銳利化、加亮、加深、海綿。</summary>
     Public Function IsRasterVariant(tool As Integer) As Boolean
@@ -85,6 +91,9 @@ Friend Module DrawIcons
             Case ShadowTool : Return Lang.T("陰影")
             Case TransparencyTool : Return Lang.T("透明度")
             Case EnvelopeTool : Return Lang.T("封套")
+            Case AttrDropperTool : Return Lang.T("屬性吸管")
+            Case TouchUpTool : Return Lang.T("修飾筆刷")
+            Case WidthTool : Return Lang.T("寬度工具")
             Case CInt(DrawShape.Raster) : Return Lang.T("筆刷")
         End Select
         Dim b = BrushOf(tool)
@@ -117,6 +126,9 @@ Friend Module DrawIcons
             Case ShadowTool : Return "draw.tool.shadow"
             Case TransparencyTool : Return "draw.tool.fade"
             Case EnvelopeTool : Return "draw.tool.envelope"
+            Case AttrDropperTool : Return "draw.tool.attrdropper"
+            Case TouchUpTool : Return "draw.tool.touchup"
+            Case WidthTool : Return "draw.tool.width"
         End Select
         Return "draw.tool." & tool
     End Function
@@ -150,6 +162,16 @@ Friend Module DrawIcons
                         g.DrawEllipse(pen, 10.6F, 9.6F, 2.8F, 2.8F)
                     Case DrawShape.Line
                         Dot(g, pen, 4, 19, 1.6F) : Dot(g, pen, 20, 5, 1.6F)
+                    Case DrawShape.Dimension
+                        Using br As New SolidBrush(color)
+                            g.FillPolygon(br, {New PointF(4.5F, 15), New PointF(8, 13), New PointF(8, 17)})
+                            g.FillPolygon(br, {New PointF(19.5F, 15), New PointF(16, 13), New PointF(16, 17)})
+                            g.FillRectangle(br, 9, 9.5F, 6, 2)
+                        End Using
+                    Case DrawShape.Connector
+                        Using br As New SolidBrush(System.Drawing.Color.FromArgb(110, color))
+                            g.FillRectangle(br, 2.5F, 3, 7, 6) : g.FillRectangle(br, 14.5F, 15, 7, 6)
+                        End Using
                     Case DrawShape.Bezier
                         Using dash As New Pen(color, 1.0F) With {.DashPattern = {2, 2}}
                             g.DrawLine(dash, 4, 18, 8, 7)
@@ -237,6 +259,35 @@ Friend Module DrawIcons
                     g.DrawEllipse(pen, 3.5F, 3.5F, 12, 12)
                     g.DrawLine(thick, 14.5F, 14.5F, 20.5F, 20.5F)
                     g.DrawLine(pen, 6.5F, 9.5F, 12.5F, 9.5F) : g.DrawLine(pen, 9.5F, 6.5F, 9.5F, 12.5F)
+                Case WidthTool
+                    ' 中間粗、兩端尖的線，粗的地方一個控制點與往外的箭頭
+                    Using lens As New GraphicsPath()
+                        lens.AddBezier(2.5F, 15, 8, 9.5F, 16, 9.5F, 21.5F, 15)
+                        lens.AddBezier(21.5F, 15, 16, 18.5F, 8, 18.5F, 2.5F, 15)
+                        g.FillPath(soft, lens) : g.DrawPath(pen, lens)
+                    End Using
+                    g.DrawLine(pen, 12, 10.5F, 12, 3)
+                    g.DrawLine(pen, 12, 3, 9.8F, 5.4F) : g.DrawLine(pen, 12, 3, 14.2F, 5.4F)
+                    g.FillPolygon(br, {New PointF(12, 8.4F), New PointF(14, 10.6F), New PointF(12, 12.8F), New PointF(10, 10.6F)})
+                Case TouchUpTool
+                    ' 一條被推彎的線，旁邊一個筆刷圓
+                    Using wave As New GraphicsPath()
+                        wave.AddBezier(2.5F, 19, 7, 19, 8, 12.5F, 12, 12.5F)
+                        wave.AddBezier(12, 12.5F, 16, 12.5F, 15, 19, 21.5F, 19)
+                        g.DrawPath(pen, wave)
+                    End Using
+                    g.FillEllipse(soft, 8, 3, 9, 9)
+                    g.DrawEllipse(pen, 8, 3, 9, 9)
+                    g.DrawLine(pen, 12.5F, 9.5F, 12.5F, 11.5F)
+                Case AttrDropperTool
+                    ' 吸管加上右下角的小色塊（線條＋填色），表示吸的是外觀
+                    g.DrawLine(pen, 3, 17, 9, 11)
+                    Using body As New Pen(color, 3.6F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
+                        g.DrawLine(body, 8.5F, 11.5F, 12.5F, 7.5F)
+                    End Using
+                    g.FillEllipse(br, 12, 2.5F, 5, 5)
+                    g.FillRectangle(soft, 13.5F, 13.5F, 8, 8)
+                    g.DrawRectangle(pen, 13.5F, 13.5F, 8, 8)
                 Case EyedropperTool
                     g.DrawLine(pen, 4, 20, 12, 12)
                     Using body As New Pen(color, 4.2F) With {.StartCap = LineCap.Round, .EndCap = LineCap.Round}
@@ -399,16 +450,32 @@ Friend Module DrawIcons
                 p.AddBezier(4, 18, 7, 4, 17, 20, 20, 6)
             Case DrawShape.Polygon
                 p.AddPolygon({New PointF(12, 3), New PointF(20.5F, 9.2F), New PointF(17.2F, 19), New PointF(6.8F, 19), New PointF(3.5F, 9.2F)})
+            Case DrawShape.Dimension
+                ' 兩條延伸線＋中間的尺寸線（箭頭在 DrawTool 畫）
+                p.AddLine(3.5F, 7, 3.5F, 19) : p.StartFigure()
+                p.AddLine(20.5F, 7, 20.5F, 19) : p.StartFigure()
+                p.AddLine(5, 15, 19, 15)
+            Case DrawShape.Connector
+                ' 兩個方塊之間一條直角線
+                p.AddRectangle(New RectangleF(2.5F, 3, 7, 6)) : p.StartFigure()
+                p.AddRectangle(New RectangleF(14.5F, 15, 7, 6)) : p.StartFigure()
+                p.AddLine(9.5F, 6, 12, 6) : p.AddLine(12, 6, 12, 18) : p.AddLine(12, 18, 14.5F, 18)
             Case Else
                 Dim layer As New DrawLayer With {.Shape = CType(tool, DrawShape), .X = 12, .Y = 12, .W = 18, .H = 13, .Seed = 3}
                 Select Case layer.Shape
                     Case DrawShape.Rectangle, DrawShape.RoundRect : layer.W = 16 : layer.H = 12
                     Case DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Heart : layer.W = 19 : layer.H = 19
                     Case DrawShape.Lightning : layer.W = 13 : layer.H = 20
+                    Case DrawShape.RegularPolygon, DrawShape.Star, DrawShape.Arc : layer.W = 19 : layer.H = 19
+                    Case DrawShape.Spiral : layer.W = 19 : layer.H = 19
+                    Case DrawShape.Grid : layer.W = 18 : layer.H = 16
                     Case DrawShape.Arrow : layer.H = 14
                 End Select
                 DrawGeometry.ApplyDefaults(layer)
                 If layer.Shape = DrawShape.RoundRect Then layer.Param1 = 0.33
+                If layer.Shape = DrawShape.Spiral Then layer.Param1 = 2.5
+                If layer.Shape = DrawShape.Grid Then layer.Sides = 3 : layer.Rows = 3
+                If layer.Shape = DrawShape.Star Then layer.Sides = 7 : layer.Param1 = 0.5
                 If DrawGeometry.IsCallout(layer.Shape) Then
                     layer.Y = 10 : layer.W = 19 : layer.H = 12.5
                     layer.TailX = -6 : layer.TailY = 10.5

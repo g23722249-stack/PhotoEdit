@@ -44,6 +44,10 @@ Friend Class DrawToolStrip
     Public Event SwapColors()
     Public Event NoFill()
     Public Event ResetColors()
+    ''' <summary>文件色票：點（0 線條、1 填色）、「＋」新增、按兩下編輯。</summary>
+    Public Event SwatchPicked(target As Integer, id As String)
+    Public Event SwatchAdd(target As Integer)
+    Public Event SwatchEdit(id As String)
 
     ''' <summary>按鈕換工具時更新說明文字（frmEditor 指定）。</summary>
     Public Property HelpSetter As Action(Of Control, String)
@@ -55,17 +59,17 @@ Friend Class DrawToolStrip
         AutoScroll = True
         SetStyle(ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
         Dim S = Function(x As DrawShape) CInt(x)
-        AddGroup(Lang.T("共用"), {V(DrawIcons.SelectTool), V(DrawIcons.PanTool), V(DrawIcons.ZoomTool), V(DrawIcons.EyedropperTool)})
+        AddGroup(Lang.T("共用"), {V(DrawIcons.SelectTool), V(DrawIcons.PanTool), V(DrawIcons.ZoomTool), V(DrawIcons.EyedropperTool, DrawIcons.AttrDropperTool)})
         AddGroup(Lang.T("點陣"), {V(S(DrawShape.Raster)), V(DrawIcons.EraserTool), V(S(DrawShape.Bucket)), V(S(DrawShape.Gradient)),
                           V(DrawIcons.CloneTool, DrawIcons.HealTool), V(DrawIcons.SmudgeTool, DrawIcons.MixerTool),
                           V(DrawIcons.BlurTool, DrawIcons.SharpenTool),
                           V(DrawIcons.DodgeTool, DrawIcons.BurnTool, DrawIcons.SpongeMinusTool, DrawIcons.SpongePlusTool)})
-        AddGroup(Lang.T("向量"), {V(DrawIcons.NodeTool), V(S(DrawShape.Path)), V(S(DrawShape.Freehand)), V(S(DrawShape.Line), S(DrawShape.Bezier)),
-                          V(S(DrawShape.Rectangle), S(DrawShape.RoundRect)), V(S(DrawShape.Ellipse)),
-                          V(S(DrawShape.Polygon), S(DrawShape.Star4), S(DrawShape.Star5), S(DrawShape.Star6)),
+        AddGroup(Lang.T("向量"), {V(DrawIcons.NodeTool), V(S(DrawShape.Path)), V(S(DrawShape.Freehand)), V(S(DrawShape.Line), S(DrawShape.Bezier), S(DrawShape.Connector), S(DrawShape.Dimension)),
+                          V(S(DrawShape.Rectangle), S(DrawShape.RoundRect)), V(S(DrawShape.Ellipse), S(DrawShape.Arc)),
+                          V(S(DrawShape.RegularPolygon), S(DrawShape.Polygon), S(DrawShape.Star), S(DrawShape.Star4), S(DrawShape.Star5), S(DrawShape.Star6), S(DrawShape.Spiral), S(DrawShape.Grid)),
                           V(S(DrawShape.Arrow), S(DrawShape.Heart), S(DrawShape.Lightning)),
                           V(S(DrawShape.CalloutRect), S(DrawShape.CalloutEllipse), S(DrawShape.CalloutCloud), S(DrawShape.CalloutBubble), S(DrawShape.CalloutShout)),
-                          V(S(DrawShape.Text)), V(DrawIcons.ShapeBuilderTool, DrawIcons.SmartFillTool), V(DrawIcons.ShadowTool, DrawIcons.TransparencyTool, DrawIcons.EnvelopeTool), V(DrawIcons.KnifeTool)})
+                          V(S(DrawShape.Text)), V(DrawIcons.ShapeBuilderTool, DrawIcons.SmartFillTool), V(DrawIcons.ShadowTool, DrawIcons.TransparencyTool, DrawIcons.EnvelopeTool), V(DrawIcons.KnifeTool), V(DrawIcons.TouchUpTool, DrawIcons.WidthTool)})
         Dim y = 4
         For gi = 0 To _groups.Count - 1
             Dim grp = _groups(gi)
@@ -83,8 +87,29 @@ Friend Class DrawToolStrip
         AddHandler _colors.Swap, Sub() RaiseEvent SwapColors()
         AddHandler _colors.NoFill, Sub() RaiseEvent NoFill()
         AddHandler _colors.Reset, Sub() RaiseEvent ResetColors()
+        AddHandler _colors.SwatchPicked, Sub(t, id) RaiseEvent SwatchPicked(t, id)
+        AddHandler _colors.SwatchAdd, Sub(t) RaiseEvent SwatchAdd(t)
+        AddHandler _colors.SwatchEdit, Sub(id) RaiseEvent SwatchEdit(id)
+        AddHandler _colors.HeightChanged, Sub()
+                                              _colors.Height = _colors.PreferredHeight
+                                              OnResize(EventArgs.Empty)
+                                          End Sub
         Controls.Add(_colors)
         UpdateButtons()
+    End Sub
+
+    Private ReadOnly Property BaseWidth As Integer
+        Get
+            Return Gap * 3 + ButtonSize * 2 + 8
+        End Get
+    End Property
+
+    ' 視窗太矮、要捲動時：加寬一條捲軸的寬度，第二欄的按鈕才不會被捲軸蓋住
+    Protected Overrides Sub OnResize(e As EventArgs)
+        MyBase.OnResize(e)
+        Dim content = _colorTop + HeaderH + _colors.PreferredHeight + Padding.Vertical + 4
+        Dim w = BaseWidth + If(content > Height, SystemInformation.VerticalScrollBarWidth, 0)
+        If Width <> w Then Width = w
     End Sub
 
     Private Shared Function V(ParamArray tools As Integer()) As Integer()
@@ -181,6 +206,10 @@ Friend Class DrawToolStrip
     ''' <summary>色彩面板顯示的顏色（跟右側面板的線條色、填色同步）。</summary>
     Public Sub SetColors(stroke As Integer, fill As Integer, filled As Boolean)
         _colors.SetColors(stroke, fill, filled)
+    End Sub
+
+    Public Sub SetSwatches(swatches As IEnumerable(Of PhotoEdit.ColorSwatch))
+        _colors.SetSwatches(swatches)
     End Sub
 
     Public Sub SetRecent(colors As IEnumerable(Of Color))
@@ -361,6 +390,12 @@ Friend Class DrawToolStrip
         Public Event Swap()
         Public Event NoFill()
         Public Event Reset()
+        Public Event SwatchPicked(target As Integer, id As String)
+        Public Event SwatchAdd(target As Integer)
+        Public Event SwatchEdit(id As String)
+        Private _swatches As PhotoEdit.ColorSwatch() = {}
+        Private ReadOnly _tip As New ToolTip()
+        Private _tipText As String = ""
 
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
@@ -370,7 +405,7 @@ Friend Class DrawToolStrip
 
         Public ReadOnly Property PreferredHeight As Integer
             Get
-                Return 48 + 4 * (Cell + CellGap) + 16 + 2 * (Cell + CellGap) + 2
+                Return 48 + 4 * (Cell + CellGap) + 16 + 2 * (Cell + CellGap) + 16 + SwatchRows * (Cell + CellGap) + 2
             End Get
         End Property
 
@@ -383,6 +418,56 @@ Friend Class DrawToolStrip
         Public Sub SetRecent(colors As IEnumerable(Of Color))
             _recent = colors.Take(8).Select(Function(c) c.ToArgb()).ToArray()
             Invalidate()
+        End Sub
+
+        ''' <summary>文件色票：最多顯示 7 個，第 8 格是「＋」。</summary>
+        Public Sub SetSwatches(swatches As IEnumerable(Of PhotoEdit.ColorSwatch))
+            Dim arr = swatches.Take(7).Select(Function(s) s.Clone()).ToArray()
+            If arr.Length = _swatches.Length AndAlso arr.Select(Function(s, i) s.Id = _swatches(i).Id AndAlso s.Argb = _swatches(i).Argb AndAlso s.Name = _swatches(i).Name).All(Function(x) x) Then Return
+            Dim rows = SwatchRows
+            _swatches = arr
+            If SwatchRows <> rows Then RaiseEvent HeightChanged()
+            Invalidate()
+        End Sub
+
+        ''' <summary>色票一列 4 格（3 個色票＋「＋」）；4 個以上才變兩列，平常工具列不用捲動。</summary>
+        Private ReadOnly Property SwatchRows As Integer
+            Get
+                Return If(_swatches.Length >= 4, 2, 1)
+            End Get
+        End Property
+
+        Public Event HeightChanged()
+
+        Private ReadOnly Property SwatchTop As Integer
+            Get
+                Return RecentTop + 2 * (Cell + CellGap) + 16
+            End Get
+        End Property
+
+        ''' <summary>點到的色票格：色票的索引，「＋」是 −2，沒有是 −1。</summary>
+        Private Function SwatchAt(p As Point) As Integer
+            For i = 0 To _swatches.Length - 1
+                If CellRect(i, SwatchTop).Contains(p) Then Return i
+            Next
+            If CellRect(_swatches.Length, SwatchTop).Contains(p) Then Return -2
+            Return -1
+        End Function
+
+        Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+            MyBase.OnMouseMove(e)
+            Dim k = SwatchAt(e.Location)
+            Dim text = If(k >= 0, _swatches(k).Name & Lang.T("（左鍵線條、右鍵填色；按兩下編輯）"), If(k = -2, Lang.T("加入色票：左鍵加入目前的線條色、右鍵加入填色"), ""))
+            If text <> _tipText Then
+                _tipText = text
+                _tip.SetToolTip(Me, text)
+            End If
+        End Sub
+
+        Protected Overrides Sub OnMouseDoubleClick(e As MouseEventArgs)
+            MyBase.OnMouseDoubleClick(e)
+            Dim k = SwatchAt(e.Location)
+            If k >= 0 Then RaiseEvent SwatchEdit(_swatches(k).Id)
         End Sub
 
         ' 版面（相對這個控制項）
@@ -491,6 +576,25 @@ Friend Class DrawToolStrip
                         End Using
                     End If
                 Next
+                ' 文件色票（全域色）：右下角一個小三角表示「連動」
+                Using f As New Font(Font.FontFamily, 7.5F)
+                    TextRenderer.DrawText(g, Lang.T("色票"), f, New Point(GridLeft - 2, SwatchTop - 15), ThemeManager.Fore(Color.FromArgb(110, 116, 126)))
+                End Using
+                For i = 0 To _swatches.Length - 1
+                    Dim r = CellRect(i, SwatchTop)
+                    DrawCell(g, pen, r, _swatches(i).Argb)
+                    Using wb As New SolidBrush(Color.White)
+                        g.FillPolygon(wb, {New Point(r.Right, r.Bottom - 5), New Point(r.Right, r.Bottom), New Point(r.Right - 5, r.Bottom)})
+                    End Using
+                Next
+                Dim plus = CellRect(_swatches.Length, SwatchTop)
+                Using dash As New Pen(ThemeManager.Line(Color.FromArgb(150, 156, 166))) With {.DashStyle = DashStyle.Dot}
+                    g.DrawRectangle(dash, plus)
+                End Using
+                Using pp As New Pen(ThemeManager.Fore(Color.FromArgb(90, 96, 106)), 1.4F)
+                    g.DrawLine(pp, plus.X + 3, plus.Y + plus.Height / 2.0F, plus.Right - 3, plus.Y + plus.Height / 2.0F)
+                    g.DrawLine(pp, plus.X + plus.Width / 2.0F, plus.Y + 3, plus.X + plus.Width / 2.0F, plus.Bottom - 3)
+                End Using
             End Using
         End Sub
 
@@ -514,6 +618,16 @@ Friend Class DrawToolStrip
 
         Protected Overrides Sub OnMouseDown(e As MouseEventArgs)
             MyBase.OnMouseDown(e)
+            Dim sk = SwatchAt(e.Location)
+            If sk >= 0 AndAlso e.Clicks = 1 Then
+                RaiseEvent SwatchPicked(If(e.Button = MouseButtons.Right, 1, 0), _swatches(sk).Id)
+                Return
+            ElseIf sk = -2 Then
+                RaiseEvent SwatchAdd(If(e.Button = MouseButtons.Right, 1, 0))
+                Return
+            ElseIf sk >= 0 Then
+                Return
+            End If
             Dim c = CellAt(e.Location)
             If c.HasValue Then
                 RaiseEvent Picked(If(e.Button = MouseButtons.Right, 1, 0), c.Value)

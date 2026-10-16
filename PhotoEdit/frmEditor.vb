@@ -174,6 +174,8 @@ Partial Friend Class frmEditor
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("revert", Lang.T("回復原圖")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
+        fileMenu.AddItem(Item("settings", Lang.T("設定… (Ctrl+,)")))
+        fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("exit", Lang.T("結束")))
 
         Dim editMenu = root.AddItem(New Aqua.MenuItem(Lang.T("編輯")))
@@ -183,13 +185,17 @@ Partial Friend Class frmEditor
         editMenu.AddItem(Item("cut", Lang.T("剪下選取區 (Ctrl+X)")))
         editMenu.AddItem(Item("copy", Lang.T("複製 (Ctrl+C)")))
         editMenu.AddItem(Item("pasteobject", Lang.T("貼成物件 (Ctrl+Alt+V)")))
+        editMenu.AddItem(Item("duplicate", Lang.T("再製 (Ctrl+J)")))
+        editMenu.AddItem(Item("steprepeat", Lang.T("步驟與重複…")))
+        editMenu.AddItem(Item("contour", Lang.T("輪廓圖…")))
+        editMenu.AddItem(Item("distort", Lang.T("變形效果…")))
+        editMenu.AddItem(Item("extrude", Lang.T("立體化…")))
+        editMenu.AddItem(Item("simplify", Lang.T("簡化路徑…")))
         _pasteImageItem = editMenu.AddItem(Item("pasteimage", Lang.T("貼成新影像 (Ctrl+V)")))
         editMenu.AddItem(New Aqua.MenuItem("-"))
         editMenu.AddItem(Item("copyadj", Lang.T("複製調整 (Ctrl+Shift+C)")))
         editMenu.AddItem(Item("pasteadj", Lang.T("貼上調整 (Ctrl+Shift+V)")))
         editMenu.AddItem(Item("resetadj", Lang.T("重設調整")))
-        editMenu.AddItem(New Aqua.MenuItem("-"))
-        editMenu.AddItem(Item("settings", Lang.T("設定… (Ctrl+,)")))
 
         Dim imageMenu = root.AddItem(New Aqua.MenuItem(Lang.T("影像")))
         imageMenu.AddItem(Item("rotl", Lang.T("向左轉 (Ctrl+L)")))
@@ -231,6 +237,7 @@ Partial Friend Class frmEditor
         viewMenu.AddItem(New Aqua.MenuItem("-"))
         viewMenu.AddItem(Item("reference", Lang.T("參考圖… (Ctrl+Shift+R)")))
         viewMenu.AddItem(Item("fullscreen", Lang.T("全螢幕繪圖 (F11)")))
+        AddLayoutMenu(viewMenu) ' 尺規、格線、貼齊、參考線（見 frmEditor.DrawBatch6.vb）
 
         BuildWindowMenu(root) ' 多文件才有
 
@@ -266,6 +273,7 @@ Partial Friend Class frmEditor
             Case "trace" : ShowTrace()
             Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
+            Case "settings" : OpenSettings() ' 沒開圖片也能設定
             Case "togglehelp"
                 _appSettings.ShowHelp = Not _appSettings.ShowHelp
                 _appSettings.Save()
@@ -281,6 +289,9 @@ Partial Friend Class frmEditor
         End Select
         If _photo Is Nothing Then Return
         If RunSelectCommand(name) Then Return
+        If RunBatch4Command(name) Then Return ' 再製、步驟與重複、鏡射、外框轉物件（見 frmEditor.DrawBatch4.vb）
+        If RunBatch5Command(name) Then Return ' 輪廓圖、變形效果、立體化、簡化路徑（見 frmEditor.DrawBatch5.vb）
+        If RunBatch6Command(name) Then Return ' 尺規、格線、參考線（見 frmEditor.DrawBatch6.vb）
 
         Select Case name
             Case "save" : SaveDocument()
@@ -304,7 +315,6 @@ Partial Friend Class frmEditor
             Case "pasteadj"
                 If _copiedAdjustments IsNot Nothing Then ApplyChange(Sub(r) r.CopyAdjustmentsFrom(_copiedAdjustments))
             Case "resetadj" : ApplyChange(Sub(r) r.ResetAdjustments())
-            Case "settings" : OpenSettings()
             Case "rotl"
                 If _cropMode Then CropRotate(False) : Return
                 ApplyChange(Sub(r) r.RotateLeft())
@@ -481,6 +491,7 @@ Partial Friend Class frmEditor
         Dim before = _recipe.Clone()
         mutate(_recipe)
         DrawGeometry.SyncPathText(_recipe) ' 路徑文字跟著它的圖形（同一步復原）
+        DrawGeometry.SyncConnectors(_recipe) ' 連接線跟著兩端的物件（同一步復原）
         If _recipe.Equals(before) Then Return
         _history.Record(before, groupKey)
         OnRecipeChanged()

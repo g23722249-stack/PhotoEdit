@@ -971,6 +971,7 @@ Partial Friend Class PreviewCanvas
     Private Const WM_POINTERUPDATE As Integer = &H245
     Private Const WM_POINTERDOWN As Integer = &H246
     Private Const WM_POINTERUP As Integer = &H247
+    Private Const WM_POINTERCAPTURECHANGED As Integer = &H24C
     Private Const PT_PEN As Integer = 3
     Private Const PEN_MASK_PRESSURE As UInteger = 1
 
@@ -1068,6 +1069,16 @@ Partial Friend Class PreviewCanvas
     Private _penButton As MouseButtons
     Private _penLastDown As Integer
     Private _penLastDownAt As Point
+    ''' <summary>筆最後一個接觸點（畫布座標）：漏掉放開時在這裡收筆，不會連到別處。</summary>
+    Private _penContactAt As Point
+
+    ''' <summary>筆按著但收不到正常的放開：在最後的接觸點補送放開。</summary>
+    Private Sub PenLost()
+        If Not _penDown Then Return
+        _penDown = False
+        OnMouseUp(New MouseEventArgs(_penButton, 1, _penContactAt.X, _penContactAt.Y, 0))
+        Capture = False
+    End Sub
 
     ''' <summary>
     ''' 用工具（繪圖、筆刷、漸層…）時，筆的輸入由畫布自己轉成滑鼠事件，不交給系統：
@@ -1092,6 +1103,12 @@ Partial Friend Class PreviewCanvas
                 m.Result = IntPtr.Zero
                 Return
             End If
+            ' 讀不到筆的資訊、或不再自己處理時，筆還按著就在這裡收筆：
+            ' 之前的筆訊息是自己處理的，系統不會再把這次放開轉成滑鼠放開。漏掉的話，
+            ' 之後筆懸空移動都會被當成還在畫，畫出一條從上次位置連過來的直線。
+            If _penDown AndAlso (m.Msg = WM_POINTERUP OrElse Not TakesPenDirectly) Then PenLost()
+        ElseIf m.Msg = WM_POINTERCAPTURECHANGED Then
+            If _penDown Then PenLost() ' 筆的輸入被別的視窗搶走
         End If
         MyBase.WndProc(m) ' 交給系統轉成滑鼠訊息
     End Sub
@@ -1120,6 +1137,8 @@ Partial Friend Class PreviewCanvas
         Dim p = PointToClient(_penScreenPos)
         Select Case msg
             Case WM_POINTERDOWN
+                If _penDown Then PenLost() ' 上一筆的放開漏掉了：先在上一筆的最後一點收筆
+                _penContactAt = p
                 _penButton = If((info.pointerFlags And POINTER_FLAG_SECONDBUTTON) <> 0, MouseButtons.Right, MouseButtons.Left)
                 _penDown = True
                 Capture = True
@@ -1133,14 +1152,17 @@ Partial Friend Class PreviewCanvas
                 If isDouble Then OnMouseDoubleClick(New MouseEventArgs(_penButton, 2, p.X, p.Y, 0))
             Case WM_POINTERUPDATE
                 If _penDown AndAlso (info.pointerFlags And POINTER_FLAG_INCONTACT) <> 0 Then
+                    _penContactAt = p
                     OnMouseMove(New MouseEventArgs(_penButton, 0, p.X, p.Y, 0))
                 Else
+                    If _penDown Then PenLost() ' 筆已經離開表面卻沒收到放開
                     OnMouseMove(New MouseEventArgs(MouseButtons.None, 0, p.X, p.Y, 0)) ' 筆懸在畫布上：更新游標
                 End If
             Case WM_POINTERUP
                 If Not _penDown Then Return True
                 _penDown = False
-                OnMouseUp(New MouseEventArgs(_penButton, 1, p.X, p.Y, 0))
+                ' 放開的位置用最後的接觸點（放開訊息的位置可能是筆已經抬起後的懸空位置）
+                OnMouseUp(New MouseEventArgs(_penButton, 1, _penContactAt.X, _penContactAt.Y, 0))
                 Capture = False
         End Select
         Return True

@@ -1,6 +1,8 @@
 ﻿Imports PhotoEdit
 ''' <summary>
-''' 「設定」視窗（編輯 → 設定…，Ctrl+,）：外觀配色選淺色或深色，點選後立刻套用到所有視窗並記住。
+''' 「設定」視窗（編輯 → 設定…，Ctrl+,）：分成三個頁籤——
+''' 一般（外觀配色、語言、文件模式）、繪圖筆（筆壓曲線、穩定器、快速工具）、筆畫預覽（快速線條／逐段筆印／真實筆刷）。
+''' 改了立刻存檔；語言與文件模式要重新開啟才生效。
 ''' </summary>
 Friend Class frmSettings
     Inherits Aqua.AquaForm
@@ -12,6 +14,10 @@ Friend Class frmSettings
     Private ReadOnly _runningMdi As Boolean
     Private ReadOnly _sdi As New RadioButton()
     Private ReadOnly _mdiRadio As New RadioButton()
+    Private ReadOnly _tabs As New Aqua.TabControl()
+
+    ''' <summary>頁籤內容的寬度。</summary>
+    Private Const PageW As Integer = 476
 
     Public Sub New(settings As AppSettings, runningMdi As Boolean)
         _settings = settings
@@ -24,128 +30,183 @@ Friend Class frmSettings
         StartPosition = FormStartPosition.CenterParent
         ShowInTaskbar = False
         KeyPreview = True
-        ClientSize = New Size(520, 930)
+        ClientSize = New Size(520, 660)
         Padding = New Padding(16, 23 + 12, 16, 14)
 
-        Dim heading As New Label With {.Text = Lang.T("外觀"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 40, 480, 22)
-        Dim hint As New Label With {.Text = Lang.T("選擇視窗與面板的配色，點一下立刻套用。"), .AutoSize = False, .BackColor = Color.Transparent,
-                                    .ForeColor = Color.FromArgb(105, 110, 120)}
-        hint.SetBounds(20, 64, 480, 22)
-        _light.SetBounds(20, 94, 230, 180)
-        _dark.SetBounds(270, 94, 230, 180)
-        AddHandler _light.Click, Sub() Choose(False)
-        AddHandler _dark.Click, Sub() Choose(True)
+        _tabs.SetBounds(12, 34, 496, 570)
+        Dim general = _tabs.AddTab(Lang.T("一般"))
+        Dim pen = _tabs.AddTab(Lang.T("繪圖筆"))
+        Dim preview = _tabs.AddTab(Lang.T("筆畫預覽"))
+        BuildAppearance(general)
+        BuildLanguage(general)
+        BuildDocumentMode(general)
+        BuildWindowStyle(general)
+        BuildPen(pen)
+        BuildQuickKeys(pen)
+        BuildStrokePreview(preview)
+        _tabs.SelectedIndex = 0
 
         Dim close As New Button With {.Text = Lang.T("關閉"), .UseVisualStyleBackColor = True}
-        close.SetBounds(400, 888, 100, 30)
+        close.SetBounds(400, 616, 100, 30)
         AddHandler close.Click, Sub() Me.Close()
         CancelButton = close
 
-        Controls.AddRange({heading, hint, _light, _dark, close})
-        BuildDocumentMode()
-        BuildPen()
-        BuildQuickKeys()
-        BuildStrokePreview()
-        BuildLanguage()
+        Controls.AddRange({_tabs, close})
+        If Lang.Current = UiLanguage.English Then frmEditor.FitButtonTexts(Me)
         UpdateCards()
         ThemeManager.Attach(Me)
     End Sub
 
+    ''' <summary>頁籤裡的標題與灰色說明。</summary>
+    Private Function Heading(page As Control, text As String, y As Integer) As Label
+        Dim l As New Label With {.Text = text, .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
+                                 .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
+        l.SetBounds(12, y, PageW - 12, 22)
+        page.Controls.Add(l)
+        Return l
+    End Function
+
+    ''' <summary>文字在寬度 w 裡自動換行後的高度。</summary>
+    Private Function TextHeight(text As String, w As Integer) As Integer
+        Return TextRenderer.MeasureText(text, _font, New Size(w, 0), TextFormatFlags.WordBreak).Height + 4
+    End Function
+
+    Private Function Hint(page As Control, text As String, x As Integer, y As Integer, w As Integer, h As Integer) As Label
+        Dim l As New Label With {.Text = text, .AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120)}
+        l.SetBounds(x, y, w, h)
+        page.Controls.Add(l)
+        Return l
+    End Function
+
+    ''' <summary>外觀：淺色或深色，點一下立刻套用到所有視窗。</summary>
+    Private Sub BuildAppearance(page As Control)
+        Heading(page, Lang.T("外觀"), 12)
+        Hint(page, Lang.T("選擇視窗與面板的配色，點一下立刻套用。"), 12, 36, PageW - 12, 22)
+        _light.SetBounds(12, 62, 222, 170)
+        _dark.SetBounds(248, 62, 222, 170)
+        AddHandler _light.Click, Sub() Choose(False)
+        AddHandler _dark.Click, Sub() Choose(True)
+        page.Controls.AddRange({_light, _dark})
+    End Sub
+
     ''' <summary>介面語言：依系統、繁體中文、簡體中文、English（各語言用自己的文字顯示）。改了要重新開啟。</summary>
-    Private Sub BuildLanguage()
-        Dim heading As New Label With {.Text = If(Lang.Current = UiLanguage.English, "Language", Lang.T("語言") & " / Language"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 818, 480, 22)
+    Private Sub BuildLanguage(page As Control)
+        Heading(page, If(Lang.Current = UiLanguage.English, "Language", Lang.T("語言") & " / Language"), 246)
         Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
         combo.Items.AddRange({Lang.T("依照系統語言"), "繁體中文", "简体中文", "English"})
         combo.SelectedIndex = Math.Max(0, Math.Min(3, _settings.Language))
-        combo.SetBounds(24, 844, 220, 26)
-        Dim hint As New Label With {.Text = Lang.T("改了語言要重新開啟 PhotoEdit 才會生效。"), .AutoSize = False, .BackColor = Color.Transparent,
-                                    .ForeColor = Color.FromArgb(105, 110, 120)}
-        hint.SetBounds(252, 847, 260, 40)
+        combo.SetBounds(16, 272, 220, 26)
+        Hint(page, Lang.T("改了語言要重新開啟 PhotoEdit 才會生效。"), 244, 275, PageW - 244, 40)
         AddHandler combo.SelectedIndexChanged, Sub()
                                                    If combo.SelectedIndex < 0 OrElse combo.SelectedIndex = _settings.Language Then Return
                                                    _settings.Language = combo.SelectedIndex
                                                    _settings.Save()
                                                End Sub
-        Controls.AddRange({heading, combo, hint})
+        page.Controls.Add(combo)
     End Sub
 
-    ''' <summary>筆畫預覽：畫的時候看到的線（真實筆刷／快速線條；逐段筆印保留給之後）。</summary>
-    Private Sub BuildStrokePreview()
-        Dim heading As New Label With {.Text = Lang.T("筆畫預覽（畫的時候看到的線）"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 708, 480, 22)
-        Controls.Add(heading)
-        Dim options = {(0, Lang.T("真實筆刷：邊畫邊用筆刷引擎重算，看到的就是放開後的樣子（建議）")),
-                       (1, Lang.T("快速線條：只畫一條依筆壓變粗細的線（舊電腦、很大的筆刷比較順）")),
-                       (2, Lang.T("逐段筆印：像 Painter 一樣只算新增的筆印（之後提供）"))}
-        Dim y = 734
+    ''' <summary>視窗風格（Aqua.Net 的標題列）：macOS（按鈕在左、選單列藍蘋果）或 KDE Plasma（按鈕在右、小鳥）。點了立刻套用到所有視窗。</summary>
+    Private Sub BuildWindowStyle(page As Control)
+        Heading(page, Lang.T("視窗風格"), 440)
+        Dim options = {(0, Lang.T("macOS（按鈕在左）")), (1, Lang.T("KDE Plasma（按鈕在右）"))}
+        ' 選項放在自己的面板：和「文件模式」在同一個容器的話，Windows 會把它們當成同一組，選一個會取消另一組的勾
+        Dim group As New Panel With {.BackColor = Color.Transparent}
+        group.SetBounds(0, 464, PageW, 30)
+        page.Controls.Add(group)
+        Dim x = 16
         For Each o In options
             Dim value = o.Item1
             Dim rb As New RadioButton With {.Text = o.Item2, .AutoSize = False, .BackColor = Color.Transparent,
-                                            .Checked = _settings.StrokePreview = value, .Enabled = value <> 2}
-            rb.SetBounds(24, y, 480, 24)
+                                            .Checked = _settings.WindowStyle = value}
+            rb.SetBounds(x, 2, 220, 26)
             AddHandler rb.CheckedChanged, Sub()
                                               If Not rb.Checked Then Return
-                                              _settings.StrokePreview = value
+                                              _settings.WindowStyle = value
                                               _settings.Save()
+                                              Aqua.FormChrome.DefaultStyle = If(value = 1, Aqua.ChromeStyle.KdePlasma, Aqua.ChromeStyle.MacOS)
                                           End Sub
-            Controls.Add(rb)
-            y += 26
+            group.Controls.Add(rb)
+            x += 228
         Next
+        Hint(page, Lang.T("標題列的最小化、最大化、關閉按鈕與選單列的標誌；點了立刻套用。"), 16, 494, PageW - 16, 40)
     End Sub
 
     ''' <summary>文件模式：單一文件（SDI）或多文件（MDI）。改了要重開程式才生效，關閉設定時提示。</summary>
-    Private Sub BuildDocumentMode()
-        Dim heading As New Label With {.Text = Lang.T("文件模式"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 290, 480, 22)
+    Private Sub BuildDocumentMode(page As Control)
+        Heading(page, Lang.T("文件模式"), 322)
         _sdi.Text = Lang.T("單一文件（SDI）：一次編輯一張照片，開新照片會取代目前的")
         _mdiRadio.Text = Lang.T("多文件（MDI）：同時開多張畫布，分頁或子視窗顯示")
         For Each rb In {_sdi, _mdiRadio}
             rb.AutoSize = False
             rb.BackColor = Color.Transparent
         Next
-        _sdi.SetBounds(24, 316, 480, 26)
-        _mdiRadio.SetBounds(24, 344, 480, 26)
+        _sdi.SetBounds(16, 348, PageW - 16, 26)
+        _mdiRadio.SetBounds(16, 376, PageW - 16, 26)
         _sdi.Checked = Not _settings.Mdi
         _mdiRadio.Checked = _settings.Mdi
         AddHandler _mdiRadio.CheckedChanged, Sub()
                                                  _settings.Mdi = _mdiRadio.Checked
                                                  _settings.Save()
                                              End Sub
-        Dim hint As New Label With {.Text = Lang.T("改了文件模式要重新開啟 PhotoEdit 才會生效。"), .AutoSize = False, .BackColor = Color.Transparent,
-                                    .ForeColor = Color.FromArgb(105, 110, 120)}
-        hint.SetBounds(24, 376, 480, 22)
-        Controls.AddRange({heading, _sdi, _mdiRadio, hint})
+        page.Controls.AddRange({_sdi, _mdiRadio})
+        Hint(page, Lang.T("改了文件模式要重新開啟 PhotoEdit 才會生效。"), 16, 406, PageW - 16, 22)
+    End Sub
+
+    ''' <summary>
+    ''' 筆畫預覽：畫的時候看到的樣子。三種方式依電腦的負載由輕到重排列，每一種下面說明差別。
+    ''' 設定值不變（0＝真實筆刷、1＝快速線條、2＝逐段筆印），只是顯示的順序依負載排。
+    ''' </summary>
+    Private Sub BuildStrokePreview(page As Control)
+        Heading(page, Lang.T("筆畫預覽（畫的時候看到的線）"), 12)
+        Dim top = Hint(page, Lang.T("三種方式依電腦的負載由輕到重排列；畫起來不順時往上選。"), 12, 36, PageW - 12, 0)
+        top.Height = TextHeight(top.Text, top.Width)
+        Dim options = {
+            (frmEditor.PreviewLine, Lang.T("快速線條（負載最輕）"),
+             Lang.T("只畫一條依筆壓變粗細的線，放開後才看到筆刷的質感。舊電腦、很大的筆刷最順。")),
+            (frmEditor.PreviewIncremental, Lang.T("逐段筆印（負載中等）"),
+             Lang.T("像 Painter：邊畫邊只把新增的筆印疊上去，筆畫再長也不會越畫越慢；混色、塗抹、仿製、模糊等會讀畫布的筆也看得到效果。收尾變細、筆毛乾掉等要知道整筆長度的效果放開時才出現；特效筆、粒子、乾刷、陰影自動改用真實筆刷。")),
+            (frmEditor.PreviewEngine, Lang.T("真實筆刷（負載最重，預設）"),
+             Lang.T("每次把整筆重新算一遍，看到的就是放開後的樣子；筆畫越長越吃力。混色、塗抹等讀畫布的筆畫的時候用快速線條。"))}
+        Dim y = top.Bottom + 10
+        For Each o In options
+            Dim value = o.Item1
+            Dim rb As New RadioButton With {.Text = o.Item2, .AutoSize = False, .BackColor = Color.Transparent,
+                                            .Checked = _settings.StrokePreview = value, .Font = New Font(_font, FontStyle.Bold)}
+            rb.SetBounds(16, y, PageW - 16, 24)
+            AddHandler rb.CheckedChanged, Sub()
+                                              If Not rb.Checked Then Return
+                                              _settings.StrokePreview = value
+                                              _settings.Save()
+                                          End Sub
+            page.Controls.Add(rb)
+            ' 說明的高度依文字（英文比較長）
+            Dim desc = Hint(page, o.Item3, 36, y + 26, PageW - 40, 0)
+            desc.Height = TextHeight(o.Item3, desc.Width)
+            y = desc.Bottom + 14
+        Next
     End Sub
 
     ''' <summary>繪圖筆：筆壓曲線（軟硬、最小筆壓、滿壓力道）與穩定器，左邊畫出曲線，拉滑桿立刻更新、立刻生效。</summary>
-    Private Sub BuildPen()
-        Dim heading As New Label With {.Text = Lang.T("繪圖筆"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 410, 480, 22)
+    Private Sub BuildPen(page As Control)
+        Heading(page, Lang.T("繪圖筆"), 12)
         Dim curve As New PenCurveView With {.Curve = _settings.PenCurve()}
-        curve.SetBounds(20, 438, 150, 150)
-        Controls.AddRange({heading, curve})
-        Dim y = 438
+        curve.SetBounds(12, 40, 150, 150)
+        page.Controls.Add(curve)
+        Dim y = 40
         Dim addSlider = Sub(key As String, caption As String, min As Integer, max As Integer, value As Integer, format As Func(Of Integer, String), apply As Action(Of Integer))
                             Dim cap As New Label With {.Text = caption, .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleLeft}
-                            cap.SetBounds(186, y, 76, 26)
+                            cap.SetBounds(176, y, 76, 26)
                             Dim s As New Aqua.Slider With {.Minimum = min, .Maximum = max, .Value = Math.Max(min, Math.Min(max, value)), .ShowTicks = False, .Name = key}
-                            s.SetBounds(262, y + 1, 186, 24)
+                            s.SetBounds(252, y + 1, 168, 24)
                             Dim v As New Label With {.Text = format(s.Value), .AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleRight}
-                            v.SetBounds(450, y, 52, 26)
+                            v.SetBounds(420, y, 52, 26)
                             AddHandler s.ValueChanged, Sub()
                                                            v.Text = format(s.Value)
                                                            apply(s.Value)
                                                            _settings.Save()
                                                            curve.Curve = _settings.PenCurve()
                                                        End Sub
-                            Controls.AddRange({cap, s, v})
+                            page.Controls.AddRange({cap, s, v})
                             y += 32
                         End Sub
         addSlider("pen_soft", Lang.T("軟硬"), -100, 100, _settings.PenSoftness,
@@ -153,10 +214,7 @@ Friend Class frmSettings
         addSlider("pen_min", Lang.T("最小筆壓"), 0, 50, _settings.PenMinPressure, Function(v) v & "%", Sub(v) _settings.PenMinPressure = v)
         addSlider("pen_full", Lang.T("滿壓力道"), 40, 100, _settings.PenFullPressure, Function(v) v & "%", Sub(v) _settings.PenFullPressure = v)
         addSlider("pen_stab", Lang.T("穩定器"), 0, 100, _settings.Stabilizer, Function(v) If(v = 0, Lang.T("關"), v.ToString()), Sub(v) _settings.Stabilizer = v)
-        Dim hint As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120),
-                                    .Text = Lang.T("軟：輕畫就夠粗夠濃；硬：要用力才會粗。手輕的人把「滿壓力道」調低。穩定器去掉手抖。")}
-        hint.SetBounds(186, y + 2, 316, 44)
-        Controls.Add(hint)
+        Hint(page, Lang.T("軟：輕畫就夠粗夠濃；硬：要用力才會粗。手輕的人把「滿壓力道」調低。穩定器去掉手抖。"), 176, y + 2, PageW - 176, 64)
     End Sub
 
     ''' <summary>可以當快速工具熱鍵的鍵：A–Z（繪圖分頁已用的 B、E 除外）與 F1–F12。</summary>
@@ -166,17 +224,14 @@ Friend Class frmSettings
     End Function
 
     ''' <summary>快速工具：繪圖分頁在滑鼠位置叫出快速面板、輪盤的熱鍵。</summary>
-    Private Sub BuildQuickKeys()
-        Dim heading As New Label With {.Text = Lang.T("快速工具（繪圖分頁）"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold),
-                                       .ForeColor = Color.FromArgb(40, 70, 120), .BackColor = Color.Transparent}
-        heading.SetBounds(20, 618, 480, 22)
-        Controls.Add(heading)
+    Private Sub BuildQuickKeys(page As Control)
+        Heading(page, Lang.T("快速工具（繪圖分頁）"), 250)
         Dim keys = QuickKeyChoices()
-        Dim x = 24
+        Dim x = 16
         For Each item In {(Lang.T("快速面板"), _settings.QuickPanelHotkey, CType(Sub(v As String) _settings.QuickPanelHotkey = v, Action(Of String)), "settings.quickpanel"),
                           (Lang.T("輪盤"), _settings.QuickRadialHotkey, CType(Sub(v As String) _settings.QuickRadialHotkey = v, Action(Of String)), "settings.quickradial")}
-            Dim cap As New Label With {.Text = item.Item1, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(x, 650)}
-            Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Width = 70, .Location = New Point(x + 70, 646)}
+            Dim cap As New Label With {.Text = item.Item1, .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(x, 282)}
+            Dim combo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Width = 70, .Location = New Point(x + 70, 278)}
             combo.Items.AddRange(keys)
             combo.SelectedItem = If(keys.Contains(item.Item2), item.Item2, keys(0))
             Dim apply = item.Item3
@@ -184,13 +239,10 @@ Friend Class frmSettings
                                                        apply(CStr(combo.SelectedItem))
                                                        _settings.Save()
                                                    End Sub
-            Controls.AddRange({cap, combo})
+            page.Controls.AddRange({cap, combo})
             x += 170
         Next
-        Dim hint As New Label With {.Text = Lang.T("在畫布上按一下就在滑鼠位置出現；再按一次或 Esc 收起。"), .AutoSize = False, .BackColor = Color.Transparent,
-                                    .ForeColor = Color.FromArgb(105, 110, 120)}
-        hint.SetBounds(24, 676, 480, 22)
-        Controls.Add(hint)
+        Hint(page, Lang.T("在畫布上按一下就在滑鼠位置出現；再按一次或 Esc 收起。"), 16, 310, PageW - 16, 40)
     End Sub
 
     ''' <summary>筆壓曲線圖：橫軸是繪圖板讀到的筆壓，縱軸是筆刷用的筆壓；虛線為線性。</summary>

@@ -23,7 +23,8 @@ Partial Friend Class frmEditor
     Private Shared Function KeepsSelection(tool As Integer) As Boolean
         Return tool = DrawIcons.SelectTool OrElse tool = DrawIcons.PanTool OrElse tool = DrawIcons.ZoomTool OrElse
                tool = DrawIcons.EyedropperTool OrElse tool = DrawIcons.ShapeBuilderTool OrElse tool = DrawIcons.KnifeTool OrElse
-               tool = DrawIcons.ShadowTool OrElse tool = DrawIcons.TransparencyTool OrElse tool = DrawIcons.EnvelopeTool
+               tool = DrawIcons.ShadowTool OrElse tool = DrawIcons.TransparencyTool OrElse tool = DrawIcons.EnvelopeTool OrElse
+               tool = DrawIcons.AttrDropperTool OrElse tool = DrawIcons.TouchUpTool OrElse tool = DrawIcons.WidthTool
     End Function
 
     '---------------------------------------------------------------------
@@ -36,6 +37,9 @@ Partial Friend Class frmEditor
             _help.SetHelp(DrawIcons.HelpKey(b.Tool), b)
         Next
         AddHandler _drawStrip.ColorPicked, Sub(t, argb) PickStripColor(t, argb)
+        AddHandler _drawStrip.SwatchPicked, Sub(t, id) PickSwatch(t, id) ' 文件色票（見 frmEditor.DrawBatch6.vb）
+        AddHandler _drawStrip.SwatchAdd, Sub(t) AddSwatch(t)
+        AddHandler _drawStrip.SwatchEdit, Sub(id) ShowSwatchMenu(id)
         AddHandler _drawStrip.ColorBoxClicked, Sub(t) ShowColorWindow(If(t = 0, TargetStroke, TargetFill))
         AddHandler _drawStrip.SwapColors, Sub() SetDrawProp(Sub(d)
                                                                 Dim s = d.StrokeColorArgb
@@ -77,6 +81,7 @@ Partial Friend Class frmEditor
     ''' <summary>畫筆設定改了（UpdateDrawControls）：色彩面板跟著右側面板顯示同樣的顏色，點陣工具的按鈕跟著筆刷、橡皮擦反白。</summary>
     Private Sub SyncToolStrip(st As DrawLayer)
         _drawStrip.SetColors(st.StrokeColorArgb, st.FillColorArgb, st.Filled)
+        RefreshSwatches() ' 文件色票
         RefreshStripRecent()
         SyncToolHighlight()
     End Sub
@@ -141,6 +146,15 @@ Partial Friend Class frmEditor
             Case DrawIcons.SmartFillTool
                 If e.Button = MouseButtons.Left Then SmartFillAt(u)
                 Return True
+            Case DrawIcons.AttrDropperTool
+                AttrDropperClick(e, u) ' 屬性吸管（見 frmEditor.DrawBatch4.vb）
+                Return True
+            Case DrawIcons.TouchUpTool
+                TouchDown(e, u) ' 修飾筆刷（見 frmEditor.DrawBatch5.vb）
+                Return True
+            Case DrawIcons.WidthTool
+                WidthDown(e, u) ' 寬度工具（見 frmEditor.DrawBatch6.vb）
+                Return True
             Case DrawIcons.KnifeTool
                 If e.Button = MouseButtons.Left Then
                     _knifeA = u
@@ -177,6 +191,19 @@ Partial Friend Class frmEditor
                 Return Not _altPicking
             Case DrawIcons.SmartFillTool
                 If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
+                Return True
+            Case DrawIcons.TouchUpTool
+                If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
+                TouchMove(u)
+                Return True
+            Case DrawIcons.WidthTool
+                If _canvas.Cursor IsNot Cursors.Cross Then _canvas.Cursor = Cursors.Cross
+                WidthMove(u)
+                Return True
+            Case DrawIcons.AttrDropperTool
+                ' 還沒吸：吸管；吸好了：指到圖形上表示可以套用
+                Dim c = If(_attrSource Is Nothing, DropperCursor(), If(HitLayer(u) >= 0, Cursors.Hand, Cursors.Default))
+                If _canvas.Cursor IsNot c Then _canvas.Cursor = c
                 Return True
             Case DrawIcons.KnifeTool
                 If _knifeA.HasValue Then
@@ -227,6 +254,12 @@ Partial Friend Class frmEditor
                     KnifeCut(a, _knifeB)
                 End If
                 _canvas.Invalidate()
+                Return True
+            Case DrawIcons.TouchUpTool
+                TouchUp()
+                Return True
+            Case DrawIcons.WidthTool
+                WidthUp()
                 Return True
         End Select
         Return False
@@ -293,6 +326,8 @@ Partial Friend Class frmEditor
     '---------------------------------------------------------------------
 
     Private Sub PaintTools(g As Graphics)
+        PaintTouchCursor(g) ' 修飾筆刷的範圍
+        PaintWidthStops(g) ' 寬度工具的控制點
         If _knifeA.HasValue Then
             Dim a = UnitToScreen(_knifeA.Value), b = UnitToScreen(_knifeB)
             Using outer As New Pen(Color.FromArgb(160, 255, 255, 255), 3), pen As New Pen(Color.FromArgb(226, 75, 74), 1.5F) With {.DashStyle = DashStyle.Dash}
@@ -317,6 +352,14 @@ Partial Friend Class frmEditor
             Case DrawIcons.PanTool : Return Lang.T("平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。")
             Case DrawIcons.ZoomTool : Return Lang.T("縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。")
             Case DrawIcons.EyedropperTool : Return Lang.T("吸管：點一下吸成線條色，右鍵（或 Shift＋點）吸成填色；可以按住拖曳看顏色。")
+            Case DrawIcons.WidthTool
+                Return Lang.T("寬度工具：在線條上按住往外拖讓那裡變粗、往內拖變細；Alt＋點菱形刪掉控制點。上方可以套用寬度樣式。")
+            Case DrawIcons.TouchUpTool
+                Return Lang.F("修飾筆刷（{0}）：在選取的圖形邊緣拖曳推拉外形；轉動、吸引等按住不動會繼續作用。Alt＝反方向轉，[ ] 調大小。", _touchMode.Text)
+            Case DrawIcons.AttrDropperTool
+                Return If(_attrSource Is Nothing,
+                          Lang.T("屬性吸管：點一個圖形吸取它的外觀（填色、線條、陰影、透明度…）；先選好物件時，點來源就直接套到選取的物件。"),
+                          Lang.F("屬性吸管：已吸取「{0}」，點其他圖形套用；Shift＋點或 Esc 重新吸取。", _attrSource.Name))
             Case DrawIcons.SmartFillTool : Return Lang.T("智慧填色：在線條、圖形圍起來的地方點一下，那塊變成新的圖形（用目前的填色，可以先在右側選漸層）。線條要接起來才填得到。")
             Case DrawIcons.KnifeTool : Return Lang.T("刀具：拖一條線穿過圖形把它切開（Shift：45°）；有選取時只切選取的。結果是鋼筆路徑。")
             Case DrawIcons.ShapeBuilderTool

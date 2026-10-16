@@ -146,6 +146,7 @@ Partial Public NotInheritable Class DrawGeometry
     ''' <summary>圖層算不算封閉形狀（決定沒有勾「外框」時線條要不要畫）：鋼筆路徑要每條都封閉。</summary>
     Public Shared Function IsClosedLayer(layer As DrawLayer) As Boolean
         If layer.Shape = DrawShape.Path Then Return layer.Contours IsNot Nothing AndAlso layer.Contours.Count > 0 AndAlso layer.Contours.All(Function(c) c.Closed)
+        If layer.Shape = DrawShape.Arc Then Return layer.ArcMode <> ArcKind.Arc
         Return IsClosed(layer.Shape)
     End Function
 
@@ -274,7 +275,8 @@ Partial Public NotInheritable Class DrawGeometry
                 Dim a As New PathNode With {.X = p(0).X, .Y = p(0).Y, .InX = p(0).X, .InY = p(0).Y, .OutX = p(1).X, .OutY = p(1).Y}
                 Dim b As New PathNode With {.X = p(3).X, .Y = p(3).Y, .InX = p(2).X, .InY = p(2).Y, .OutX = p(3).X, .OutY = p(3).Y}
                 r.Contours.Add(New PathContour With {.Nodes = New List(Of PathNode) From {a, b}})
-            Case DrawShape.Rectangle, DrawShape.Polygon, DrawShape.Line, DrawShape.Arrow, DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Lightning
+            Case DrawShape.Rectangle, DrawShape.Polygon, DrawShape.Line, DrawShape.Arrow, DrawShape.Star4, DrawShape.Star5, DrawShape.Star6, DrawShape.Lightning,
+                 DrawShape.RegularPolygon, DrawShape.Star, DrawShape.Grid
                 For Each f In BaseFigures(layer)
                     r.Contours.Add(New PathContour With {.Nodes = f.Points.Select(Function(q) New PathNode(q.X, q.Y)).ToList(), .Closed = f.Closed})
                 Next
@@ -282,6 +284,11 @@ Partial Public NotInheritable Class DrawGeometry
                 ' 圓角矩形、愛心、自由繪製：外形線簡化後用平滑節點接起來（Catmull-Rom 換成貝茲把手）
                 For Each f In BaseFigures(layer)
                     Dim tol = Math.Max(0.0015, Math.Max(Bounds(layer).Width, Bounds(layer).Height) * 0.006)
+                    ' 封閉的外形用擬合（直邊接圓弧的地方不會凸出去；Catmull-Rom 在長直邊旁邊的把手太長，會冒出一根刺）
+                    If f.Closed AndAlso f.Points.Length >= 3 Then
+                        Dim fit = PathBoolean.FitRing(f.Points, Math.Max(0.0004, tol * 0.3))
+                        If fit IsNot Nothing Then r.Contours.Add(fit) : Continue For
+                    End If
                     Dim simple = Simplify(f.Points, tol, f.Closed)
                     If simple.Length < 2 Then Continue For
                     r.Contours.Add(SmoothContour(simple, f.Closed))

@@ -643,6 +643,48 @@ Friend Module HelpTexts
         A("draw.fade.kind", Lang.T("透明度類型"), Lang.T("線性：沿拖曳的方向變淡；放射：從起點往外一圈圈變淡。"))
         A("draw.fade.remove", Lang.T("移除透明"), Lang.T("拿掉透明度漸層，圖形恢復不透明。"))
         A("draw.envelope.reset", Lang.T("重設封套"), Lang.T("回到套封套之前的形狀。"))
+        ' 第一批（對照 CorelDRAW／Illustrator）
+        A("draw.tool.24", Lang.T("正多邊形"), Lang.T("拖曳畫出正多邊形；上方的「邊數」可以設 3～64 邊。"), Lang.T("按住 Shift 拖曳畫成正的（不壓扁）。"))
+        A("draw.tool.25", Lang.T("星形"), Lang.T("拖曳畫出星形；上方設定角數（3～64）和內徑（尖角的深淺），也可以拖曳黃點調整。"))
+        A("draw.tool.26", Lang.T("螺旋"), Lang.T("拖曳畫出由中心往外繞的螺旋線；上方設定圈數。"), Lang.T("螺旋是開放的線，只有線條沒有填色。"))
+        A("draw.tool.27", Lang.T("格紙"), Lang.T("拖曳畫出一張格子（表格線）；上方設定欄數和列數。"))
+        A("draw.tool.28", Lang.T("弧形"), Lang.T("拖曳畫出扇形、弧線或弓形；上方設定起點角度和張開的角度，也可以拖曳兩個黃點。"))
+        A("draw.tool.attrdropper", Lang.T("屬性吸管"), Lang.T("點一個圖形吸取它的外觀（填色、漸層、線條、筆刷、陰影、透明度），再點其他圖形套上去（同 CorelDRAW 的屬性滴管、Illustrator 的滴管）。"),
+          Lang.T("先選好幾個物件，再用屬性吸管點來源，就一次套到全部。Shift＋點或 Esc 重新吸取。"))
+        A("draw.param.sides", Lang.T("邊數／角數"), Lang.T("正多邊形的邊數、星形的角數（3～64）。"), Lang.T("有選取圖形時改選取的圖形；沒有選取時改下一個要畫的圖形。"))
+        A("draw.param.inner", Lang.T("內徑"), Lang.T("星形凹進去的點離中心多遠（外徑的百分比）；越小尖角越尖。"))
+        A("draw.param.turns", Lang.T("圈數"), Lang.T("螺旋繞幾圈（0.5～20）。"))
+        A("draw.param.grid", Lang.T("欄與列"), Lang.T("格紙的欄數和列數（1～50）。"))
+        A("draw.param.arcmode", Lang.T("弧形樣式"), Lang.T("扇形：連到中心的封閉圖形；弧線：只有弧線；弓形：弧的兩端直接連起來。"))
+        A("draw.param.arc", Lang.T("起點與角度"), Lang.T("起點：弧從幾度開始（0 度在右邊、順時針）；角度：張開幾度（1～359）。"))
+        A("draw.prop.mirrorh", Lang.T("水平鏡射"), Lang.T("把選取的物件左右翻轉（同 CorelDRAW 屬性列的水平鏡射）。"), Lang.T("選很多個時以它們的整體中心翻轉，相對位置也跟著翻；漸層、文字方向一起正確處理。"))
+        A("draw.prop.mirrorv", Lang.T("垂直鏡射"), Lang.T("把選取的物件上下翻轉。"), Lang.T("選很多個時以它們的整體中心翻轉。"))
+        ' 第三批（排版與精準）
+        A("draw.tool.29", Lang.T("尺寸線"), Lang.T("從一點拖到另一點量距離，標上長度（同 CorelDRAW 的尺度工具）；拖中間的黃點把尺寸線移開。"),
+          Lang.T("上方可以選平行、水平、垂直，單位（像素、公釐、公分、公尺、英吋）和小數位數；文字欄填「寬 {0}」可以自訂標籤。"))
+        A("draw.tool.30", Lang.T("連接線"), Lang.T("從一個物件拖到另一個物件：兩端連上之後，移動物件時線會跟著（畫流程圖用）。"),
+          Lang.T("上方可以選直線或直角；拖曳選取的連接線兩端可以改連到別的物件，放在空白處就是自由的端點。"))
+        A("draw.tool.width", Lang.T("寬度工具"), Lang.T("在線條上按住往外拖讓那裡變粗、往內拖變細（同 Illustrator 的寬度工具）；菱形是控制點，Alt＋點刪掉。"),
+          Lang.T("上方可以一次套用寬度樣式：尾端變尖、兩端尖、中間粗、毛筆…；沒有選取時給之後畫的線。"))
+        A("draw.width.preset", Lang.T("寬度樣式"), Lang.T("套到選取的線條：均勻、尾端變尖、起點變尖、兩端尖、中間粗、中間細、毛筆、水滴。"))
+        A("draw.pattern.kind", Lang.T("圖樣"), Lang.T("填色方式選「圖樣」時的花樣：條紋、圓點、棋盤、格線、斜格、磚牆、波浪、菱形，或紋理筆的材質。"),
+          Lang.T("填色是底色、第二色是花樣的顏色；圖形移動時圖樣跟著。"))
+        A("draw.pattern.size", Lang.T("圖樣大小"), Lang.T("一格花樣的大小（照片像素）。"))
+        A("draw.pattern.angle", Lang.T("圖樣角度"), Lang.T("花樣轉幾度。"))
+        A("draw.param.dimkind", Lang.T("尺寸線方向"), Lang.T("平行：沿兩點量；水平：只量左右距離；垂直：只量上下距離。"))
+        A("draw.param.dimunit", Lang.T("單位"), Lang.T("標籤的單位。不是像素時，填「每單位像素」換算（預設 96 dpi：1 公分 ＝ 37.8 像素）。"))
+        A("draw.param.dimdec", Lang.T("小數位數"), Lang.T("標籤的數字顯示到小數第幾位。"))
+        A("draw.param.connstyle", Lang.T("連接線樣式"), Lang.T("直線：兩個物件中心的連線（切在物件邊上）；直角：水平、垂直轉彎。"))
+        ' 第二批（效果）
+        A("draw.effects", Lang.T("效果"), Lang.T("選取的向量圖形或文字套用效果：輪廓圖、變形效果、立體化、簡化路徑（編輯選單裡也有）。"),
+          Lang.T("每個效果都有設定視窗，右邊即時預覽；按「確定」才套用，可以復原。"))
+        A("draw.tool.touchup", Lang.T("修飾筆刷"), Lang.T("用筆刷推拉向量圖形的邊（同 CorelDRAW 的塗抹、轉動、吸引、排斥、粗糙筆刷，Illustrator 的平滑工具）。"),
+          Lang.T("先選取圖形（或直接在圖形上按下），沿著邊緣拖曳。放開時會簡化成平滑的曲線，拖一次算一步復原。"))
+        A("draw.touch.mode", Lang.T("筆刷模式"), Lang.T("塗抹：把邊往拖的方向推；轉動：繞著筆刷中心旋轉（Alt 反方向）；吸引／排斥：往中心拉、往外推；粗糙：邊變得凹凸；平滑：撫平抖動的邊。"))
+        A("draw.touch.size", Lang.T("筆刷大小"), Lang.T("筆刷圓的直徑（照片像素）；[ ] 鍵也可以調。"))
+        A("draw.touch.strength", Lang.T("力道"), Lang.T("每次作用的強弱（1～100%）。"))
+        A("draw.outline", Lang.T("外框轉物件"), Lang.T("把線條變成一個可以填色的封閉圖形（同 CorelDRAW 的「外框轉換為物件」、Illustrator 的「外框筆畫」）。"),
+          Lang.T("結果是鋼筆路徑，填色就是原本的線條色；原本有填色的話，填色部分保留成沒有線條的圖形。"))
         A("draw.blend", Lang.T("調和"), Lang.T("在選取的兩個圖形之間產生中間的圖形，形狀、顏色、線寬、不透明度逐步變過去（同 CorelDRAW 的調和）。"), Lang.T("結果和兩端組成群組；之後改兩端不會自動更新。"))
         A("draw.blend.steps", Lang.T("步數"), Lang.T("中間要產生幾個圖形（1～50）。"))
         A("draw.overflow", Lang.T("更多按鈕"), Lang.T("視窗太窄時，放不下的按鈕收在這裡（點了跟按原本的按鈕一樣）。"), Lang.T("把視窗拉寬，按鈕就會回到操作列上。"))

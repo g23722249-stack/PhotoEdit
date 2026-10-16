@@ -189,10 +189,7 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' </summary>
     Friend Shared Sub ApplySamplingOp(layerPx As Byte(), belowPx As Byte(), w As Integer, h As Integer, op As DrawLayer, ox As Integer, oy As Integer)
         Dim scale = CSng(h)
-        Dim figs = DrawGeometry.Figures(op).
-            Select(Function(f) New DrawGeometry.Figure With {.Points = f.Points.Select(Function(p) New PointF(p.X * scale, p.Y * scale)).ToArray(),
-                                                             .Closed = f.Closed, .Pressure = f.Pressure}).
-            Where(Function(f) f.Points.Length > 0).ToList()
+        Dim figs = SamplingFigures(op, scale)
         If figs.Count = 0 Then Return
         Dim widthPx = CSng(Math.Max(1, op.StrokeWidth * scale))
         Dim radius = Math.Max(1.0F, widthPx / 2)
@@ -222,69 +219,138 @@ Partial Public NotInheritable Class DrawingRenderer
                          Dim k = 1 - la
                          Return (lr + br * k, lg + bg * k, lb + bb * k, la + ba * k)
                      End Function
-        Dim n = rw * rh
-        Dim cr(n - 1) As Single, cg(n - 1) As Single, cb(n - 1) As Single, ca(n - 1) As Single, touched(n - 1) As Single
+        Dim painter As New SamplingPainter(op, scale, region, compAt)
+        For fi = 0 To figs.Count - 1
+            painter.StampFigure(fi, figs(fi), Nothing)
+        Next
+
+        ' 換算回圖層：讓「新圖層 over 下面」等於畫布的新顏色。
+        Dim cr = painter.CR, cg = painter.CG, cb = painter.CB, ca = painter.CA, touched = painter.Touched
         For y = 0 To rh - 1
             For x = 0 To rw - 1
-                Dim c = compAt(region.X + x, region.Y + y)
                 Dim i = y * rw + x
-                cr(i) = c.R : cg(i) = c.G : cb(i) = c.B : ca(i) = c.A
-            Next
-        Next
-
-        Dim strength = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F
-        Dim edge = Math.Max(0.35F, op.Softness / 100.0F)
-        Dim wet = op.Wet / 100.0F
-        Dim paint = Color.FromArgb(op.StrokeColorArgb)
-        Dim pr = paint.R / 255.0F, pg = paint.G / 255.0F, pb = paint.B / 255.0F
-        Dim cdx = CInt(Math.Round(op.CloneDX * scale)), cdy = CInt(Math.Round(op.CloneDY * scale))
-        Dim r0 = CInt(Math.Ceiling(radius))
-        Dim side = r0 * 2 + 1
-        ' 筆尖帶著的顏料（預乘）：塗抹筆從畫布沾起，混色筆從線條色開始。
-        Dim carry(side * side * 4 - 1) As Single
-        Dim mask(side * side - 1) As Single
-        Dim softW = radius * edge, inner = radius - softW
-        For yy = -r0 To r0
-            For xx = -r0 To r0
-                Dim d = CSng(Math.Sqrt(xx * xx + yy * yy))
-                Dim m As Single
-                If d >= radius + 0.5F Then
-                    m = 0
-                ElseIf d <= inner Then
-                    m = 1
-                Else
-                    m = CSng(0.5 + 0.5 * Math.Cos(Math.Min(1, (d - inner) / Math.Max(0.5F, softW)) * Math.PI))
+                If touched(i) <= 0 Then Continue For
+                Dim gx = region.X + x, gy = region.Y + y
+                Dim li = (gy * w + gx) * 4
+                Dim la = layerPx(li + 3) / 255.0F
+                Dim bx = gx + ox, by = gy + oy
+                Dim br = 0.0F, bgc = 0.0F, bb = 0.0F, ba = 0.0F
+                If belowPx IsNot Nothing AndAlso bx >= 0 AndAlso by >= 0 AndAlso bx < w AndAlso by < h Then
+                    Dim j = (by * w + bx) * 4
+                    ba = belowPx(j + 3) / 255.0F
+                    br = belowPx(j + 2) / 255.0F * ba : bgc = belowPx(j + 1) / 255.0F * ba : bb = belowPx(j) / 255.0F * ba
                 End If
-                mask((yy + r0) * side + xx + r0) = m
+                ' 圖層要多不透明：至少能蓋過這次改動的比例；底下透明時就照畫布的不透明度。
+                Dim na = Math.Max(la, Math.Min(1, touched(i) * 1.15F))
+                If ba < 0.999F Then na = Math.Max(na, Clamp01((ca(i) - ba) / Math.Max(0.001F, 1 - ba)))
+                If na <= 0.002F Then Continue For
+                Dim k2 = 1 - na
+                Dim nr = Clamp01((cr(i) - br * k2) / na), ng = Clamp01((cg(i) - bgc * k2) / na), nb = Clamp01((cb(i) - bb * k2) / na)
+                layerPx(li) = CByte(Math.Round(nb * 255)) : layerPx(li + 1) = CByte(Math.Round(ng * 255))
+                layerPx(li + 2) = CByte(Math.Round(nr * 255)) : layerPx(li + 3) = CByte(Math.Round(Clamp01(na) * 255))
             Next
         Next
+    End Sub
 
-        ' 修復筆：目的地與來源各自的低頻（模糊後）顏色；結果＝目的地低頻＋來源的細節（來源－來源低頻）
-        Dim isHeal = op.Brush = BrushKind.Heal
-        Dim lowR, lowG, lowB, lowA, sR, sG, sB, sA, sLowR, sLowG, sLowB, sLowA As Single()
-        If isHeal Then
-            Dim blurR = Math.Max(2, CInt(radius * 0.6F))
-            lowR = BoxBlur(cr, rw, rh, blurR) : lowG = BoxBlur(cg, rw, rh, blurR) : lowB = BoxBlur(cb, rw, rh, blurR) : lowA = BoxBlur(ca, rw, rh, blurR)
-            ReDim sR(n - 1) : ReDim sG(n - 1) : ReDim sB(n - 1) : ReDim sA(n - 1)
+    ''' <summary>讀畫布的筆畫外形（照片座標 × scale）。</summary>
+    Friend Shared Function SamplingFigures(op As DrawLayer, scale As Single) As List(Of DrawGeometry.Figure)
+        Return DrawGeometry.Figures(op).
+            Select(Function(f) New DrawGeometry.Figure With {.Points = f.Points.Select(Function(p) New PointF(p.X * scale, p.Y * scale)).ToArray(),
+                                                             .Closed = f.Closed, .Pressure = f.Pressure}).
+            Where(Function(f) f.Points.Length > 0).ToList()
+    End Function
+
+    ''' <summary>
+    ''' 讀畫布的筆（混色、塗抹、仿製、修飾筆）在一塊畫布上依序蓋筆印：畫布顏色、筆尖帶著的顏料都留在這裡，
+    ''' 所以可以一次畫完整筆（ApplySamplingOp），也可以一段一段畫（逐段筆印的即時預覽）。
+    ''' </summary>
+    Friend NotInheritable Class SamplingPainter
+        Public ReadOnly Region As Rectangle
+        ''' <summary>畫布顏色（預乘 alpha，0..1）與每個像素被改動的最大比例。</summary>
+        Public ReadOnly CR As Single(), CG As Single(), CB As Single(), CA As Single(), Touched As Single()
+
+        Private ReadOnly _op As DrawLayer
+        Private ReadOnly _compAt As Func(Of Integer, Integer, (R As Single, G As Single, B As Single, A As Single))
+        Private ReadOnly _radius As Single, _r0 As Integer, _side As Integer
+        Private ReadOnly _carry As Single(), _mask As Single()
+        Private ReadOnly _strength As Single, _wet As Single, _pr As Single, _pg As Single, _pb As Single
+        Private ReadOnly _cdx As Integer, _cdy As Integer
+        Private ReadOnly _retouch As Boolean
+        Private ReadOnly _lowR, _lowG, _lowB, _lowA, _sR, _sG, _sB, _sA, _sLowR, _sLowG, _sLowB, _sLowA As Single()
+        Private ReadOnly _started As New HashSet(Of Integer)()
+
+        Public Sub New(op As DrawLayer, scale As Single, region As Rectangle,
+                       compAt As Func(Of Integer, Integer, (R As Single, G As Single, B As Single, A As Single)))
+            _op = op : Me.Region = region : _compAt = compAt
+            Dim rw = region.Width, rh = region.Height, n = rw * rh
+            CR = New Single(n - 1) {} : CG = New Single(n - 1) {} : CB = New Single(n - 1) {} : CA = New Single(n - 1) {} : Touched = New Single(n - 1) {}
             For y = 0 To rh - 1
                 For x = 0 To rw - 1
-                    Dim c = compAt(region.X + x + cdx, region.Y + y + cdy)
+                    Dim c = compAt(region.X + x, region.Y + y)
                     Dim i = y * rw + x
-                    sR(i) = c.R : sG(i) = c.G : sB(i) = c.B : sA(i) = c.A
+                    CR(i) = c.R : CG(i) = c.G : CB(i) = c.B : CA(i) = c.A
                 Next
             Next
-            sLowR = BoxBlur(sR, rw, rh, blurR) : sLowG = BoxBlur(sG, rw, rh, blurR) : sLowB = BoxBlur(sB, rw, rh, blurR) : sLowA = BoxBlur(sA, rw, rh, blurR)
-        End If
-        Dim retouch = Global.PhotoEdit.DrawLayer.IsToolOnlyBrush(op.Brush)
+            Dim widthPx = CSng(Math.Max(1, op.StrokeWidth * scale))
+            _radius = Math.Max(1.0F, widthPx / 2)
+            _strength = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F
+            Dim edge = Math.Max(0.35F, op.Softness / 100.0F)
+            _wet = op.Wet / 100.0F
+            Dim paint = Color.FromArgb(op.StrokeColorArgb)
+            _pr = paint.R / 255.0F : _pg = paint.G / 255.0F : _pb = paint.B / 255.0F
+            _cdx = CInt(Math.Round(op.CloneDX * scale)) : _cdy = CInt(Math.Round(op.CloneDY * scale))
+            _r0 = CInt(Math.Ceiling(_radius))
+            _side = _r0 * 2 + 1
+            ' 筆尖帶著的顏料（預乘）：塗抹筆從畫布沾起，混色筆從線條色開始。
+            _carry = New Single(_side * _side * 4 - 1) {}
+            _mask = New Single(_side * _side - 1) {}
+            Dim softW = _radius * edge, inner = _radius - softW
+            For yy = -_r0 To _r0
+                For xx = -_r0 To _r0
+                    Dim d = CSng(Math.Sqrt(xx * xx + yy * yy))
+                    Dim m As Single
+                    If d >= _radius + 0.5F Then
+                        m = 0
+                    ElseIf d <= inner Then
+                        m = 1
+                    Else
+                        m = CSng(0.5 + 0.5 * Math.Cos(Math.Min(1, (d - inner) / Math.Max(0.5F, softW)) * Math.PI))
+                    End If
+                    _mask((yy + _r0) * _side + xx + _r0) = m
+                Next
+            Next
+            ' 修復筆：目的地與來源各自的低頻（模糊後）顏色；結果＝目的地低頻＋來源的細節（來源－來源低頻）
+            If op.Brush = BrushKind.Heal Then
+                Dim blurR = Math.Max(2, CInt(_radius * 0.6F))
+                _lowR = BoxBlur(CR, rw, rh, blurR) : _lowG = BoxBlur(CG, rw, rh, blurR) : _lowB = BoxBlur(CB, rw, rh, blurR) : _lowA = BoxBlur(CA, rw, rh, blurR)
+                _sR = New Single(n - 1) {} : _sG = New Single(n - 1) {} : _sB = New Single(n - 1) {} : _sA = New Single(n - 1) {}
+                For y = 0 To rh - 1
+                    For x = 0 To rw - 1
+                        Dim c = compAt(region.X + x + _cdx, region.Y + y + _cdy)
+                        Dim i = y * rw + x
+                        _sR(i) = c.R : _sG(i) = c.G : _sB(i) = c.B : _sA(i) = c.A
+                    Next
+                Next
+                _sLowR = BoxBlur(_sR, rw, rh, blurR) : _sLowG = BoxBlur(_sG, rw, rh, blurR) : _sLowB = BoxBlur(_sB, rw, rh, blurR) : _sLowA = BoxBlur(_sA, rw, rh, blurR)
+            End If
+            _retouch = Global.PhotoEdit.DrawLayer.IsToolOnlyBrush(op.Brush)
+        End Sub
 
-        For Each f In figs
+        ''' <summary>第 index 個外形沿路徑蓋筆印；range 不是 Nothing 時只蓋範圍內的（之前的已經蓋過）。</summary>
+        Public Sub StampFigure(index As Integer, f As DrawGeometry.Figure, range As DabRange)
+            Dim op = _op
+            Dim region = Me.Region
+            Dim rw = region.Width, rh = region.Height
+            Dim cr = Me.CR, cg = Me.CG, cb = Me.CB, ca = Me.CA, touched = Me.Touched
+            Dim carry = _carry, mask = _mask, side = _side, r0 = _r0
+            Dim pr = _pr, pg = _pg, pb = _pb, wet = _wet, strength = _strength, cdx = _cdx, cdy = _cdy
             Dim path = If(f.Closed, f.Points.Concat({f.Points(0)}).ToArray(), f.Points)
-            Dim first = True
-            Dim spacing = Math.Max(0.5F, radius * If(op.Brush = BrushKind.Clone OrElse retouch, 0.25F, 0.12F))
+            Dim spacing = Math.Max(0.5F, _radius * If(op.Brush = BrushKind.Clone OrElse _retouch, 0.25F, 0.12F))
             Walk(path, f.Pressure, spacing,
                  Sub(fx, fy, p, dx, dy, s, total)
+                     If range IsNot Nothing AndAlso Not range.Contains(s) Then Return
                      Dim cx = CInt(Math.Round(fx)) - region.X, cy = CInt(Math.Round(fy)) - region.Y
-                     If first Then
+                     If _started.Add(index) Then
                          ' 第一個筆印：塗抹筆沾起底下的顏色，混色筆裝滿線條色。
                          For yy = -r0 To r0
                              For xx = -r0 To r0
@@ -299,7 +365,6 @@ Partial Public NotInheritable Class DrawingRenderer
                                  End If
                              Next
                          Next
-                         first = False
                      End If
                      Dim amt = strength * (0.35F + 0.65F * p)
                      For yy = -r0 To r0
@@ -315,13 +380,13 @@ Partial Public NotInheritable Class DrawingRenderer
                              Dim curR = cr(i), curG = cg(i), curB = cb(i), curA = ca(i)
                              Select Case op.Brush
                                  Case BrushKind.Clone
-                                     Dim src = compAt(region.X + px + cdx, region.Y + py + cdy)
+                                     Dim src = _compAt(region.X + px + cdx, region.Y + py + cdy)
                                      cr(i) += (src.R - curR) * a : cg(i) += (src.G - curG) * a : cb(i) += (src.B - curB) * a : ca(i) += (src.A - curA) * a
                                  Case BrushKind.Heal
-                                     Dim ta = Clamp01(lowA(i) + sA(i) - sLowA(i))
-                                     Dim tr = Math.Max(0, Math.Min(ta, lowR(i) + sR(i) - sLowR(i)))
-                                     Dim tg = Math.Max(0, Math.Min(ta, lowG(i) + sG(i) - sLowG(i)))
-                                     Dim tb = Math.Max(0, Math.Min(ta, lowB(i) + sB(i) - sLowB(i)))
+                                     Dim ta = Clamp01(_lowA(i) + _sA(i) - _sLowA(i))
+                                     Dim tr = Math.Max(0, Math.Min(ta, _lowR(i) + _sR(i) - _sLowR(i)))
+                                     Dim tg = Math.Max(0, Math.Min(ta, _lowG(i) + _sG(i) - _sLowG(i)))
+                                     Dim tb = Math.Max(0, Math.Min(ta, _lowB(i) + _sB(i) - _sLowB(i)))
                                      cr(i) += (tr - curR) * a : cg(i) += (tg - curG) * a : cb(i) += (tb - curB) * a : ca(i) += (ta - curA) * a
                                  Case BrushKind.Blur, BrushKind.Sharpen
                                      ' 3×3 平均（讀目前的畫布，越畫越糊／越銳利）
@@ -375,32 +440,6 @@ Partial Public NotInheritable Class DrawingRenderer
                          Next
                      Next
                  End Sub)
-        Next
-
-        ' 換算回圖層：讓「新圖層 over 下面」等於畫布的新顏色。
-        For y = 0 To rh - 1
-            For x = 0 To rw - 1
-                Dim i = y * rw + x
-                If touched(i) <= 0 Then Continue For
-                Dim gx = region.X + x, gy = region.Y + y
-                Dim li = (gy * w + gx) * 4
-                Dim la = layerPx(li + 3) / 255.0F
-                Dim bx = gx + ox, by = gy + oy
-                Dim br = 0.0F, bgc = 0.0F, bb = 0.0F, ba = 0.0F
-                If belowPx IsNot Nothing AndAlso bx >= 0 AndAlso by >= 0 AndAlso bx < w AndAlso by < h Then
-                    Dim j = (by * w + bx) * 4
-                    ba = belowPx(j + 3) / 255.0F
-                    br = belowPx(j + 2) / 255.0F * ba : bgc = belowPx(j + 1) / 255.0F * ba : bb = belowPx(j) / 255.0F * ba
-                End If
-                ' 圖層要多不透明：至少能蓋過這次改動的比例；底下透明時就照畫布的不透明度。
-                Dim na = Math.Max(la, Math.Min(1, touched(i) * 1.15F))
-                If ba < 0.999F Then na = Math.Max(na, Clamp01((ca(i) - ba) / Math.Max(0.001F, 1 - ba)))
-                If na <= 0.002F Then Continue For
-                Dim k2 = 1 - na
-                Dim nr = Clamp01((cr(i) - br * k2) / na), ng = Clamp01((cg(i) - bgc * k2) / na), nb = Clamp01((cb(i) - bb * k2) / na)
-                layerPx(li) = CByte(Math.Round(nb * 255)) : layerPx(li + 1) = CByte(Math.Round(ng * 255))
-                layerPx(li + 2) = CByte(Math.Round(nr * 255)) : layerPx(li + 3) = CByte(Math.Round(Clamp01(na) * 255))
-            Next
-        Next
-    End Sub
+        End Sub
+    End Class
 End Class

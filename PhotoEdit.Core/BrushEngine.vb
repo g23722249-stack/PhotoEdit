@@ -131,7 +131,11 @@ Partial Public NotInheritable Class DrawingRenderer
                     While _order.Count > MaxCache
                         Dim old = _order.Last.Value
                         _order.RemoveLast()
-                        _cache(old).Bitmap?.Dispose()
+                        Dim gone = _cache(old)
+                        SyncLock gone ' 別的執行緒可能正用它合成：等用完再釋放，並讓之後拿到它的人知道已經沒了
+                            gone.Bitmap?.Dispose()
+                            gone.Bitmap = Nothing
+                        End SyncLock
                         _cache.Remove(old)
                     End While
                 Else
@@ -141,18 +145,27 @@ Partial Public NotInheritable Class DrawingRenderer
             End SyncLock
         End If
         If item.Bitmap Is Nothing Then Return
+        Dim evicted = False
         SyncLock item
-            Using shaded = SurfaceOnDrawing(item.Bitmap, item.Region, w, h) ' 表面紋理「只有繪圖」
-                LayerBlend.Composite(dst, If(shaded, item.Bitmap), item.Region, opacity, layer.Blend)
-            End Using
+            If item.Bitmap Is Nothing Then
+                evicted = True ' 剛被別的執行緒擠出快取釋放了（很少見）
+            Else
+                Using shaded = SurfaceOnDrawing(item.Bitmap, item.Region, w, h) ' 表面紋理「只有繪圖」
+                    LayerBlend.Composite(dst, If(shaded, item.Bitmap), item.Region, opacity, layer.Blend)
+                End Using
+            End If
         End SyncLock
+        If evicted Then DrawLayer(dst, layer, w, h) ' 重算這一層（已經不在快取裡）
     End Sub
 
     ''' <summary>清空快取（測試用）。</summary>
     Public Shared Sub ClearCache()
         SyncLock _cache
             For Each v In _cache.Values
-                v.Bitmap?.Dispose()
+                SyncLock v
+                    v.Bitmap?.Dispose()
+                    v.Bitmap = Nothing
+                End SyncLock
             Next
             _cache.Clear()
             _order.Clear()
@@ -233,6 +246,10 @@ Partial Public NotInheritable Class DrawingRenderer
         If layer.SizeJitter > 0 OrElse figs.Any(Function(f) f.Angle IsNot Nothing) Then extra = Math.Max(extra, widthPx * 0.8F)
         If layer.StartArrow <> ArrowKind.None OrElse layer.EndArrow <> ArrowKind.None Then extra = Math.Max(extra, ArrowSize(widthPx).Half + 2)
         If DrawGeometry.IsPathText(layer) Then extra = Math.Max(extra, CSng(layer.TextSize * scale * 1.4)) ' 字長在路徑兩邊
+        If layer.Shape = DrawShape.Dimension Then extra = Math.Max(extra, CSng(layer.TextSize * scale * (DrawGeometry.DimensionLabel(layer).Length * 0.5 + 2.5))) ' 標籤
+        If layer.WidthProfile IsNot Nothing AndAlso layer.WidthProfile.Count > 0 Then
+            extra = Math.Max(extra, widthPx * CSng(Math.Max(1, layer.WidthProfile.Max(Function(s) s.W))) / 2 + 2) ' 可變寬度比線寬粗
+        End If
         padL += extra : padT += extra : padR += extra : padB += extra
         If layer.Shadow Then
             Dim sh = ShadowGeometry(layer, widthPx, scale)
@@ -254,7 +271,9 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 1. 填色
         If layer.Filled AndAlso closedFigs.Count > 0 Then
             Dim mask = FillMask(closedFigs, region)
-            If layer.FillGradient IsNot Nothing Then
+            If layer.FillPattern IsNot Nothing Then
+                ShadePattern(cv, mask, layer, h) ' 圖樣填色（見 LayoutTools.vb）
+            ElseIf layer.FillGradient IsNot Nothing Then
                 ShadeGradient(cv, mask, layer, region, h) ' 向量漸層填色
             Else
                 Shade(cv, mask, Nothing, layer, Color.FromArgb(layer.FillColorArgb), widthPx, h, isFill:=True)
@@ -263,10 +282,18 @@ Partial Public NotInheritable Class DrawingRenderer
 
         ' 2. 線條（虛線切段、箭頭見 LineStyle.vb）
         If stroked Then
+            Dim styledSource = figs
             Dim styled = StyleStroke(figs, layer, widthPx)
             Dim heads = styled.Heads
             figs = styled.Lines
-            If layer.Brush = BrushKind.FX Then
+            If layer.WidthProfile IsNot Nothing AndAlso layer.WidthProfile.Count > 0 AndAlso DrawGeometry.CanVaryWidth(layer) Then
+                ' 可變寬度：沿線依控制點變粗變細（不切虛線）
+                Dim solid = layer.Clone() : solid.Dash = LineDash.Solid
+                Dim vs = StyleStroke(styledSource, solid, widthPx)
+                Dim cov = VariableWidthMask(vs.Lines, layer, widthPx, region)
+                AddHeads(cov, vs.Heads, region)
+                Shade(cv, cov, Nothing, layer, Color.FromArgb(layer.StrokeColorArgb), widthPx, h, isFill:=False)
+            ElseIf layer.Brush = BrushKind.FX Then
                 RenderFx(cv, figs, layer, widthPx, rnd, h)
             ElseIf layer.Brush = BrushKind.Particle Then
                 RenderParticles(cv, figs, layer, widthPx, rnd, h)
@@ -278,41 +305,23 @@ Partial Public NotInheritable Class DrawingRenderer
                 AddHeads(cov, heads, region)
                 Shade(cv, cov, Nothing, layer, Color.FromArgb(layer.StrokeColorArgb), widthPx, h, isFill:=False)
             Else
-                If PaperGrainAmount(layer) > 0 AndAlso IsGrainy(layer.Brush) AndAlso layer.PressureOpacity < 50 Then
-                    layer = layer.Clone() : layer.PressureOpacity = 50 ' 有紙張時筆壓也影響濃淡：輕畫只碰到紙紋凸起
-                End If
-                Dim sp = Spec(layer.Brush, layer.Fx)
+                layer = StrokeStyleLayer(layer)
                 Dim cov(cv.W * cv.H - 1) As Single
-                Dim streak As Single() = If(sp.Tip = TipKind.Bristle, New Single(cv.W * cv.H - 1) {}, Nothing)
-                ' 顏色變化：每個筆印（筆毛）的顏色記在 tint，上色時逐像素使用。
-                Dim jitterColor = (layer.HueJitter > 0 OrElse layer.LumJitter > 0) AndAlso layer.Brush <> BrushKind.Texture
-                Dim tint As Single() = If(jitterColor, New Single(cv.W * cv.H * 3 - 1) {}, Nothing)
-                Dim stampRnd As New Random(layer.Seed * 7 + 1)
-                Dim edge = Math.Max(sp.Edge, layer.Softness / 100.0F)
-                Dim flow = Math.Max(0.02F, layer.Flow / 100.0F)
-                For Each f In figs
-                    Dim path = If(f.Closed, f.Points.Concat({f.Points(0)}).ToArray(), f.Points)
-                    Dim pres = If(f.Pressure, Nothing)
-                    Dim angles = f.Angle, flats = f.Flat
-                    If f.Closed Then
-                        If pres IsNot Nothing Then pres = pres.Concat({pres(0)}).ToArray()
-                        If angles IsNot Nothing Then angles = angles.Concat({angles(0)}).ToArray()
-                        If flats IsNot Nothing Then flats = flats.Concat({flats(0)}).ToArray()
-                    End If
-                    If sp.Tip = TipKind.Bristle Then
-                        Bristles(cov, streak, cv, path, pres, widthPx, layer, sp, flow, edge, angles, flats, tint)
-                    Else
-                        Stamp(cov, cv, path, pres, angles, flats, widthPx, sp, flow, edge, layer, stampRnd, tint)
-                    End If
-                Next
+                Dim streak As Single() = If(NeedsStreak(layer), New Single(cv.W * cv.H - 1) {}, Nothing)
+                Dim tint As Single() = If(NeedsTint(layer), New Single(cv.W * cv.H * 3 - 1) {}, Nothing)
+                StampFigures(cov, streak, tint, cv, figs, layer, widthPx)
                 AddHeads(cov, heads, region)
                 Shade(cv, cov, streak, layer, Color.FromArgb(layer.StrokeColorArgb), widthPx, h, isFill:=False, tint:=tint)
             End If
         End If
 
-        ' 3. 圖說文字
+        ' 3. 圖說文字（尺寸線的標籤也是）
         If DrawGeometry.HasText(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then
             If DrawGeometry.IsPathText(layer) Then DrawPathText(cv, layer, region, scale) Else DrawText(cv, layer, region, scale)
+        End If
+        If layer.Shape = DrawShape.Dimension Then
+            Dim lbl = DrawGeometry.DimensionLabelLayer(layer)
+            If lbl IsNot Nothing Then DrawText(cv, lbl, region, scale)
         End If
 
         ' 4. 陰影
@@ -323,6 +332,62 @@ Partial Public NotInheritable Class DrawingRenderer
 
         Return New Rendered With {.Bitmap = ToBitmap(cv), .Region = region}
     End Function
+
+    ''' <summary>有紙張時筆壓也影響濃淡（輕畫只碰到紙紋凸起）：上色用的圖層設定。</summary>
+    Private Shared Function StrokeStyleLayer(layer As DrawLayer) As DrawLayer
+        If PaperGrainAmount(layer) > 0 AndAlso IsGrainy(layer.Brush) AndAlso layer.PressureOpacity < 50 Then
+            layer = layer.Clone() : layer.PressureOpacity = 50
+        End If
+        Return layer
+    End Function
+
+    ''' <summary>筆毛筆刷：每像素記下筆毛的明暗（筆痕）。</summary>
+    Private Shared Function NeedsStreak(layer As DrawLayer) As Boolean
+        Return Spec(layer.Brush, layer.Fx).Tip = TipKind.Bristle
+    End Function
+
+    ''' <summary>顏色變化：每個筆印（筆毛）的顏色記在 tint（每像素 3 個值），上色時逐像素使用。</summary>
+    Private Shared Function NeedsTint(layer As DrawLayer) As Boolean
+        Return (layer.HueJitter > 0 OrElse layer.LumJitter > 0) AndAlso layer.Brush <> BrushKind.Texture
+    End Function
+
+    ''' <summary>
+    ''' 把每個外形沿路徑蓋筆印（筆毛）累積成覆蓋率。range 不是 Nothing 時只畫範圍內的筆印（逐段筆印），
+    ''' 亂數照樣從頭用起，所以範圍內的筆印和整筆算的完全一樣。
+    ''' </summary>
+    Private Shared Sub StampFigures(cov As Single(), streak As Single(), tint As Single(), cv As Canvas, figs As List(Of DrawGeometry.Figure),
+                                    layer As DrawLayer, widthPx As Single, Optional range As DabRange = Nothing)
+        Dim sp = Spec(layer.Brush, layer.Fx)
+        Dim stampRnd As New Random(layer.Seed * 7 + 1)
+        Dim edge = Math.Max(sp.Edge, layer.Softness / 100.0F)
+        Dim flow = Math.Max(0.02F, layer.Flow / 100.0F)
+        For Each f In figs
+            Dim path = If(f.Closed, f.Points.Concat({f.Points(0)}).ToArray(), f.Points)
+            Dim pres = If(f.Pressure, Nothing)
+            Dim angles = f.Angle, flats = f.Flat
+            If f.Closed Then
+                If pres IsNot Nothing Then pres = pres.Concat({pres(0)}).ToArray()
+                If angles IsNot Nothing Then angles = angles.Concat({angles(0)}).ToArray()
+                If flats IsNot Nothing Then flats = flats.Concat({flats(0)}).ToArray()
+            End If
+            If sp.Tip = TipKind.Bristle Then
+                Bristles(cov, streak, cv, path, pres, widthPx, layer, sp, flow, edge, angles, flats, tint, range)
+            Else
+                Stamp(cov, cv, path, pres, angles, flats, widthPx, sp, flow, edge, layer, stampRnd, tint, range)
+            End If
+        Next
+    End Sub
+
+    ''' <summary>逐段筆印要畫的筆印：已走距離 s 在 [SFrom, STo) 之間；TotalOverride &gt; 0 時當作筆畫總長。</summary>
+    Friend NotInheritable Class DabRange
+        Public SFrom As Single = Single.NegativeInfinity
+        Public STo As Single = Single.PositiveInfinity
+        Public TotalOverride As Single
+
+        Public Function Contains(s As Single) As Boolean
+            Return s >= SFrom AndAlso s < STo
+        End Function
+    End Class
 
     Private Shared Function ShadowOffset(widthPx As Single) As Single
         Return Math.Max(3, widthPx * 0.8F)
@@ -451,15 +516,18 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Delegate Sub WalkVisitor(x As Single, y As Single, p As Single, dx As Single, dy As Single, s As Single, total As Single,
                                      angle As Single, flat As Single)
 
-    Private Shared Sub WalkEx(path As PointF(), pres As Single(), angles As Single(), flats As Single(), spacing As Single, visit As WalkVisitor)
+    Private Shared Sub WalkEx(path As PointF(), pres As Single(), angles As Single(), flats As Single(), spacing As Single, visit As WalkVisitor,
+                              Optional totalOverride As Single = 0)
         Dim total = 0.0F
         For i = 1 To path.Length - 1
             total += CSng(DrawGeometry.Dist(path(i - 1), path(i)))
         Next
+        ' 逐段筆印：還在畫的筆畫不知道總長，用很大的總長（收尾變細、筆毛乾掉等到放開時才算）
+        Dim reported = If(totalOverride > 0, totalOverride, total)
         Dim angAt = Function(i As Integer) If(angles Is Nothing, Single.NaN, angles(i))
         Dim flatAt = Function(i As Integer) If(flats Is Nothing, 1.0F, flats(i))
         If path.Length = 1 OrElse total < 0.01F Then
-            visit(path(0).X, path(0).Y, If(pres Is Nothing, 1, pres(0)), 1, 0, 0, 0, angAt(0), flatAt(0))
+            visit(path(0).X, path(0).Y, If(pres Is Nothing, 1, pres(0)), 1, 0, 0, If(totalOverride > 0, totalOverride, 0), angAt(0), flatAt(0))
             Return
         End If
         spacing = Math.Max(0.35F, spacing)
@@ -484,7 +552,7 @@ Partial Public NotInheritable Class DrawingRenderer
                     Dim d = CSng(Math.IEEERemainder(ab - aa, 2 * Math.PI))
                     ang = aa + d * t
                 End If
-                visit(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t, pa + (pb - pa) * t, dx, dy, nextAt, total, ang, fa + (fb - fa) * t)
+                visit(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t, pa + (pb - pa) * t, dx, dy, nextAt, reported, ang, fa + (fb - fa) * t)
                 nextAt += spacing
             End While
             travelled += seg
@@ -556,7 +624,7 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' </summary>
     Private Shared Sub Stamp(cov As Single(), cv As Canvas, path As PointF(), pres As Single(), angles As Single(), flats As Single(),
                              widthPx As Single, sp As BrushSpec, flow As Single, edge As Single,
-                             layer As DrawLayer, rnd As Random, tint As Single())
+                             layer As DrawLayer, rnd As Random, tint As Single(), Optional range As DabRange = Nothing)
         Dim amount = sp.Amount * If(sp.Additive, flow, 1)
         Dim cap = If(sp.Additive, 1, flow)
         Dim spacing = widthPx * sp.Spacing
@@ -594,8 +662,10 @@ Partial Public NotInheritable Class DrawingRenderer
                  If presOp > 0 Then a *= 1 - presOp * (1 - p)
                  Dim col = (R:=0.0F, G:=0.0F, B:=0.0F)
                  If tint IsNot Nothing Then col = JitterColor(baseC.R / 255.0F, baseC.G / 255.0F, baseC.B / 255.0F, layer.HueJitter, layer.LumJitter, rnd)
+                 ' 範圍外的筆印：亂數照樣用掉（後面的筆印才會和整筆算的一樣），只是不畫
+                 If range IsNot Nothing AndAlso Not range.Contains(s) Then Return
                  Dab(cov, Nothing, 0, cv, x, y, Math.Max(0.5F, size / 2), edge, a, sp.Additive, sp.Tip, tipAngle, ratio, tint, col.R, col.G, col.B)
-             End Sub)
+             End Sub, If(range Is Nothing, 0, range.TotalOverride))
     End Sub
 
     Private Shared Sub Dab(cov As Single(), streak As Single(), streakValue As Single, cv As Canvas,
@@ -682,7 +752,8 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' </summary>
     Private Shared Sub Bristles(cov As Single(), streak As Single(), cv As Canvas, path As PointF(), pres As Single(),
                                 widthPx As Single, layer As DrawLayer, sp As BrushSpec, flow As Single, edge As Single,
-                                Optional angles As Single() = Nothing, Optional flats As Single() = Nothing, Optional tint As Single() = Nothing)
+                                Optional angles As Single() = Nothing, Optional flats As Single() = Nothing, Optional tint As Single() = Nothing,
+                                Optional range As DabRange = Nothing)
         Dim count = CInt(Math.Max(6, Math.Min(36, widthPx / 1.6)))
         Dim seed = layer.Seed * 131
         Dim offsets(count - 1) As Single, sizes(count - 1) As Single, tones(count - 1) As Single
@@ -700,6 +771,7 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim presOp = layer.PressureOpacity / 100.0F
         WalkEx(path, pres, angles, flats, Math.Max(0.5F, widthPx / count * 0.6F),
              Sub(x, y, p, dx, dy, s, total, ang, flat)
+                 If range IsNot Nothing AndAlso Not range.Contains(s) Then Return ' 筆毛不用亂數，範圍外直接跳過
                  Dim size = widthPx * (1 - sp.SizePressure * (1 - p))
                  If sp.Taper Then size *= TaperAt(s, total, widthPx)
                  Dim along = If(total > 0, s / total, 0)
@@ -737,7 +809,7 @@ Partial Public NotInheritable Class DrawingRenderer
                      Dab(cov, streak, tones(i), cv, x + nx * o, y + ny * o, rb * sizes(i), Math.Min(edge, 0.6F),
                          intensity * flow * pf, False, TipKind.Round, Single.NaN, 1, tint, cols(i).R, cols(i).G, cols(i).B)
                  Next
-             End Sub)
+             End Sub, If(range Is Nothing, 0, range.TotalOverride))
     End Sub
 
     ''' <summary>血液：沿線隨機往下滴的血滴。</summary>

@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     Private Const TargetFill2 As Integer = 3
     ''' <summary>拖曳中的漸層控制點：1＝起點、2＝終點。</summary>
     Private _gradDrag As Integer
-    Private Shared ReadOnly FillModeNames As String() = {Lang.T("單色"), Lang.T("線性漸層"), Lang.T("放射漸層")}
+    Private Shared ReadOnly FillModeNames As String() = {Lang.T("單色"), Lang.T("線性漸層"), Lang.T("放射漸層"), Lang.T("圖樣")}
     ' ---- 路徑文字 ----
     Private ReadOnly _pathTextBar As New FlowLayoutPanel With {.Dock = DockStyle.Left, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink,
                                                                .WrapContents = False, .BackColor = Color.Transparent, .Padding = New Padding(6, 0, 0, 0)}
@@ -83,8 +83,14 @@ Partial Friend Class frmEditor
                                                        Dim mode = _fillMode.SelectedIndex
                                                        SetDrawProp(Sub(d)
                                                                        If mode = 0 Then
+                                                                           d.FillGradient = Nothing : d.FillPattern = Nothing
+                                                                       ElseIf mode = 3 Then
+                                                                           ' 圖樣：填色是底、第二色是花樣（見 frmEditor.DrawBatch6.vb）
                                                                            d.FillGradient = Nothing
+                                                                           If d.FillPattern Is Nothing Then d.FillPattern = NewPattern()
+                                                                           d.Filled = True
                                                                        Else
+                                                                           d.FillPattern = Nothing
                                                                            Dim radial = mode = 2
                                                                            d.FillGradient = New GradientFill With {.Kind = If(radial, GradientKind.Radial, GradientKind.Linear),
                                                                                .X1 = If(radial, 0.5, 0), .Y1 = 0.5, .X2 = 1, .Y2 = 0.5}
@@ -105,7 +111,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub SyncFillStyle(st As DrawLayer)
-        Dim mode = If(st.FillGradient Is Nothing, 0, If(st.FillGradient.Kind = GradientKind.Radial, 2, 1))
+        Dim mode = If(st.FillPattern IsNot Nothing, 3, If(st.FillGradient Is Nothing, 0, If(st.FillGradient.Kind = GradientKind.Radial, 2, 1)))
         _fillMode.SelectedIndex = mode
         SetSwatch(_drawFill2Color, st.FillColor2Argb)
         _drawFill2Color.Enabled = mode <> 0

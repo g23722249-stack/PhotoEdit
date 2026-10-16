@@ -33,9 +33,12 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim heads As New List(Of PointF())()
         Dim open = Not DrawGeometry.IsClosedLayer(layer)
         Dim sz = ArrowSize(widthPx)
-        For Each f In figs
+        ' 尺寸線：箭頭只畫在尺寸線（最後一條）兩端，延伸線不畫
+        Dim arrowFig = If(layer.Shape = DrawShape.Dimension, figs.Count - 1, -1)
+        For fi = 0 To figs.Count - 1
+            Dim f = figs(fi)
             Dim cur = f
-            If open AndAlso Not f.Closed AndAlso f.Points.Length >= 2 Then
+            If open AndAlso Not f.Closed AndAlso f.Points.Length >= 2 AndAlso (arrowFig < 0 OrElse fi = arrowFig) Then
                 If layer.EndArrow <> ArrowKind.None Then cur = AddArrow(cur, layer.EndArrow, sz, atStart:=False, heads, lines)
                 If layer.StartArrow <> ArrowKind.None AndAlso cur.Points IsNot Nothing Then cur = AddArrow(cur, layer.StartArrow, sz, atStart:=True, heads, lines)
             End If
