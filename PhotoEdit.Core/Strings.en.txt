@@ -2902,3 +2902,7 @@ KDE Plasma（按鈕在右）	KDE Plasma (buttons on the right)
 文件色票	Document Swatches
 （在左側色彩面板按「＋」加入）	(add them with "+" in the color panel on the left)
 全部恢復預設	Restore All Defaults
+再製	Duplicate
+寬度樣式（套到選取的線，沒選時給之後畫的線）	Width style (applies to the selected line, or to lines you draw next)
+選取的物件	Selected objects
+節點（節點工具點選節點後可用）	Nodes (available after selecting nodes with the Node tool)

@@ -429,6 +429,16 @@ Partial Friend Class frmEditor
         ''' <summary>畫在面板上的標題（文字、y）。</summary>
         Private ReadOnly _captions As New List(Of (Text As String, Y As Integer))()
         Private _brushCaptionY As Integer
+        ' ---- 依工具切換的一區（常用筆刷的位置）：見 frmEditor.QuickContext.vb ----
+        Private ReadOnly _ctx As New Dictionary(Of QuickContext, List(Of Control))()
+        Private _ctxNow As QuickContext = QuickContext.Brushes
+        Private ReadOnly _touchModes As New List(Of Button)()
+        Private ReadOnly _touchSizeBar As New Aqua.Slider With {.Minimum = 4, .Maximum = 600, .ShowTicks = False}
+        Private ReadOnly _touchStrBar As New Aqua.Slider With {.Minimum = 1, .Maximum = 100, .ShowTicks = False}
+        Private ReadOnly _touchSizeValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
+        Private ReadOnly _touchStrValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
+        Private ReadOnly _widthTiles As New List(Of Button)()
+        Private ReadOnly _nodeBtns As New Dictionary(Of String, Button)()
         Private _editBackground As Boolean
         Private _syncing As Boolean
         Private _modal As Boolean
@@ -557,6 +567,8 @@ Partial Friend Class frmEditor
                 _brushTiles.Add(t)
                 Controls.Add(t)
             Next
+            _ctx(QuickContext.Brushes) = _brushTiles.Cast(Of Control)().ToList()
+            BuildContexts(y)
             y += 116
 
             ' 吸管、橡皮擦、復原、重做
@@ -584,6 +596,141 @@ Partial Friend Class frmEditor
             Controls.Add(_layers)
             ApplyColors()
         End Sub
+
+        ''' <summary>依工具切換的四區（和常用筆刷疊在同一個位置，一次只顯示一區）。</summary>
+        Private Sub BuildContexts(top As Integer)
+            Dim add = Function(ctx As QuickContext, c As Control) As Control
+                          If Not _ctx.ContainsKey(ctx) Then _ctx(ctx) = New List(Of Control)()
+                          _ctx(ctx).Add(c)
+                          c.Visible = False
+                          Controls.Add(c)
+                          Return c
+                      End Function
+            Dim btn = Function(text As String, x As Integer, yy As Integer, w As Integer) As Button
+                          Dim b As New Button With {.Text = text, .FlatStyle = FlatStyle.Flat}
+                          b.SetBounds(x, yy, w, 34)
+                          Return b
+                      End Function
+            ' 修飾筆刷：六個模式、大小、力道
+            Dim names = _ed.TouchModeNames
+            For i = 0 To names.Length - 1
+                Dim mode = i
+                Dim b = btn(names(i), 16 + i * 70, top, 66)
+                AddHandler b.Click, Sub()
+                                        _ed.QuickTouchMode = mode
+                                        SyncFromEditor()
+                                    End Sub
+                _touchModes.Add(b)
+                add(QuickContext.TouchUp, b)
+            Next
+            For Each row In {(_touchSizeBar, _touchSizeValue, Lang.T("大小"), 0), (_touchStrBar, _touchStrValue, Lang.T("力道"), 1)}
+                Dim yy = top + 44 + row.Item4 * 34
+                Dim lbl As New Label With {.Text = row.Item3, .AutoSize = False, .TextAlign = ContentAlignment.MiddleLeft}
+                lbl.SetBounds(16, yy, 90, 28)
+                row.Item1.SetBounds(110, yy + 2, 270, 24)
+                row.Item2.SetBounds(384, yy, 52, 28)
+                add(QuickContext.TouchUp, lbl) : add(QuickContext.TouchUp, row.Item1) : add(QuickContext.TouchUp, row.Item2)
+            Next
+            AddHandler _touchSizeBar.ValueChanged, Sub()
+                                                       _touchSizeValue.Text = _touchSizeBar.Value.ToString()
+                                                       If Not _syncing Then _ed.QuickTouchSize = _touchSizeBar.Value
+                                                   End Sub
+            AddHandler _touchStrBar.ValueChanged, Sub()
+                                                      _touchStrValue.Text = _touchStrBar.Value & "%"
+                                                      If Not _syncing Then _ed.QuickTouchStrength = _touchStrBar.Value
+                                                  End Sub
+            ' 寬度樣式：8 格小圖
+            Dim presets = DrawGeometry.WidthPresets()
+            For i = 0 To presets.Count - 1
+                Dim k = i
+                Dim stops = presets(i).Stops
+                Dim b As New Button With {.FlatStyle = FlatStyle.Flat, .Text = presets(i).Name, .TextAlign = ContentAlignment.BottomCenter, .Tag = False}
+                b.SetBounds(16 + (i Mod 4) * 106, top + (i \ 4) * 56, 100, 52)
+                AddHandler b.Paint, Sub(sender, e)
+                                        Dim isOn = CBool(b.Tag)
+                                        Dim col = If(isOn, Color.White, If(ThemeManager.Dark, Color.FromArgb(210, 214, 222), Color.FromArgb(50, 70, 120)))
+                                        PaintWidthPreview(e.Graphics, New RectangleF(10, 6, b.Width - 20, 22), stops, col)
+                                    End Sub
+                AddHandler b.Click, Sub()
+                                        _ed.QuickWidthPreset(k)
+                                        SyncFromEditor()
+                                    End Sub
+                _widthTiles.Add(b)
+                add(QuickContext.Width, b)
+            Next
+            ' 選取的物件：再製、鏡射、外框轉物件；效果（開設定視窗，面板先收起）
+            Dim objs = {("duplicate", Lang.T("再製"), False), ("mirrorh", Lang.T("水平鏡射"), False), ("mirrorv", Lang.T("垂直鏡射"), False), ("outline", Lang.T("外框轉物件"), True),
+                        ("contour", Lang.T("輪廓圖…"), True), ("distort", Lang.T("變形效果…"), True), ("extrude", Lang.T("立體化…"), True), ("simplify", Lang.T("簡化路徑…"), True)}
+            For i = 0 To objs.Length - 1
+                Dim cmd = objs(i).Item1, closes = objs(i).Item3
+                Dim b = btn(objs(i).Item2, 16 + (i Mod 4) * 106, top + (i \ 4) * 44, 100)
+                AddHandler b.Click, Sub()
+                                        If closes Then Hide()
+                                        _ed.QuickCommand(cmd)
+                                        If Not closes Then SyncFromEditor()
+                                    End Sub
+                add(QuickContext.Objects, b)
+            Next
+            ' 節點
+            Dim nodes = {("corner", Lang.T("尖角")), ("smooth", Lang.T("平滑")), ("symmetric", Lang.T("對稱")), ("delete", Lang.T("刪節點")),
+                         ("break", Lang.T("斷開")), ("close", Lang.T("封閉")), ("join", Lang.T("接合")), ("convert", Lang.T("轉成曲線"))}
+            For i = 0 To nodes.Length - 1
+                Dim key = nodes(i).Item1
+                Dim b = btn(nodes(i).Item2, 16 + (i Mod 4) * 106, top + (i \ 4) * 44, 100)
+                AddHandler b.Click, Sub()
+                                        _ed.QuickNodeCommand(key)
+                                        SyncFromEditor()
+                                    End Sub
+                _nodeBtns(key) = b
+                add(QuickContext.Nodes, b)
+            Next
+        End Sub
+
+        ''' <summary>顯示目前工具的那一區、更新狀態。</summary>
+        Private Sub SyncContext()
+            _ctxNow = _ed.QuickContextNow()
+            For Each kv In _ctx
+                For Each c In kv.Value
+                    c.Visible = kv.Key = _ctxNow
+                Next
+            Next
+            Dim accent = Color.FromArgb(47, 128, 237)
+            Dim normal = If(ThemeManager.Dark, ThemeManager.ButtonBack, Color.White)
+            Select Case _ctxNow
+                Case QuickContext.TouchUp
+                    For i = 0 To _touchModes.Count - 1
+                        Dim isOn = i = _ed.QuickTouchMode
+                        _touchModes(i).BackColor = If(isOn, accent, normal) : _touchModes(i).ForeColor = If(isOn, Color.White, ForeColor)
+                    Next
+                    _touchSizeBar.Value = Math.Max(_touchSizeBar.Minimum, Math.Min(_touchSizeBar.Maximum, _ed.QuickTouchSize))
+                    _touchStrBar.Value = _ed.QuickTouchStrength
+                    _touchSizeValue.Text = _ed.QuickTouchSize.ToString()
+                    _touchStrValue.Text = _ed.QuickTouchStrength & "%"
+                Case QuickContext.Width
+                    Dim cur = _ed.CurrentWidthPreset()
+                    For i = 0 To _widthTiles.Count - 1
+                        Dim isOn = i = cur
+                        _widthTiles(i).Tag = isOn
+                        _widthTiles(i).BackColor = If(isOn, accent, normal) : _widthTiles(i).ForeColor = If(isOn, Color.White, ForeColor)
+                        _widthTiles(i).Invalidate()
+                    Next
+                Case QuickContext.Nodes
+                    For Each kv In _nodeBtns
+                        kv.Value.Enabled = _ed.QuickNodeAvailable(kv.Key)
+                    Next
+                    _nodeBtns("close").Text = _ed.QuickCloseText()
+            End Select
+        End Sub
+
+        Private Function ContextCaption() As String
+            Select Case _ctxNow
+                Case QuickContext.TouchUp : Return Lang.T("修飾筆刷")
+                Case QuickContext.Width : Return Lang.T("寬度樣式（套到選取的線，沒選時給之後畫的線）")
+                Case QuickContext.Objects : Return Lang.T("選取的物件")
+                Case QuickContext.Nodes : Return Lang.T("節點（節點工具點選節點後可用）")
+            End Select
+            Return Lang.T("常用筆刷（右鍵可換）")
+        End Function
 
         Private Function CurrentChip() As ColorChip
             Return If(_editBackground, _bg, _fg)
@@ -658,6 +805,7 @@ Partial Friend Class frmEditor
                 For i = 0 To QuickBrushCount - 1
                     _brushTiles(i).SetBrush(brushes(i), brushes(i) = current AndAlso _ed.CurrentQuickTool() = QuickTool.Brush, _ed.ForegroundColor)
                 Next
+                SyncContext()
                 Dim layers = _ed.QuickLayers()
                 _layers.Items.Clear()
                 _layers.Items.AddRange(layers.Select(Function(l) CObj(l.Name)).ToArray())
@@ -717,7 +865,7 @@ Partial Friend Class frmEditor
                     g.DrawString(cap.Text, _font, fg, 16, cap.Y)
                 Next
                 If _docIds.Length = 0 Then g.DrawString(Lang.T("（在左側色彩面板按「＋」加入）"), small, s2, _docSwatches.Left + 4, _docSwatches.Top + 6)
-                g.DrawString(Lang.T("常用筆刷（右鍵可換）"), _font, fg, 16, _brushCaptionY)
+                g.DrawString(ContextCaption(), _font, fg, 16, _brushCaptionY)
                 g.DrawString(Lang.T("快速圖層"), _font, fg, 16, _layers.Top + 4)
                 Dim hint = Lang.F("{0} 開關　｜　{1} 輪盤　｜　Esc 關閉　｜　按兩下色塊開完整選色器", _ed._appSettings.QuickPanelHotkey, _ed._appSettings.QuickRadialHotkey)
                 Using sf As New StringFormat With {.Alignment = StringAlignment.Center}
