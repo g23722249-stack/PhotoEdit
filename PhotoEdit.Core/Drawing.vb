@@ -369,6 +369,15 @@ Public Class DrawLayer
     ''' <summary>字高（照片高度的比例）。</summary>
     Public Property TextSize As Double = 0.045
     Public Property TextBold As Boolean = True
+    Public Property TextItalic As Boolean
+
+    ''' <summary>字型樣式（粗體、斜體）。</summary>
+    <System.Text.Json.Serialization.JsonIgnore>
+    Public ReadOnly Property TextFontStyle As FontStyle
+        Get
+            Return If(TextBold, FontStyle.Bold, FontStyle.Regular) Or If(TextItalic, FontStyle.Italic, FontStyle.Regular)
+        End Get
+    End Property
 
     ' ---- 筆觸 ----
     Public Property Brush As BrushKind
@@ -436,6 +445,8 @@ Public Class DrawLayer
     Public Property PenRotation As Boolean
     ''' <summary>混色筆、塗抹筆的濕度 0..100：越濕沾起越多畫布顏色、抹得越長。</summary>
     Public Property Wet As Integer = 50
+    ''' <summary>毛筆、墨水筆、水彩的暈開 0..100：墨沿著紙纖維往筆畫外滲開（見 InkBleed.vb）。</summary>
+    Public Property Bleed As Integer
     ''' <summary>紙紋吃色 0..100：文件有紙張時，筆畫依筆壓只畫到紙紋凸起的地方（輕畫只碰到凸起）。</summary>
     Public Property PaperGrain As Integer = 50
     ''' <summary>對稱繪圖；中心 SymX、SymY（照片高度單位），等分數 SymCount。</summary>
@@ -504,14 +515,15 @@ Public Class DrawLayer
     ''' <summary>可變寬度線條的控制點（Nothing＝均勻）。</summary>
     Public Property WidthProfile As List(Of WidthStop)
 
-    Public Function Clone() As DrawLayer
+    ''' <param name="shareOps">點陣圖層的筆畫共用同一筆物件、只複製清單（復原紀錄用，見 EditRecipe.Snapshot）。</param>
+    Public Function Clone(Optional shareOps As Boolean = False) As DrawLayer
         Dim c = DirectCast(MemberwiseClone(), DrawLayer)
         c.FillPattern = FillPattern?.Clone()
         c.WidthProfile = WidthProfile?.Select(Function(w) w.Clone()).ToList()
         c.Points = Points?.Select(Function(p) p.Clone()).ToList()
         c.Strokes = Strokes?.Select(Function(s) s.Clone()).ToList()
         c.Contours = Contours?.Select(Function(p) p.Clone()).ToList()
-        c.Ops = Ops?.Select(Function(o) o.Clone()).ToList()
+        c.Ops = If(Ops Is Nothing, Nothing, If(shareOps, New List(Of DrawLayer)(Ops), Ops.Select(Function(o) o.Clone()).ToList()))
         c.Item = Item?.Clone()
         c.Region = Region?.Clone()
         c.Bucket = Bucket?.Clone()
@@ -530,9 +542,9 @@ Public Class DrawLayer
         Dash = s.Dash : Cap = s.Cap : Join = s.Join : StartArrow = s.StartArrow : EndArrow = s.EndArrow
         FillGradient = s.FillGradient?.Clone() : FillColor2Argb = s.FillColor2Argb
         ShadowOffsetX = s.ShadowOffsetX : ShadowOffsetY = s.ShadowOffsetY : ShadowSoft = s.ShadowSoft : ShadowOpacity = s.ShadowOpacity : ShadowColorArgb = s.ShadowColorArgb
-        FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold
+        FontName = s.FontName : TextColorArgb = s.TextColorArgb : TextSize = s.TextSize : TextBold = s.TextBold : TextItalic = s.TextItalic
         SpacingPct = s.SpacingPct : Scatter = s.Scatter : SizeJitter = s.SizeJitter : HueJitter = s.HueJitter : LumJitter = s.LumJitter
-        PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : PaperGrain = s.PaperGrain
+        PressureOpacity = s.PressureOpacity : PenTilt = s.PenTilt : PenRotation = s.PenRotation : Wet = s.Wet : Bleed = s.Bleed : PaperGrain = s.PaperGrain
         Symmetry = s.Symmetry : SymCount = s.SymCount : SymX = s.SymX : SymY = s.SymY
         Particle = s.Particle : HoseTheme = s.HoseTheme
         FillPattern = s.FillPattern?.Clone() : WidthProfile = s.WidthProfile?.Select(Function(w) w.Clone()).ToList()
@@ -547,7 +559,7 @@ Public Class DrawLayer
                StartArrow = s.StartArrow AndAlso EndArrow = s.EndArrow AndAlso
                SpacingPct = s.SpacingPct AndAlso Scatter = s.Scatter AndAlso SizeJitter = s.SizeJitter AndAlso HueJitter = s.HueJitter AndAlso
                LumJitter = s.LumJitter AndAlso PressureOpacity = s.PressureOpacity AndAlso PenTilt = s.PenTilt AndAlso PenRotation = s.PenRotation AndAlso
-               Wet = s.Wet AndAlso PaperGrain = s.PaperGrain AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso
+               Wet = s.Wet AndAlso Bleed = s.Bleed AndAlso PaperGrain = s.PaperGrain AndAlso Symmetry = s.Symmetry AndAlso SymCount = s.SymCount AndAlso
                Math.Abs(SymX - s.SymX) < 0.00001 AndAlso Math.Abs(SymY - s.SymY) < 0.00001 AndAlso
                Particle = s.Particle AndAlso HoseTheme = s.HoseTheme
     End Function

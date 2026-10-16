@@ -73,7 +73,7 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 油漆桶取樣所有圖層：上面的圖層改了（例如線稿）也要重算
         If above IsNot Nothing Then keys(0) = ChainHash(keys(0), "above|" & BelowSignature(above))
         For i = 0 To ops.Count - 1
-            keys(i + 1) = ChainHash(keys(i), System.Text.Json.JsonSerializer.Serialize(ops(i), _jsonOptions))
+            keys(i + 1) = ChainHash(keys(i), OpKey(ops(i)))
         Next
 
         ' 找快取裡最長的「前 k 筆」，從那裡接著畫。
@@ -274,6 +274,36 @@ Partial Public NotInheritable Class DrawingRenderer
             sample.Add(below(i * 4)) : sample.Add(below(i * 4 + 1)) : sample.Add(below(i * 4 + 2)) : sample.Add(below(i * 4 + 3))
         Next
         Return Convert.ToBase64String(System.Security.Cryptography.SHA1.HashData(sample.ToArray()))
+    End Function
+
+    ' 每一筆的內容雜湊：算一次記在那一筆上（畫了幾千筆時，每次算圖不必把所有筆再序列化一次）。
+    ' 指紋（點數、顏色、粗細…）變了就重算，正在畫、還在變長的那一筆也對。
+    Private Shared ReadOnly _opKeys As New Runtime.CompilerServices.ConditionalWeakTable(Of DrawLayer, Tuple(Of String, String))()
+
+    Private Shared Function OpFingerprint(op As DrawLayer) As String
+        Dim pts = 0
+        If op.Strokes IsNot Nothing Then
+            For Each st In op.Strokes
+                pts += If(st.Points?.Count, 0)
+            Next
+        End If
+        Dim ends = ""
+        If op.Strokes IsNot Nothing AndAlso op.Strokes.Count > 0 AndAlso op.Strokes(0).Points?.Count > 0 Then
+            Dim p0 = op.Strokes(0).Points(0), ls = op.Strokes(op.Strokes.Count - 1)
+            Dim p1 = If(ls.Points?.Count > 0, ls.Points(ls.Points.Count - 1), p0)
+            ends = $"{p0.X},{p0.Y},{p1.X},{p1.Y}"
+        End If
+        Return $"{pts}|{If(op.Strokes?.Count, 0)}|{If(op.Ops?.Count, 0)}|{If(op.Points?.Count, 0)}|{op.StrokeColorArgb}|{op.FillColorArgb}|{op.StrokeWidth}|{op.Opacity}|{op.Eraser}|{op.Brush}|" &
+               $"{op.X},{op.Y},{op.W},{op.H},{op.Rotation},{op.Param1},{op.Param2},{op.Sides}|{ends}"
+    End Function
+
+    Private Shared Function OpKey(op As DrawLayer) As String
+        Dim fp = OpFingerprint(op)
+        Dim hit As Tuple(Of String, String) = Nothing
+        If _opKeys.TryGetValue(op, hit) AndAlso hit.Item1 = fp Then Return hit.Item2
+        Dim key = ChainHash(0UL, System.Text.Json.JsonSerializer.Serialize(op, _jsonOptions)).ToString("x16")
+        _opKeys.AddOrUpdate(op, Tuple.Create(fp, key))
+        Return key
     End Function
 
     Private Shared Function ChainHash(seed As ULong, text As String) As ULong

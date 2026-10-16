@@ -224,6 +224,33 @@ Public Class EditRecipe
     Public Property Swatches As List(Of ColorSwatch)
 
     Public Function Clone() As EditRecipe
+        Return Clone(shareOps:=False)
+    End Function
+
+    ''' <summary>
+    ''' 復原紀錄用的快照：點陣圖層已畫好的筆畫（Ops 的每一筆）和目前的配方共用，只複製清單。
+    ''' 筆畫畫好後不會再被修改（只會在清單後面加、或整層換掉），畫了幾千筆時每一筆的復原紀錄才不必把所有筆點再複製一次。
+    ''' </summary>
+    ''' <summary>
+    ''' 快速判斷一定不同：圖層數、每個繪圖圖層的筆數、文字貼圖數不一樣（不必序列化整份配方）。
+    ''' 回傳 False 不代表相同，要再用 Equals 完整比對。
+    ''' </summary>
+    Public Function StructureDiffers(other As EditRecipe) As Boolean
+        If other Is Nothing Then Return True
+        If If(Overlays?.Count, 0) <> If(other.Overlays?.Count, 0) Then Return True
+        Dim a = If(Drawings, New List(Of DrawLayer)()), b = If(other.Drawings, New List(Of DrawLayer)())
+        If a.Count <> b.Count Then Return True
+        For i = 0 To a.Count - 1
+            If If(a(i).Ops?.Count, 0) <> If(b(i).Ops?.Count, 0) OrElse If(a(i).Strokes?.Count, 0) <> If(b(i).Strokes?.Count, 0) Then Return True
+        Next
+        Return False
+    End Function
+
+    Public Function Snapshot() As EditRecipe
+        Return Clone(shareOps:=True)
+    End Function
+
+    Private Function Clone(shareOps As Boolean) As EditRecipe
         Dim r = DirectCast(MemberwiseClone(), EditRecipe)
         r.Guides = Guides?.Select(Function(g) g.Clone()).ToList()
         r.Swatches = Swatches?.Select(Function(s) s.Clone()).ToList()
@@ -231,7 +258,7 @@ Public Class EditRecipe
         r.Spots = Spots?.Select(Function(s) s.Clone()).ToList()
         r.LocalAdjustments = LocalAdjustments?.Select(Function(a) a.Clone()).ToList()
         r.Overlays = Overlays?.Select(Function(o) o.Clone()).ToList()
-        r.Drawings = Drawings?.Select(Function(d) d.Clone()).ToList()
+        r.Drawings = Drawings?.Select(Function(d) d.Clone(shareOps)).ToList()
         r.DrawGroups = DrawGroups?.Select(Function(g) g.Clone()).ToList()
         r.Cutout = Cutout?.Clone()
         r.LayerOrder = If(LayerOrder Is Nothing, Nothing, New List(Of String)(LayerOrder))

@@ -29,6 +29,8 @@ Partial Friend Class frmEditor
     Private ReadOnly _drawStroke As New CheckBox()
     Private ReadOnly _drawShadow As New CheckBox()
     Private ReadOnly _drawFont As New ComboBox()
+    Private ReadOnly _drawTextBold As New CheckBox()
+    Private ReadOnly _drawTextItalic As New CheckBox()
     Private ReadOnly _layerList As New ListBox()
     Private ReadOnly _layerButtons As New List(Of Button)()
     Private _layerTop As Integer
@@ -199,6 +201,7 @@ Partial Friend Class frmEditor
         AddRow(L, DrawRow("dw_soft", Lang.T("柔邊"), 0, 100, pct, Function(d) d.Softness, Sub(d, v) d.Softness = v))
         AddRow(L, DrawRow("dw_opacity", Lang.T("不透明度"), 0, 100, pct, Function(d) d.Opacity, Sub(d, v) d.Opacity = v))
         AddRow(L, DrawRow("dw_flow", Lang.T("流量"), 2, 100, pct, Function(d) d.Flow, Sub(d, v) d.Flow = v))
+        AddRow(L, DrawRow("dw_bleed", Lang.T("暈開"), 0, 100, Function(v) If(v = 0, Lang.T("關"), v.ToString()), Function(d) d.Bleed, Sub(d, v) d.Bleed = v))
         BuildDrawAdvanced(L)
 
         _help.SetHelpLinked("draw.font", _drawFont, AddCaption(L, Lang.T("圖說字型"), L.Y), _drawFont)
@@ -212,6 +215,19 @@ Partial Friend Class frmEditor
                                                     End Sub
         L.Add(_drawFont)
         L.Y += RowHeight
+        ' 粗體、斜體（文字工具與圖說的字）
+        Dim halfW = (L.Width - 8 - CaptionWidth - 6) \ 2
+        For Each chk In {(_drawTextBold, Lang.T("粗體"), 0, "draw.textbold"), (_drawTextItalic, Lang.T("斜體"), 1, "draw.textitalic")}
+            Dim cb = chk.Item1
+            cb.Text = chk.Item2
+            cb.BackColor = Color.Transparent
+            cb.SetBounds(8 + CaptionWidth + chk.Item3 * (halfW + 6), L.Y + 4, halfW, 24)
+            _help.SetHelp(chk.Item4, cb)
+            L.Add(cb)
+        Next
+        AddHandler _drawTextBold.CheckedChanged, Sub() If Not _syncing Then SetDrawProp(Sub(d) d.TextBold = _drawTextBold.Checked)
+        AddHandler _drawTextItalic.CheckedChanged, Sub() If Not _syncing Then SetDrawProp(Sub(d) d.TextItalic = _drawTextItalic.Checked)
+        L.Y += 30
         AddRow(L, DrawRow("dw_textsize", Lang.T("圖說字級"), 10, 200, AddressOf Plain, Function(d) CInt(Math.Round(d.TextSize * 1000)), Sub(d, v) d.TextSize = v / 1000.0))
 
         AddHeading(L, Lang.T("圖層"))
@@ -290,19 +306,35 @@ Partial Friend Class frmEditor
     ''' 設定要改的圖層：選取的形狀（畫完後可再調整）；自由繪製圖層只在「選取」工具時才改，
     ''' 否則改的是下一筆的設定（換顏色接著畫會成為新圖層，不會把舊的筆畫一起改掉）。
     ''' </summary>
+    ''' <summary>建立新向量圖形的工具（鋼筆與各種形狀；文字、自由繪製、點陣、填色類除外）。</summary>
+    Private Shared Function IsCreateTool(tool As Integer) As Boolean
+        If tool < 0 Then Return False ' 選取、節點、平移、吸管…
+        Select Case CType(tool, DrawShape)
+            Case DrawShape.Text, DrawShape.Freehand, DrawShape.Raster, DrawShape.Bucket, DrawShape.Gradient, DrawShape.FillLayer
+                Return False
+        End Select
+        Return True
+    End Function
+
     Private Function StyleTarget(r As EditRecipe) As DrawLayer
         Dim sel = SelDraw(r)
         If sel Is Nothing Then Return Nothing
         ' 直接繪製時筆刷設定只給下一筆用；選取的圖層（不論種類）都不跟著改。
         If _drawStrip.SelectedTool = CInt(DrawShape.Raster) OrElse IsFillTool() Then Return Nothing
         If (sel.Shape = DrawShape.Freehand OrElse sel.Shape = DrawShape.Raster) AndAlso _drawStrip.SelectedTool <> DrawIcons.SelectTool Then Return Nothing
+        ' 鋼筆、形狀工具：剛畫好的圖形雖然還選著，換顏色、填色、外框是給「下一個」圖形用的
+        ' （新手畫完一塊、換色準備畫下一塊時，不會把上一塊改掉）；要改已畫好的圖形用選取工具或按住 Ctrl 點它
+        If IsCreateTool(_drawStrip.SelectedTool) Then Return Nothing
+        ' 文字工具：正在輸入時改的是那段字；打完之後換字型、顏色是給下一段字用的
+        If _drawStrip.SelectedTool = CInt(DrawShape.Text) AndAlso Not (_calloutEditor IsNot Nothing AndAlso _calloutEditor.Visible) Then Return Nothing
         Return sel
     End Function
 
     ''' <param name="groupKey">連續的同類修改（例如在選色視窗拖曳）在復原紀錄裡合併成一步。</param>
     Private Sub SetDrawProp(change As Action(Of DrawLayer), Optional groupKey As String = Nothing)
         change(_drawStyle)
-        If _photo IsNot Nothing Then
+        ' 沒有要跟著改的圖層（例如直接繪製時換色）：配方不變，不必複製、比對整份配方
+        If _photo IsNot Nothing AndAlso StyleTargets(_recipe).Count > 0 Then
             ApplyChange(Sub(r)
                             For Each t In StyleTargets(r) ' 多選時一起改
                                 change(t)
@@ -417,6 +449,8 @@ Partial Friend Class frmEditor
             SyncFillStyle(st)
             UpdateDrawAdvanced(st)
             _drawFont.SelectedIndex = Math.Max(0, Array.FindIndex(TextFonts, Function(f) f.Family = st.FontName))
+            _drawTextBold.Checked = st.TextBold
+            _drawTextItalic.Checked = st.TextItalic
             Dim sel = SelDraw(_recipe)
             Dim multi = IsMultiSelected()
             Dim movable = MovableBlock().HasValue
@@ -454,8 +488,10 @@ Partial Friend Class frmEditor
     End Sub
 
     ''' <summary>筆刷格子的預覽用目前的線條色（太淡時改用深灰）；特效與材質改變時重畫。</summary>
-    Private Sub UpdateBrushPreviews(st As DrawLayer)
-        If DeferBrushPreviews() Then Return ' 正在選色視窗拖曳：停下來再畫
+    Private _previewDebounce As Timer
+
+    Private Sub UpdateBrushPreviews(st As DrawLayer, Optional now As Boolean = False)
+        If Not now AndAlso DeferBrushPreviews() Then Return ' 正在選色視窗拖曳：停下來再畫
         Dim c = Color.FromArgb(255, Color.FromArgb(st.StrokeColorArgb))
         If ThemeManager.Dark Then
             If c.GetBrightness() < 0.25 Then c = Color.FromArgb(210, 214, 222) ' 深色格子上看得到
@@ -464,6 +500,20 @@ Partial Friend Class frmEditor
         End If
         Dim key = $"{c.ToArgb()}|{st.Fx}|{st.Material}|{_brushGrid.Width}"
         If key = _brushPreviewKey OrElse _brushTiles.Count = 0 Then Return
+        ' 只有顏色變了（參考圖吸色、色票）：停下 0.4 秒再重畫 21 格預覽，連續吸色、下筆時不會每次卡一下
+        If Not now AndAlso _brushPreviewKey IsNot Nothing AndAlso
+           key.Substring(key.IndexOf("|"c)) = _brushPreviewKey.Substring(_brushPreviewKey.IndexOf("|"c)) Then
+            If _previewDebounce Is Nothing Then
+                _previewDebounce = New Timer With {.Interval = 400}
+                AddHandler _previewDebounce.Tick, Sub()
+                                                      _previewDebounce.Stop()
+                                                      UpdateBrushPreviews(If(StyleTarget(_recipe), _drawStyle), now:=True)
+                                                  End Sub
+            End If
+            _previewDebounce.Stop()
+            _previewDebounce.Start()
+            Return
+        End If
         _brushPreviewKey = key
         Dim w = Math.Max(40, _brushTiles(0).Width - 4)
         ' 特效、紋理的格子用該效果／材質的建議顏色；光、火、動態、魔法類用深色底。
@@ -1436,7 +1486,7 @@ Partial Friend Class frmEditor
         Dim w = Math.Max(80, CInt(area.Width)), h = Math.Max(34, CInt(area.Height))
         _calloutEditor.SetBounds(CInt(area.X + area.Width / 2 - w / 2), CInt(area.Y + area.Height / 2 - h / 2), w, h)
         Dim old = _calloutEditor.Font
-        _calloutEditor.Font = New Font(d.FontName, Math.Max(9, Math.Min(48, CSng(d.TextSize * PxPerUnit()))), If(d.TextBold, FontStyle.Bold, FontStyle.Regular), GraphicsUnit.Pixel)
+        _calloutEditor.Font = New Font(d.FontName, Math.Max(9, Math.Min(48, CSng(d.TextSize * PxPerUnit()))), d.TextFontStyle, GraphicsUnit.Pixel)
         If old IsNot Nothing AndAlso old IsNot Font Then old.Dispose()
         _calloutSyncing = True
         _calloutEditor.Text = d.Text

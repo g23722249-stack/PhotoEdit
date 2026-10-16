@@ -131,9 +131,14 @@ Partial Friend Class frmEditor
 
         Private ReadOnly Property Count As Integer
             Get
-                Return Papers.Names.Length + 1 ' 第一格「無」
+                Return Papers.DisplayOrder.Length + 1 ' 第一格「無」
             End Get
         End Property
+
+        ' 第 i 格的紙（第 0 格「無」= -1；之後照 Papers.DisplayOrder，同類的紙排在一起）
+        Private Shared Function KindAt(i As Integer) As Integer
+            Return If(i <= 0, -1, CInt(Papers.DisplayOrder(i - 1)))
+        End Function
 
         Public Function HeightFor(width As Integer) As Integer
             Dim rows = (Count + Cols - 1) \ Cols
@@ -191,7 +196,7 @@ Partial Friend Class frmEditor
             Dim g = e.Graphics
             g.Clear(Parent.BackColor)
             For i = 0 To Count - 1
-                Dim kind = i - 1
+                Dim kind = KindAt(i)
                 Dim r = TileRect(i)
                 Dim img = New Rectangle(r.X + 2, r.Y + 2, r.Width - 4, r.Height - 20)
                 If kind < 0 Then
@@ -208,7 +213,7 @@ Partial Friend Class frmEditor
                 TextRenderer.DrawText(g, name, Font, New Rectangle(r.X, r.Bottom - 18, r.Width, 18),
                                       ThemeManager.Fore(If(sel, Color.FromArgb(24, 95, 165), Color.FromArgb(70, 76, 88))),
                                       TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
-                Using p As New Pen(If(sel, Color.FromArgb(55, 138, 221), If(i - 1 = _hover, Color.FromArgb(150, 170, 200), ThemeManager.Line(Color.FromArgb(205, 210, 218)))), If(sel, 2, 1))
+                Using p As New Pen(If(sel, Color.FromArgb(55, 138, 221), If(kind = _hover, Color.FromArgb(150, 170, 200), ThemeManager.Line(Color.FromArgb(205, 210, 218)))), If(sel, 2, 1))
                     g.DrawRectangle(p, r.X, r.Y, r.Width - 1, r.Height - 1)
                 End Using
             Next
@@ -224,13 +229,13 @@ Partial Friend Class frmEditor
         Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
             MyBase.OnMouseClick(e)
             Dim i = HitIndex(e.Location)
-            If i >= 0 Then RaiseEvent KindClicked(i - 1)
+            If i >= 0 Then RaiseEvent KindClicked(KindAt(i))
         End Sub
 
         Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
             MyBase.OnMouseMove(e)
             Dim i = HitIndex(e.Location)
-            Dim k = If(i < 0, Integer.MinValue, i - 1)
+            Dim k = If(i < 0, Integer.MinValue, KindAt(i))
             If k <> _hover Then _hover = k : Invalidate()
         End Sub
 

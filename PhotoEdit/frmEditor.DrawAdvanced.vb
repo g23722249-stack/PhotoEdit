@@ -42,6 +42,7 @@ Partial Friend Class frmEditor
     End Function
 
     Private Sub StartFreehand(u As PointF, p As Point)
+        ApplyReferenceColor(p) ' 參考圖「畫筆取色」（見 frmEditor.Reference.vb）
         _freePoints = New List(Of DrawPoint) From {StrokePoint(u, p, True)}
         BeginStrokePreview() ' 即時預覽（見 frmEditor.StrokePreview.vb）
         Dim radius = StabilizerRadius()

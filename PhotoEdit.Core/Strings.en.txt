@@ -2922,3 +2922,52 @@ KDE Plasma（按鈕在右）	KDE Plasma (buttons on the right)
 上方是濾鏡（色調、復古、繪畫、漫畫，點一下套用整組風格），下方是手動調整：曝光、對比、亮部、暗部、色溫、飽和度與銳利度，也有一鍵自動增強。	Filters on top (tone, retro, painting, comic — click to apply a whole look), manual adjustments below: exposure, contrast, highlights, shadows, temperature, saturation and sharpness, plus one-click auto enhance.
 收起濾鏡	Hide Filters
 把濾鏡區塊收起來，手動調整的滑桿往上移；再按一次展開。會記住你的選擇。	Collapses the filters so the manual sliders move up; click again to expand. Your choice is remembered.
+使用手冊	User Manual
+使用手冊… (F1)	User Manual… (F1)
+搜尋	Search
+◀ 搜尋結果	◀ Results
+搜尋「{0}」	Search “{0}”
+找不到符合的內容。可以換個說法，或用空白分開多個關鍵字。	Nothing found. Try other words, or separate several keywords with spaces.
+共 {0} 筆，點一下跳到那一段。	{0} results — click one to jump there.
+套用前	Before
+套用後	After
+（找不到範例圖）	(sample image missing)
+暗角、褪色、顆粒、把整張照片染成單一色調的色彩濾鏡，以及繪畫風格（水彩、油畫、素描…）。	Vignette, fade, grain, a color filter that tints the whole photo one tone, and painting styles (watercolor, oil, sketch…).
+一次套用整組風格的濾鏡在「調整」頁籤上方。	Filters that apply a whole look are at the top of the Adjust tab.
+＋ 新圖層	＋ New Layer
+畫筆取色	Brush Picks Color
+畫筆取色：每一筆自動用參考圖同一位置的顏色。	Brush picks color: each stroke uses the reference color at the same spot.
+棉紙（和紙）	Washi (Mulberry Paper)
+暈開	Bleed
+墨色	Ink Tone
+墨色：吸到的顏色換成同樣深淺的墨色（水墨畫用）。	Ink tone: picked colors become ink of the same darkness (for ink wash).
+毛筆、墨水筆、水彩：墨沿著紙纖維往筆畫外滲開，邊緣羽化、滲出的墨較淡，外圈有淡淡的水痕。水墨畫的「暈」。	Chinese brush, ink pen, watercolor: ink seeps out of the stroke along the paper fibers — feathered edges, lighter ink outside, a faint tide line. The "bleed" of ink-wash painting.
+配合紙張（宣紙、棉紙）最自然；畫筆放開後才看得到暈開。其他筆刷沒有作用。	Most natural with rice or washi paper; the bleed appears after you lift the pen. No effect on other brushes.
+斜體	Italic
+左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。	Left-click picks the line color, right-click the fill; wheel to zoom, drag to move, double-click to see it all.
+已吸色 RGB({0}, {1}, {2})，設成填色。	Picked RGB({0}, {1}, {2}) as the fill color.
+從參考圖吸色 RGB({0}, {1}, {2})，已設成填色。	Picked RGB({0}, {1}, {2}) from the reference as the fill color.
+文字工具、圖說的字加粗。	Bold for the Text tool and callouts.
+文字工具、圖說的字變斜體，例如學名、引言。	Italic for the Text tool and callouts, e.g. scientific names or quotes.
+選取已打好的文字再勾，就會改那段文字。	Select existing text first to change it.
+AI 模型	AI Models
+發佈的 PhotoEdit 不附 AI 模型（檔案大、各有授權）。用到哪個功能就在這裡下載哪個，存到程式資料夾的 Models\\。沒有下載的功能會停用，其他功能照常。	PhotoEdit ships without AI models (they are large and each has its own license). Download the ones you need here; they go into the Models\\ folder next to the program. Features whose model is missing are disabled; everything else works.
+資料夾：	Folder: 
+開啟資料夾	Open Folder
+授權	License
+✓ 已安裝	✓ Installed
+不完整	Incomplete
+未安裝	Not installed
+下載 	Download 
+需另外取得	Not public
+下載中…	Downloading…
+已取消	Canceled
+下載失敗	Failed
+下載失敗：	Download failed: 
+來源	Source
+找不到模型清單（ModelCatalog.json）。	Model list (ModelCatalog.json) not found.
+刪除「{0}」的模型檔案（{1}）？用到它的功能會停用，之後可以再下載。	Delete the model files of "{0}" ({1})? Features that use it will be disabled; you can download it again later.
+無法刪除（可能正在使用中）：	Cannot delete (it may be in use): 
+還有 {0} 個模型正在下載，關閉設定會取消下載（已下載完的不受影響）。要關閉嗎？	{0} model(s) are still downloading. Closing Settings cancels them (finished ones are kept). Close anyway?
+「{0}」沒有下載位址。	"{0}" has no download address.
+「{0}」大小不對（{1:N0} 位元組，應該是 {2:N0}），可能下載不完整。	"{0}" has the wrong size ({1:N0} bytes, expected {2:N0}); the download may be incomplete.

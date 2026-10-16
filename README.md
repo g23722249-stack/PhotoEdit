@@ -22,6 +22,13 @@
 
 貼圖放在方案資料夾的 `Stick\`（`C:\專案\PhotoEdit\Stick\主題\*.png`），編譯時會複製到程式資料夾的 `stick\`，程式從那裡讀。每個子資料夾是一個主題，放 PNG（建議透明背景）、GIF、BMP、JPG；檔名以 `_` 或 `cover` 開頭的視為封面，不顯示。編輯檔只記「主題\檔名」。`D:\生活剪輯\stick\` 也有一份（新增貼圖後要另外複製過去）。
 
+### 模型下載（設定 → 模型）
+
+發佈的程式不附 AI 模型（檔案大、各有授權）：使用者在「檔案 → 設定… → 模型」看每個模型的用途、狀態，逐個下載到程式資料夾的 `Models\`（先存成 `.download`，大小核對正確才換上；取消或失敗不留壞檔），也可以刪除騰出空間。
+- 清單在 `PhotoEdit.Vision/ModelCatalog.json`（複製到程式資料夾）：每個模型的名稱、用途、授權、來源頁，以及每個檔案的 Models\ 相對路徑、大小、下載網址。改清單不用重新編譯。
+- 兩個加了 ControlNet 輸入的 UNet（`GhibliDiffusion/unet_controlnet`、`AnimeAnything/unet_controlnet`）是自己轉檔的，網路上沒有現成檔案，url 空白，畫面顯示「需另外取得」。發佈者把檔案放到自己的空間後，在清單的 `mirror` 填網址或資料夾／共用磁碟路徑：所有檔案就從 `mirror` + 相對路徑下載。
+- 打包發佈版時用 `dotnet build -p:SkipModelCopy=true`（或發佈後刪掉 `Models\`），程式資料夾就不含模型。
+
 ### 去背模型
 
 `PhotoEdit.Vision/Models/isnet-general-use.onnx`（178.6 MB）與 `u2net_human_seg.onnx`（176 MB），來源 [rembg releases v0.0.0](https://github.com/danielgatis/rembg/releases/tag/v0.0.0)，Apache-2.0；用 ONNX Runtime（Microsoft.ML.OnnxRuntime）執行。和人臉模型一樣不放進 git。臉部特徵點 `PhotoEdit.Vision/Models/lbfmodel.yaml`（56.4 MB，68 點 LBF，來源 [kurnianggoro/GSOC2017](https://github.com/kurnianggoro/GSOC2017/tree/master/data)）同樣另外下載。478 點臉部網格 `PhotoEdit.Vision/Models/face_landmarks.onnx`（4.9 MB，Google MediaPipe Face Mesh V2 的 ONNX 轉換版，Apache-2.0，來源 [fernandotonon/QtMeshEditor-facemesh-onnx](https://huggingface.co/fernandotonon/QtMeshEditor-facemesh-onnx)，ONNX Runtime 執行）也另外下載。偵測到臉後優先用 478 點（兩次框選結果一致才採用），失敗的臉改用 68 點，兩者都沒有時臉型與妝容停用；人像標題會註明用了哪一種。模型下載中（檔案被占用）時可用 `dotnet build -p:SkipModelCopy=true` 編譯。

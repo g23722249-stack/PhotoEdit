@@ -37,8 +37,8 @@ Module PaperTests
 
     Sub PaperTestsRun()
         Console.WriteLine("紙張")
-        Check("17 種紙張都有名稱與底色", Papers.Names.Length = 17 AndAlso Papers.BaseColors.Length = 17 AndAlso
-              [Enum].GetValues(GetType(PaperKind)).Length = 17)
+        Check("18 種紙張都有名稱與底色", Papers.Names.Length = 18 AndAlso Papers.BaseColors.Length = 18 AndAlso
+              [Enum].GetValues(GetType(PaperKind)).Length = 18 AndAlso Papers.DisplayOrder.Length = 18 AndAlso Papers.DisplayOrder.Distinct().Count() = 18 AndAlso Papers.DisplayOrder.Last() = PaperKind.Custom)
 
         ' ---- 高度圖 ----
         Dim flat As New List(Of String)()

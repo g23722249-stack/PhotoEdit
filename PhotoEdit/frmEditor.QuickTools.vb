@@ -353,6 +353,11 @@ Partial Friend Class frmEditor
         End Get
     End Property
 
+    ''' <summary>快速面板「＋ 新圖層」：同繪圖頁籤的「新增圖層」（空白點陣圖層，接著用筆刷畫）。</summary>
+    Friend Sub QuickNewLayer()
+        LayerCommand(0)
+    End Sub
+
     Friend Sub QuickSelectLayer(index As Integer)
         SelectDrawLayer(index)
     End Sub
@@ -420,7 +425,10 @@ Partial Friend Class frmEditor
         Private ReadOnly _opacityValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _brushTiles As New List(Of BrushChip)()
         Private ReadOnly _layers As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
+        Private ReadOnly _newLayer As New Button With {.Text = Lang.T("＋ 新圖層"), .FlatStyle = FlatStyle.Flat}
         Private ReadOnly _stab As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .ShowTicks = False}
+        Private ReadOnly _bleed As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .ShowTicks = False}
+        Private ReadOnly _bleedValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _stabValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _pressure As New List(Of Button)()
         Private ReadOnly _sym As New List(Of (Button As Button, Kind As SymmetryKind))()
@@ -454,7 +462,7 @@ Partial Friend Class frmEditor
             KeyPreview = True
             Font = _font
             DoubleBuffered = True
-            ClientSize = New Size(452, 718)
+            ClientSize = New Size(452, 750)
             Tag = ThemeManager.SkipTreeTag ' 自己用 ThemeManager 的顏色畫
 
             ' 顏色：前景、背景（點一下選要改哪一個，按兩下開完整選色器）、對調；小色環；近期與常用色票
@@ -491,13 +499,13 @@ Partial Friend Class frmEditor
             ' 筆刷大小、不透明度、穩定器（就是繪圖分頁的「粗細」「不透明度」「穩定器」）
             Dim y = HeaderH + 150
             For Each entry In {(_size, _sizeValue, "dw_width", Lang.T("筆刷大小")), (_opacity, _opacityValue, "dw_opacity", Lang.T("不透明度")),
-                               (_stab, _stabValue, "dw_stabilizer", Lang.T("穩定器"))}
+                               (_bleed, _bleedValue, "dw_bleed", Lang.T("暈開")), (_stab, _stabValue, "dw_stabilizer", Lang.T("穩定器"))}
                 Dim s = entry.Item1, v = entry.Item2, key = entry.Item3
                 _captions.Add((entry.Item4, y + 4))
                 s.SetBounds(110, y + 2, 270, 24)
                 v.SetBounds(384, y, 52, 28)
                 AddHandler s.ValueChanged, Sub()
-                                               v.Text = If(key = "dw_opacity", s.Value & "%", If(key = "dw_stabilizer" AndAlso s.Value = 0, Lang.T("關"), s.Value.ToString()))
+                                               v.Text = If(key = "dw_opacity", s.Value & "%", If((key = "dw_stabilizer" OrElse key = "dw_bleed") AndAlso s.Value = 0, Lang.T("關"), s.Value.ToString()))
                                                If _syncing Then Return
                                                Dim target = _ed.DrawRowSlider(key)
                                                If target IsNot Nothing AndAlso target.Value <> s.Value Then target.Value = s.Value
@@ -619,7 +627,14 @@ Partial Friend Class frmEditor
             y += 42
 
             ' 快速圖層
-            _layers.SetBounds(110, y + 2, 326, 26)
+            _layers.SetBounds(110, y + 2, 226, 26)
+            ' 新增圖層（畫完一區換下一區時用；原本要把筆移到右側面板）
+            _newLayer.SetBounds(342, y, 94, 30)
+            AddHandler _newLayer.Click, Sub()
+                                            _ed.QuickNewLayer()
+                                            SyncFromEditor()
+                                        End Sub
+            Controls.Add(_newLayer)
             AddHandler _layers.SelectedIndexChanged, Sub()
                                                          If _syncing OrElse _layers.SelectedIndex < 0 Then Return
                                                          Dim items = _ed.QuickLayers()
@@ -810,13 +825,17 @@ Partial Friend Class frmEditor
                 _bg.Selected = _editBackground
                 _recent.Colors = Aqua.ColorPicker.SavedRecentColors()
                 _custom.Colors = Aqua.ColorPicker.SavedCustomColors()
-                For Each entry In {(_size, "dw_width"), (_opacity, "dw_opacity"), (_stab, "dw_stabilizer")}
+                For Each entry In {(_size, "dw_width"), (_opacity, "dw_opacity"), (_bleed, "dw_bleed"), (_stab, "dw_stabilizer")}
                     Dim src = _ed.DrawRowSlider(entry.Item2)
                     If src IsNot Nothing Then entry.Item1.Value = src.Value
                 Next
                 _sizeValue.Text = _size.Value.ToString()
                 _opacityValue.Text = _opacity.Value & "%"
                 _stabValue.Text = If(_stab.Value = 0, Lang.T("關"), _stab.Value.ToString())
+                _bleedValue.Text = If(_bleed.Value = 0, Lang.T("關"), _bleed.Value.ToString())
+                ' 暈開只對毛筆、墨水筆、水彩有作用
+                Dim bleeds = DrawingRenderer.BleedsInk(_ed._drawStyle.Brush)
+                _bleed.Enabled = bleeds : _bleedValue.Enabled = bleeds
                 Dim accent = Color.FromArgb(47, 128, 237)
                 Dim normal = If(ThemeManager.Dark, ThemeManager.ButtonBack, Color.White)
                 For Each b In _pressure

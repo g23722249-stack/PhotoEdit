@@ -27,7 +27,7 @@ Partial Public NotInheritable Class DrawGeometry
         Dim box = TextBox(layer)
         Dim rect = New RectangleF(box.X * OutlineScale, box.Y * OutlineScale, box.Width * OutlineScale, box.Height * OutlineScale)
         If rect.Width < 2 OrElse rect.Height < 2 Then Return result
-        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Dim style = layer.TextFontStyle
         Using bmp As New Bitmap(8, 8), g = Graphics.FromImage(bmp),
               sf As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Center}
             g.TextRenderingHint = Text.TextRenderingHint.AntiAlias
@@ -127,7 +127,7 @@ Partial Public NotInheritable Class DrawGeometry
         Next
         Dim total = cum(pts.Count - 1)
         If total < 1 Then Return result
-        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Dim style = layer.TextFontStyle
         Dim widths As New List(Of Single)()
         Using bmp As New Bitmap(8, 8), g = Graphics.FromImage(bmp), font As New Font(family, Math.Max(1, size), style, GraphicsUnit.Pixel),
               sf = DirectCast(StringFormat.GenericTypographic.Clone(), StringFormat)
@@ -192,7 +192,7 @@ Partial Public NotInheritable Class DrawGeometry
         Dim result As New List(Of DrawLayer)()
         Dim size As Single, family As FontFamily = Nothing
         Dim places = PathTextLayout(layer, OutlineScale, size, family)
-        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Dim style = layer.TextFontStyle
         For Each gp In places
             Using path = GlyphPath(gp, family, style, size)
                 Dim cs = PathContours(path)

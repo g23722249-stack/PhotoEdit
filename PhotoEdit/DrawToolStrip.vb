@@ -153,6 +153,13 @@ Friend Class DrawToolStrip
         _groups.Add((title, list, 0))
     End Sub
 
+    ''' <summary>工具分組（共用、點陣、向量）與每格的所有變化（使用手冊用）。</summary>
+    Friend ReadOnly Property ToolGroups As IReadOnlyList(Of (Title As String, Slots As Integer()()))
+        Get
+            Return _groups.Select(Function(g) (g.Title, g.Slots.Select(Function(s) s.Variants).ToArray())).ToList()
+        End Get
+    End Property
+
     Public ReadOnly Property Buttons As IReadOnlyList(Of Control)
         Get
             Return _slots.Select(Function(s) CType(s.Button, Control)).ToList()

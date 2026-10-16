@@ -57,6 +57,7 @@ Friend Class frmNewImage
     Private ReadOnly _rbTransparent As New RadioButton With {.Text = Lang.T("透明(&T)")}
     Private ReadOnly _rbPaper As New RadioButton With {.Text = Lang.T("紙張(&P)")}
     Private ReadOnly _paperBox As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
+    Private Shared ReadOnly NewImagePapers As PaperKind() = Papers.DisplayOrder.Where(Function(k) k <> PaperKind.Custom).ToArray()
     Private ReadOnly _colorButton As New Button With {.FlatStyle = FlatStyle.Flat}
     ' 底圖
     Private ReadOnly _pictureLabel As New Label With {.AutoEllipsis = True}
@@ -138,10 +139,11 @@ Friend Class frmNewImage
         _rbTransparent.SetBounds(220, 48, 150, 22)
         _rbPaper.SetBounds(14, 74, 120, 22)
         _paperBox.SetBounds(140, 73, 200, 24)
-        _paperBox.Items.AddRange(Papers.Names.Take(Papers.Names.Length - 1).Cast(Of Object)().ToArray()) ' 自訂紙紋要在效果分頁匯入
+        ' 照畫面順序（同類的紙排在一起）；自訂紙紋要在效果分頁匯入
+        _paperBox.Items.AddRange(NewImagePapers.Select(Function(k) CObj(Papers.Names(CInt(k)))).ToArray())
         AddHandler _paperBox.SelectedIndexChanged, Sub()
                                                        If _syncing OrElse _paperBox.SelectedIndex < 0 Then Return
-                                                       _spec.PaperKind = CType(_paperBox.SelectedIndex, PaperKind)
+                                                       _spec.PaperKind = NewImagePapers(_paperBox.SelectedIndex)
                                                        _lastPaper = _spec.PaperKind
                                                        If Not _rbPaper.Checked Then _rbPaper.Checked = True Else UpdateAll()
                                                    End Sub
@@ -276,7 +278,7 @@ Friend Class frmNewImage
             _spec.Dpi = _lastDpi
             _spec.CustomColor = _lastColor
             _spec.PaperKind = _lastPaper
-            _paperBox.SelectedIndex = CInt(_lastPaper)
+            _paperBox.SelectedIndex = Math.Max(0, Array.IndexOf(NewImagePapers, _lastPaper))
             _colorButton.BackColor = _lastColor
             Select Case _lastFill
                 Case NewImageFill.Black : _rbBlack.Checked = True

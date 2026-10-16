@@ -277,7 +277,9 @@ Module BeautyTests
         End Using
         Dim p As New BeautySettings()
         p.SetOperaRole(OperaRoles.IdOf("關公"))
-        Check("手動調整套用「關公」＝關公、濃度 100、有髯口", p.OperaRole = OperaRoles.IdOf("關公") AndAlso p.Opera = 100 AndAlso p.OperaBeard)
+        Check("手動調整套用「關公」＝關公、濃度 100、沒有髯口（鬍子畫在臉譜裡）", p.OperaRole = OperaRoles.IdOf("關公") AndAlso p.Opera = 100 AndAlso Not p.OperaBeard)
+        p.SetOperaRole(OperaRoles.IdOf("包公"))
+        Check("手動調整套用「包公」＝有髯口", p.OperaBeard)
         ' 舊檔（一鍵美顏清單第 1 版：22..26 是戲曲、我的妝容從 27 起）讀進來換成目前的索引
         Dim oldIndex = Function(i As Integer) System.Text.Json.JsonSerializer.Deserialize(Of BeautySettings)("{""PresetIndex"":" & i & ",""Opera"":100}").PresetIndex.GetValueOrDefault(-1)
         Check("舊檔：109 白辣妹（19）、Y2K 辣妹（21）索引不變", oldIndex(19) = 19 AndAlso oldIndex(21) = 21)

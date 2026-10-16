@@ -1,0 +1,129 @@
+{
+  "_說明": "設定 → 模型 列出的 AI 模型（發佈的程式不附模型，使用者在設定裡逐個下載到程式資料夾的 Models\\）。path 是 Models\\ 下的相對路徑；url 空白的檔案沒有公開的下載位址（例如自己轉檔的），要填 mirror 才能下載。mirror：發佈者自己的下載位址（網址或資料夾、共用磁碟路徑），有填時所有檔案都從 mirror + path 下載（沒有公開位址的也一樣）。size 是位元組，下載後核對大小。",
+  "mirror": "",
+  "models": [
+    {
+      "id": "yunet",
+      "group": "人像",
+      "name": "人臉偵測（YuNet）",
+      "use": "開啟照片時找出每張臉的位置。人像頁的美顏、一鍵美顏、戲曲臉譜、智慧構圖、川劇變臉、AI 重繪都要先找到臉；沒有它這些功能會停用。",
+      "license": "Apache-2.0",
+      "source": "https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet",
+      "files": [
+        { "path": "face_detection_yunet_2023mar.onnx", "size": 232589, "url": "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" }
+      ]
+    },
+    {
+      "id": "facemesh",
+      "group": "人像",
+      "name": "478 點臉部網格（MediaPipe Face Mesh）",
+      "use": "精確找出五官與臉型輪廓：大眼、瘦臉、V 臉、腮紅、眼妝、唇彩等要貼著五官的修飾，以及 AI 重繪的線稿。沒有時改用 68 點特徵點。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/fernandotonon/QtMeshEditor-facemesh-onnx",
+      "files": [
+        { "path": "face_landmarks.onnx", "size": 4920979, "url": "https://huggingface.co/fernandotonon/QtMeshEditor-facemesh-onnx/resolve/main/face_landmarks.onnx" }
+      ]
+    },
+    {
+      "id": "lbf",
+      "group": "人像",
+      "name": "68 點臉部特徵點（LBF）",
+      "use": "478 點網格找不到的臉（側臉、太小）改用它定位五官，讓臉型與妝容仍可使用。兩者都沒有時臉型與妝容停用。",
+      "license": "見來源頁",
+      "source": "https://github.com/kurnianggoro/GSOC2017/tree/master/data",
+      "files": [
+        { "path": "lbfmodel.yaml", "size": 56375857, "url": "https://raw.githubusercontent.com/kurnianggoro/GSOC2017/master/data/lbfmodel.yaml" }
+      ]
+    },
+    {
+      "id": "isnet",
+      "group": "去背",
+      "name": "AI 去背：一般（IS-Net）",
+      "use": "去背頁籤選「一般」時用：人像、動物、物品都適用，自動找出主體換背景、存成貼圖。",
+      "license": "Apache-2.0",
+      "source": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
+      "files": [
+        { "path": "isnet-general-use.onnx", "size": 178648008, "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx" }
+      ]
+    },
+    {
+      "id": "u2human",
+      "group": "去背",
+      "name": "AI 去背：人像（U²-Net）",
+      "use": "去背頁籤選「人像」時用：專門找人物，頭髮與身體輪廓比一般模型準。",
+      "license": "Apache-2.0",
+      "source": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
+      "files": [
+        { "path": "u2net_human_seg.onnx", "size": 175997641, "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx" }
+      ]
+    },
+    {
+      "id": "ghibli",
+      "group": "宮崎風 AI 重繪",
+      "name": "吉卜力電影風（Ghibli-Diffusion）",
+      "use": "影像 → 宮崎風 AI 重繪…的「吉卜力電影風」：文字理解、編碼與解碼圖片。另外兩個重繪模型也共用它的圖片編碼器，所以用「動畫插畫風」也要下載。",
+      "license": "CreativeML OpenRAIL-M",
+      "source": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16",
+      "files": [
+        { "path": "GhibliDiffusion/text_encoder/model.onnx", "size": 246368629, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/text_encoder/model.onnx" },
+        { "path": "GhibliDiffusion/tokenizer/merges.txt", "size": 524619, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/tokenizer/merges.txt" },
+        { "path": "GhibliDiffusion/tokenizer/special_tokens_map.json", "size": 472, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/tokenizer/special_tokens_map.json" },
+        { "path": "GhibliDiffusion/tokenizer/tokenizer_config.json", "size": 735, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/tokenizer/tokenizer_config.json" },
+        { "path": "GhibliDiffusion/tokenizer/vocab.json", "size": 1059962, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/tokenizer/vocab.json" },
+        { "path": "GhibliDiffusion/vae_encoder/model.onnx", "size": 68430178, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/vae_encoder/model.onnx" },
+        { "path": "GhibliDiffusion/vae_decoder/model.onnx", "size": 99093889, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/vae_decoder/model.onnx" },
+        { "path": "GhibliDiffusion/model_index.json", "size": 633, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/model_index.json" },
+        { "path": "GhibliDiffusion/scheduler/scheduler_config.json", "size": 374, "url": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16/resolve/main/scheduler/scheduler_config.json" }
+      ]
+    },
+    {
+      "id": "ghibli-unet",
+      "group": "宮崎風 AI 重繪",
+      "name": "吉卜力：重繪主體（UNet）",
+      "use": "真正畫圖的部分。原本的 UNet 沒有 ControlNet 輸入，這份是另外加上輸入的轉檔，網路上沒有現成的：要由發佈者提供下載位址（ModelCatalog.json 的 mirror），或自己用 tools\\onnxpatch 轉換後放進資料夾。",
+      "license": "CreativeML OpenRAIL-M",
+      "source": "https://huggingface.co/RanaLLC/Ghibli-Diffusion-onnx-fp16",
+      "files": [
+        { "path": "GhibliDiffusion/unet_controlnet/model.onnx", "size": 1720147902, "url": "" }
+      ]
+    },
+    {
+      "id": "controlnet",
+      "group": "宮崎風 AI 重繪",
+      "name": "線稿控制（ControlNet Canny）",
+      "use": "讓重繪照著照片的輪廓與五官線稿畫，人才認得出來。兩種重繪風格都要（「快速動畫」除外）。",
+      "license": "CreativeML OpenRAIL-M",
+      "source": "https://huggingface.co/ForserX/sd-controlnet-canny-onnx",
+      "files": [
+        { "path": "GhibliDiffusion/controlnet_canny/model.onnx", "size": 723604823, "url": "https://huggingface.co/ForserX/sd-controlnet-canny-onnx/resolve/main/model.onnx" }
+      ]
+    },
+    {
+      "id": "anything",
+      "group": "宮崎風 AI 重繪",
+      "name": "動畫插畫風（AnimeAnything v10）",
+      "use": "影像 → 宮崎風 AI 重繪…的「動畫插畫風」（臉較圓、乾淨可愛）：文字理解。圖片編碼器共用吉卜力電影風的。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/subpixel/animeanything_v10-onnx",
+      "files": [
+        { "path": "AnimeAnything/text_encoder/model.onnx", "size": 246397990, "url": "https://huggingface.co/subpixel/animeanything_v10-onnx/resolve/main/text_encoder/model.onnx" },
+        { "path": "AnimeAnything/tokenizer/merges.txt", "size": 524619, "url": "https://huggingface.co/subpixel/animeanything_v10-onnx/resolve/main/tokenizer/merges.txt" },
+        { "path": "AnimeAnything/tokenizer/special_tokens_map.json", "size": 585, "url": "https://huggingface.co/subpixel/animeanything_v10-onnx/resolve/main/tokenizer/special_tokens_map.json" },
+        { "path": "AnimeAnything/tokenizer/tokenizer_config.json", "size": 735, "url": "https://huggingface.co/subpixel/animeanything_v10-onnx/resolve/main/tokenizer/tokenizer_config.json" },
+        { "path": "AnimeAnything/tokenizer/vocab.json", "size": 1059962, "url": "https://huggingface.co/subpixel/animeanything_v10-onnx/resolve/main/tokenizer/vocab.json" }
+      ]
+    },
+    {
+      "id": "anything-unet",
+      "group": "宮崎風 AI 重繪",
+      "name": "動畫插畫：重繪主體（UNet）",
+      "use": "動畫插畫風真正畫圖的部分（含外部權重 weights.pb）。和吉卜力的一樣是另外加上 ControlNet 輸入的轉檔，要由發佈者提供下載位址，或自己轉換後放進資料夾。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/subpixel/animeanything_v10-onnx",
+      "files": [
+        { "path": "AnimeAnything/unet_controlnet/model.onnx", "size": 1206479, "url": "" },
+        { "path": "AnimeAnything/unet_controlnet/weights.pb", "size": 1718976000, "url": "" }
+      ]
+    }
+  ]
+}

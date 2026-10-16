@@ -194,9 +194,90 @@ Partial Public NotInheritable Class PortraitRetouch
                 hair(i) = CSng(Math.Max(dark * Math.Max(top, rim), rim * notSkin))
             Next
         Next
+        ' 額頭的參考顏色：眉毛上方正中間
+        Dim fR = 0.0, fG = 0.0, fB = 0.0, fN = 0
+        For y = 0 To rh - 1
+            For x = 0 To rw - 1
+                Dim i = y * rw + x
+                If inner(i) < 0.5 Then Continue For
+                Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
+                If Math.Abs(cq.X) > 0.4 OrElse cq.Y < -0.75 OrElse cq.Y > -0.4 OrElse lum(i) < lref * 0.62 Then Continue For
+                fR += cR(i) : fG += cG(i) : fB += cB(i) : fN += 1
+            Next
+        Next
         Dim faceMask As Single()
         Using m = newMask()
             fillPoly(m, ovalOuter, 255)
+            ' 額頭比網格估的高、或帽沿瀏海下的陰影：從眉毛上方每一行往上走，色相和額頭一樣（只是較暗）的皮膚也算臉、不當頭髮，碰到頭髮、帽子、背景就停
+            If fN > 0 Then
+                fR /= fN : fG /= fN : fB /= fN
+                Dim fs = Math.Max(1.0, fR + fG + fB)
+                Dim skinLike = Function(i As Integer) As Boolean
+                                   If lum(i) < lref * 0.25 Then Return False
+                                   Dim s3 = Math.Max(1.0, cR(i) + cG(i) + cB(i))
+                                   Dim dr = cR(i) / s3 - fR / fs, dg = cG(i) / s3 - fG / fs, db = cB(i) / s3 - fB / fs
+                                   Return Math.Sqrt(dr * dr + dg * dg + db * db) < 0.06
+                               End Function
+                ' 每一行走到哪裡（最上面那一格）；再取鄰近幾行的中位數，邊緣才不會參差
+                Dim reach(rw - 1) As Integer, startY(rw - 1) As Integer
+                For x = 0 To rw - 1
+                    reach(x) = -1 : startY(x) = -1
+                    For y = rh - 1 To 0 Step -1
+                        Dim i = y * rw + x
+                        Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
+                        If cq.Y > -0.35 Then Continue For
+                        If Math.Abs(cq.X) > 0.95 OrElse cq.Y < -1.5 Then Exit For
+                        If startY(x) < 0 Then
+                            If inner(i) < 0.5 OrElse Not skinLike(i) Then Exit For
+                            startY(x) = y
+                        ElseIf Not skinLike(i) Then
+                            Exit For
+                        End If
+                        reach(x) = y
+                    Next
+                Next
+                ' 頂端取鄰近幾行的中位數再平均：邊緣才平順，頭髮分線露出的一條頭皮也不會被當成額頭
+                ' 額頭是寬的一片：某一列只有少數幾行走得到（分線、髮縫）就不算，從那一列以上都不延伸
+                Dim cols = startY.Count(Function(v) v >= 0)
+                Dim yCut = 0
+                If cols > 0 Then
+                    Dim reachedAt(rh) As Integer
+                    For x = 0 To rw - 1
+                        If startY(x) >= 0 AndAlso reach(x) >= 0 Then reachedAt(reach(x)) += 1
+                    Next
+                    ' 由上往下累加：到第 y 列為止有幾行走到 y 或更高
+                    Dim acc = 0
+                    yCut = rh
+                    For y = 0 To rh - 1
+                        acc += reachedAt(y)
+                        If acc >= cols * 0.6 Then yCut = y : Exit For
+                    Next
+                End If
+                Dim win = Math.Max(1, CInt(d * 0.08))
+                Dim topY(rw - 1) As Double
+                For x = 0 To rw - 1
+                    topY(x) = -1
+                    If startY(x) < 0 Then Continue For
+                    Dim near As New List(Of Integer)()
+                    For k = Math.Max(0, x - win) To Math.Min(rw - 1, x + win)
+                        If startY(k) >= 0 Then near.Add(reach(k))
+                    Next
+                    near.Sort()
+                    topY(x) = near(CInt(Math.Floor((near.Count - 1) * 0.5)))
+                Next
+                For x = 0 To rw - 1
+                    If startY(x) < 0 Then Continue For
+                    Dim sum = 0.0, cnt = 0
+                    For k = Math.Max(0, x - win \ 2) To Math.Min(rw - 1, x + win \ 2)
+                        If topY(k) >= 0 Then sum += topY(k) : cnt += 1
+                    Next
+                    Dim top = Math.Max(yCut, CInt(Math.Round(sum / cnt)))
+                    For y = top To startY(x)
+                        m.Set(Of Byte)(y, x, 255)
+                        hair(y * rw + x) = 0
+                    Next
+                Next
+            End If
             faceMask = toFloat(m, d * 0.025)
         End Using
         For i = 0 To n - 1

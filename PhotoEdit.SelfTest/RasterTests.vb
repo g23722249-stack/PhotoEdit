@@ -137,6 +137,12 @@ Module RasterTests
         Dim copy = recipe.Clone()
         copy.Drawings(0).Ops(0).Strokes(0).Points(0).X = 0.9F
         Check("Clone 為深複製（點陣圖層的筆畫不共用）", recipe.Drawings(0).Ops(0).Strokes(0).Points(0).X = 0.2F)
+        ' 復原紀錄的快照：已畫好的筆共用（不必再複製筆點），清單各自一份（之後加的筆不會跑進快照）
+        Dim snap = recipe.Snapshot()
+        Check("快照共用已畫好的筆", snap.Drawings(0).Ops(0) Is recipe.Drawings(0).Ops(0) AndAlso snap.Equals(recipe))
+        recipe.Drawings(0).Ops.Add(StrokeOp(0.3F, 0.4F, 0.5F, Color.Red))
+        Check("快照的筆畫清單是另一份：之後加的筆不影響快照", snap.Drawings(0).Ops.Count = 3 AndAlso recipe.Drawings(0).Ops.Count = 4)
+        recipe.Drawings(0).Ops.RemoveAt(3)
 
         ' 效能：60 筆的圖層，加一筆時只算新的那筆
         Dim many As New DrawLayer With {.Shape = DrawShape.Raster, .Ops = New List(Of DrawLayer)()}

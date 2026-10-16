@@ -244,6 +244,7 @@ Partial Public NotInheritable Class DrawingRenderer
         If layer.Brush = BrushKind.StickerHose Then extra = widthPx * 4
         If layer.Scatter > 0 Then extra = Math.Max(extra, widthPx * 1.6F * layer.Scatter / 100.0F + widthPx * 0.5F)
         If layer.SizeJitter > 0 OrElse figs.Any(Function(f) f.Angle IsNot Nothing) Then extra = Math.Max(extra, widthPx * 0.8F)
+        extra = Math.Max(extra, BleedPad(layer, widthPx)) ' 墨暈開到筆畫外
         If layer.StartArrow <> ArrowKind.None OrElse layer.EndArrow <> ArrowKind.None Then extra = Math.Max(extra, ArrowSize(widthPx).Half + 2)
         If DrawGeometry.IsPathText(layer) Then extra = Math.Max(extra, CSng(layer.TextSize * scale * 1.4)) ' 字長在路徑兩邊
         If layer.Shape = DrawShape.Dimension Then extra = Math.Max(extra, CSng(layer.TextSize * scale * (DrawGeometry.DimensionLabel(layer).Length * 0.5 + 2.5))) ' 標籤
@@ -796,7 +797,10 @@ Partial Public NotInheritable Class DrawingRenderer
                              Dim thr = 0.42F + 0.3F * along
                              intensity = If(n > thr, 1, 0)
                          Case BrushKind.ChineseBrush
-                             Dim thr = If(along < 0.6F, -1, (along - 0.6F) / 0.4F * 0.8F)
+                             ' 飛白只出現在夠長的筆畫尾端：短筆是「點」，墨還飽滿；墨越濕（暈開）飛白越少
+                             Dim longness = Math.Min(1.0F, total / Math.Max(1.0F, widthPx * 7))
+                             Dim dryness = longness * (1 - 0.6F * Math.Min(100, layer.Bleed) / 100.0F)
+                             Dim thr = If(along < 0.6F, -1, (along - 0.6F) / 0.4F * 0.8F * dryness)
                              intensity = If(n > thr, 1, 0)
                          Case BrushKind.OilPaint
                              intensity = If(along > 0.88F AndAlso n < (along - 0.88F) * 6, 0, 0.78F + 0.22F * n)
@@ -858,13 +862,21 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 紙張：這支筆吃紙紋的程度（沒有紙張時 0）
         Dim grain = If(isFill, 0.0F, PaperGrainAmount(layer))
         Dim ownGrain = brush = BrushKind.Pencil OrElse brush = BrushKind.Charcoal OrElse brush = BrushKind.Chalk OrElse brush = BrushKind.Crayon OrElse brush = BrushKind.Watercolor
+        ' 暈開：筆畫外滲出的淡墨（毛筆、墨水筆、水彩）
+        Dim halo As Single() = Nothing, wetCore As Single() = Nothing
+        If Not isFill AndAlso layer.Bleed > 0 AndAlso BleedsInk(brush) Then
+            Dim ink = InkHalo(mask, cv, widthPx, layer.Bleed, seed)
+            halo = ink.Halo : wetCore = ink.Core
+        End If
 
         For y = 0 To cv.H - 1
             Dim gy = y + cv.OY
             For x = 0 To cv.W - 1
                 Dim i = y * cv.W + x
                 Dim a = mask(i)
-                If a <= 0.001F Then Continue For
+                If wetCore IsNot Nothing AndAlso a > 0.001F Then a = Math.Max(a, wetCore(i)) ' 濕墨填滿筆毛間的白縫
+                Dim hv = If(halo Is Nothing, 0.0F, halo(i))
+                If a <= 0.001F AndAlso hv <= 0.001F Then Continue For
                 If a > 1 Then a = 1
                 Dim gx = x + cv.OX
                 Dim alpha = a, lum = 1.0F
@@ -900,6 +912,7 @@ Partial Public NotInheritable Class DrawingRenderer
                 End Select
                 ' 其他筆刷：紙紋遮罩（輕的地方只留凸起）；鉛筆、炭筆、粉筆、蠟筆、水彩已經直接用紙紋當紋路
                 If grain > 0 AndAlso Not ownGrain Then alpha *= PaperMask(a, ph, grain)
+                If hv > alpha Then alpha = hv : lum = Math.Max(lum, 1.03F) ' 滲出去的墨淡一點
                 If emboss Then
                     ' 以覆蓋率的斜率當作厚度起伏，光從左上來。
                     Dim e = (Sample(mask, cv, x - 1, y - 1) - Sample(mask, cv, x + 1, y + 1))
@@ -995,7 +1008,7 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim size As Single, family As FontFamily = Nothing
         Dim places = DrawGeometry.PathTextLayout(layer, scale, size, family)
         If places.Count = 0 Then Return
-        Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+        Dim style = layer.TextFontStyle
         Using bmp As New Bitmap(cv.W, cv.H, PixelFormat.Format32bppArgb)
             Using g = Graphics.FromImage(bmp), br As New SolidBrush(Color.FromArgb(layer.TextColorArgb))
                 g.SmoothingMode = SmoothingMode.AntiAlias
@@ -1028,7 +1041,7 @@ Partial Public NotInheritable Class DrawingRenderer
                 Dim size = CSng(Math.Max(0.004, layer.TextSize) * scale)
                 Dim minSize = size * 0.4F
                 Using sf As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Center}
-                    Dim style = If(layer.TextBold, FontStyle.Bold, FontStyle.Regular)
+                    Dim style = layer.TextFontStyle
                     Dim font = MakeFont(layer.FontName, size, style)
                     Try
                         While size > minSize

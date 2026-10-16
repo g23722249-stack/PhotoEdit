@@ -1,7 +1,8 @@
 ﻿Imports PhotoEdit
 ''' <summary>
-''' 「設定」視窗（編輯 → 設定…，Ctrl+,）：分成三個頁籤——
-''' 一般（外觀配色、語言、文件模式）、繪圖筆（筆壓曲線、穩定器、快速工具）、筆畫預覽（快速線條／逐段筆印／真實筆刷）。
+''' 「設定」視窗（檔案 → 設定…，Ctrl+,）：分成四個頁籤——
+''' 一般（外觀配色、語言、文件模式）、繪圖筆（筆壓曲線、穩定器、快速工具）、筆畫預覽（快速線條／逐段筆印／真實筆刷）、
+''' 模型（AI 模型的用途、狀態與下載；發佈的程式不附模型）。
 ''' 改了立刻存檔；語言與文件模式要重新開啟才生效。
 ''' </summary>
 Friend Class frmSettings
@@ -15,6 +16,7 @@ Friend Class frmSettings
     Private ReadOnly _sdi As New RadioButton()
     Private ReadOnly _mdiRadio As New RadioButton()
     Private ReadOnly _tabs As New Aqua.TabControl()
+    Private _models As ModelsPage
 
     ''' <summary>頁籤內容的寬度。</summary>
     Private Const PageW As Integer = 476
@@ -38,6 +40,7 @@ Friend Class frmSettings
         Dim general = _tabs.AddTab(Lang.T("一般"))
         Dim pen = _tabs.AddTab(Lang.T("繪圖筆"))
         Dim preview = _tabs.AddTab(Lang.T("筆畫預覽"))
+        Dim models = _tabs.AddTab(Lang.T("模型"))
         BuildAppearance(general)
         BuildLanguage(general)
         BuildDocumentMode(general)
@@ -45,6 +48,9 @@ Friend Class frmSettings
         BuildPen(pen)
         BuildQuickKeys(pen)
         BuildStrokePreview(preview)
+        _models = New ModelsPage(_font, ModelCatalog.Load())
+        _models.Location = New Point(0, 0)
+        models.Controls.Add(_models)
         _tabs.SelectedIndex = 0
 
         Dim close As New Button With {.Text = Lang.T("關閉"), .UseVisualStyleBackColor = True}
@@ -56,6 +62,19 @@ Friend Class frmSettings
         If Lang.Current = UiLanguage.English Then frmEditor.FitButtonTexts(Me)
         UpdateCards()
         ThemeManager.Attach(Me)
+    End Sub
+
+    ''' <summary>還有模型在下載：關閉會取消下載，先問一下。</summary>
+    Protected Overrides Sub OnFormClosing(e As FormClosingEventArgs)
+        If _models IsNot Nothing AndAlso _models.Downloading > 0 AndAlso e.CloseReason = CloseReason.UserClosing Then
+            If MessageBox.Show(Me, Lang.F("還有 {0} 個模型正在下載，關閉設定會取消下載（已下載完的不受影響）。要關閉嗎？", _models.Downloading),
+                               Lang.T("設定"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then
+                e.Cancel = True
+                Return
+            End If
+            _models.CancelAll()
+        End If
+        MyBase.OnFormClosing(e)
     End Sub
 
     ''' <summary>頁籤裡的標題與灰色說明。</summary>

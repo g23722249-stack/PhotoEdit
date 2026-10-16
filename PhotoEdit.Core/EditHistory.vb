@@ -25,13 +25,13 @@ Public Class EditHistory
 
     ''' <param name="groupKey">Nothing 表示不合併（例如按鈕操作）。</param>
     ''' <param name="now">測試用；預設為目前時間。</param>
-    Public Sub Record(before As EditRecipe, Optional groupKey As String = Nothing, Optional now As DateTime? = Nothing)
+    Public Sub Record(before As EditRecipe, Optional groupKey As String = Nothing, Optional now As DateTime? = Nothing, Optional owned As Boolean = False)
         Dim t = If(now, DateTime.Now)
         Dim merge = groupKey IsNot Nothing AndAlso groupKey = _lastKey AndAlso t - _lastTime < GroupWindow AndAlso _undo.Count > 0
         _lastKey = groupKey
         _lastTime = t
         If merge Then Return
-        _undo.Add(before.Clone())
+        _undo.Add(If(owned, before, before.Clone())) ' owned：呼叫端給的是專用的複本，不必再複製
         If _undo.Count > MaxEntries Then _undo.RemoveAt(0)
         _redo.Clear()
     End Sub

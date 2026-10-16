@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- 用到 OpenCV 的功能：YuNet 人臉偵測、磨皮/提亮/亮眼、污點移除、降噪、自動拉直。
        模型 Models\face_detection_yunet_2023mar.onnx（OpenCV Zoo，Apache-2.0）不放進 git（.gitignore 排除 *.onnx），
@@ -35,6 +35,8 @@
     <None Include="Models\GhibliDiffusion\**\*" Exclude="Models\GhibliDiffusion\unet\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\GhibliDiffusion" Condition="'$(SkipModelCopy)' != 'true'" />
     <None Include="Models\AnimeAnything\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Models\AnimeAnything" Condition="'$(SkipModelCopy)' != 'true'" />
     <None Include="AnimeRedrawPresets.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 設定 → 模型 的清單（發佈的程式不附模型，使用者自己下載）。 -->
+    <None Include="ModelCatalog.json" CopyToOutputDirectory="PreserveNewest" />
     <!-- OpenH264（Cisco，另外下載、不放進 git）：有的話 MP4 用它壓縮（檔案小很多），放在程式資料夾 -->
     <None Include="Native\openh264-*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
   </ItemGroup>

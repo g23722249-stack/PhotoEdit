@@ -242,9 +242,11 @@ Partial Friend Class frmEditor
         Dim helpMenu = root.AddItem(New Aqua.MenuItem(Lang.T("說明")))
         _showHelpItem = helpMenu.AddItem(Item("togglehelp", Lang.T("顯示使用說明（滑鼠停在按鈕上）")))
         _showHelpItem.Checked = _appSettings.ShowHelp
+        helpMenu.AddItem(Item("manual", Lang.T("使用手冊… (F1)")))
         helpMenu.AddItem(New Aqua.MenuItem("-"))
         helpMenu.AddItem(Item("about", Lang.T("關於 PhotoEdit")))
 
+        _menuRoot = root
         AddMenu(root)
     End Sub
 
@@ -272,6 +274,7 @@ Partial Friend Class frmEditor
             Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
             Case "settings" : OpenSettings() ' 沒開圖片也能設定
+            Case "manual" : ShowManual() ' 見 frmEditor.Manual.vb
             Case "togglehelp"
                 _appSettings.ShowHelp = Not _appSettings.ShowHelp
                 _appSettings.Save()
@@ -400,6 +403,7 @@ Partial Friend Class frmEditor
 
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
         If HandleImeShortcut(msg, keyData) Then Return True
+        If keyData = Keys.F1 Then ShowManual() : Return True ' 使用手冊（文字框有焦點時也可以）
         ' 按下 Ctrl：繪圖時暫時切成選取，點陣圖層的選取框與游標馬上跟著變（放開在下一次移動滑鼠時恢復）
         If keyData = (Keys.ControlKey Or Keys.Control) AndAlso _photo IsNot Nothing AndAlso _dd = DrawDrag.None Then
             SyncCtrlBox()
@@ -485,13 +489,14 @@ Partial Friend Class frmEditor
     ' 配方變更
     '=====================================================================
 
-    Private Sub ApplyChange(mutate As Action(Of EditRecipe), Optional groupKey As String = Nothing)
-        Dim before = _recipe.Clone()
+    ''' <param name="changed">確定有改變（例如加了一筆）：略過整份配方的比對（畫了幾千筆時比對要序列化好幾 MB）。</param>
+    Private Sub ApplyChange(mutate As Action(Of EditRecipe), Optional groupKey As String = Nothing, Optional changed As Boolean = False)
+        Dim before = _recipe.Snapshot() ' 點陣筆畫共用（見 EditRecipe.Snapshot）
         mutate(_recipe)
         DrawGeometry.SyncPathText(_recipe) ' 路徑文字跟著它的圖形（同一步復原）
         DrawGeometry.SyncConnectors(_recipe) ' 連接線跟著兩端的物件（同一步復原）
-        If _recipe.Equals(before) Then Return
-        _history.Record(before, groupKey)
+        If Not changed AndAlso _recipe.Equals(before) Then Return
+        _history.Record(before, groupKey, owned:=True)
         OnRecipeChanged()
     End Sub
 
@@ -559,7 +564,7 @@ Partial Friend Class frmEditor
             _frameMargins = (0, 0, 0, 0)
         Else
             ' 先算不含邊框的照片，記下大小與邊框寬度，畫布座標才能換算回照片座標。
-            Dim noFrame = DisplayRecipe().Clone()
+            Dim noFrame = DisplayRecipe().Snapshot() ' 點陣筆畫共用：每一筆的快取雜湊才用得上（深複製會變成新物件，每次重算）
             noFrame.Frame = PhotoFrameStyle.None
             bmp = ImagePipeline.Render(source, noFrame, faces:=_faces)
             _framePhotoSize = bmp.Size
@@ -625,7 +630,11 @@ Partial Friend Class frmEditor
 
     Private ReadOnly Property IsDirty As Boolean
         Get
-            Return _photo IsNot Nothing AndAlso (Not _recipe.Equals(_savedRecipe) OrElse _aiMaskDirty)
+            If _photo Is Nothing Then Return False
+            If _aiMaskDirty Then Return True
+            ' 先比圖層數與每層筆數（畫畫時每一筆都會更新標題，整份比對要序列化好幾 MB）；結構一樣才完整比對
+            If _savedRecipe Is Nothing OrElse _recipe.StructureDiffers(_savedRecipe) Then Return True
+            Return Not _recipe.Equals(_savedRecipe)
         End Get
     End Property
 
@@ -794,7 +803,7 @@ Partial Friend Class frmEditor
         If _photo Is Nothing Then Return
         _hiResGeneration += 1
         Dim generation = _hiResGeneration
-        Dim recipe = DisplayRecipe().Clone()
+        Dim recipe = DisplayRecipe().Snapshot() ' 筆畫畫好後不會再改，背景算圖共用沒問題
         Dim faces = _faces
         Dim key = CurrentKey()
         Dim prepare = SourcePrepare(recipe)
@@ -983,6 +992,7 @@ Partial Friend Class frmEditor
         _recentTimer.Dispose()
         _applyTimer.Dispose()
         _brushPreviewTimer.Dispose()
+        _previewDebounce?.Dispose()
         _colorWin?.Dispose()
         _quickPanel?.Dispose()
         _radial?.Dispose()

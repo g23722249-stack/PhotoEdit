@@ -23,6 +23,10 @@ Friend Class AppSettings
     ''' <summary>參考圖：最近開過的圖片路徑、描圖底稿的不透明度（%）。</summary>
     Public Property ReferencePath As String
     Public Property TraceOpacity As Integer = 35
+    ''' <summary>參考圖「畫筆取色」：每一筆落筆時自動取參考圖同一位置的顏色。</summary>
+    Public Property ReferenceColorPick As Boolean
+    ''' <summary>參考圖「墨色」：吸到的顏色換成同樣深淺的墨色。</summary>
+    Public Property ReferenceInkTone As Boolean
     ''' <summary>浮動選色視窗的位置（螢幕座標）；沒有記錄時放在側邊面板左邊。</summary>
     Public Property ColorWindowX As Integer?
     Public Property ColorWindowY As Integer?

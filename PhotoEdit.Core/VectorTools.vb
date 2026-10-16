@@ -160,7 +160,7 @@ Partial Public NotInheritable Class DrawGeometry
         target.PaperGrain = source.PaperGrain : target.Particle = source.Particle : target.HoseTheme = source.HoseTheme
         If HasText(target.Shape) AndAlso HasText(source.Shape) Then
             target.FontName = source.FontName : target.TextColorArgb = source.TextColorArgb
-            target.TextSize = source.TextSize : target.TextBold = source.TextBold
+            target.TextSize = source.TextSize : target.TextBold = source.TextBold : target.TextItalic = source.TextItalic
         End If
     End Sub
 

@@ -139,7 +139,7 @@ Partial Friend Class frmEditor
             ApplyChange(Sub(r)
                             If r.Drawings(index).Ops Is Nothing Then r.Drawings(index).Ops = New List(Of DrawLayer)()
                             r.Drawings(index).Ops.Add(op)
-                        End Sub)
+                        End Sub, changed:=True)
             UpdateDrawControls()
         ElseIf Not op.Eraser Then
             op.Strokes = New List(Of DrawStroke) From {stroke}

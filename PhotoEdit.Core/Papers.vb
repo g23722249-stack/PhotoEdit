@@ -21,6 +21,8 @@ Public Enum PaperKind
     Wood = 14
     Leather = 15
     Custom = 16
+    ' 之後加的紙接在「自訂」後面（數值存進編輯檔，不可更動）；畫面上的順序見 Papers.DisplayOrder
+    Washi = 17
 End Enum
 
 ''' <summary>表面紋理作用的範圍。</summary>
@@ -71,7 +73,13 @@ Public NotInheritable Class Papers
 
     Public Shared ReadOnly Names As String() = {
         Lang.T("素描紙"), Lang.T("水彩紙（細紋）"), Lang.T("水彩紙（粗紋）"), Lang.T("畫布"), Lang.T("粉彩紙"), Lang.T("條紋紙"), Lang.T("宣紙"), Lang.T("牛皮紙"),
-        Lang.T("亞麻布"), Lang.T("麻布"), Lang.T("皺紋紙"), Lang.T("砂紙"), Lang.T("混凝土"), Lang.T("磚牆"), Lang.T("木板"), Lang.T("皮革"), Lang.T("自訂")}
+        Lang.T("亞麻布"), Lang.T("麻布"), Lang.T("皺紋紙"), Lang.T("砂紙"), Lang.T("混凝土"), Lang.T("磚牆"), Lang.T("木板"), Lang.T("皮革"), Lang.T("自訂"), Lang.T("棉紙（和紙）")}
+
+    ''' <summary>畫面上的排列順序（同類的放在一起；「自訂」永遠在最後）。</summary>
+    Public Shared ReadOnly DisplayOrder As PaperKind() = {
+        PaperKind.Sketch, PaperKind.WatercolorFine, PaperKind.WatercolorRough, PaperKind.Canvas, PaperKind.Pastel, PaperKind.Laid,
+        PaperKind.Rice, PaperKind.Washi, PaperKind.Kraft, PaperKind.Linen, PaperKind.Burlap, PaperKind.Crumpled, PaperKind.Sandpaper,
+        PaperKind.Concrete, PaperKind.Brick, PaperKind.Wood, PaperKind.Leather, PaperKind.Custom}
 
     ''' <summary>每種紙的底色（新影像用紙張當底時的顏色）。</summary>
     Public Shared ReadOnly BaseColors As Color() = {
@@ -79,7 +87,7 @@ Public NotInheritable Class Papers
         Color.FromArgb(232, 228, 220), Color.FromArgb(246, 242, 230), Color.FromArgb(244, 239, 226), Color.FromArgb(196, 160, 118),
         Color.FromArgb(230, 222, 204), Color.FromArgb(196, 170, 128), Color.FromArgb(244, 242, 236), Color.FromArgb(150, 140, 126),
         Color.FromArgb(178, 176, 170), Color.FromArgb(170, 88, 64), Color.FromArgb(186, 140, 96), Color.FromArgb(120, 76, 50),
-        Color.FromArgb(240, 240, 240)}
+        Color.FromArgb(240, 240, 240), Color.FromArgb(249, 247, 241)}
 
     '=====================================================================
     ' 高度圖
@@ -168,6 +176,13 @@ Public NotInheritable Class Papers
                 Return Clamp01(lines * 0.55F + chain * 0.3F + Fbm(u / 3, v / 3, 10) * 0.3F)
             Case PaperKind.Rice
                 Return Fibers(u, v, 11) * 0.55F + Fbm(u / 6, v / 6, 12) * 0.45F
+            Case PaperKind.Washi
+                ' 棉紙（和紙）：細而長的纖維往各方向交錯，偶爾聚成纖維團（像雲龍紙）；底下淡淡的厚薄不均
+                Dim clump = SmoothStep(0.58F, 0.75F, Fbm(u / 60, v / 60, 37))
+                Dim strands = LongFibers(u, v, 31, 220, 16, 5)
+                Dim dense = LongFibers(u, v, 33, 60, 3.5F, 5) * clump
+                Return Clamp01(0.42F + Fbm(u / 18, v / 18, 38) * 0.16F + Hash(CInt(Math.Floor(u)), CInt(Math.Floor(v)), 39) * 0.04F +
+                               Math.Max(strands, dense) * 0.36F)
             Case PaperKind.Kraft
                 Dim speck = If(Hash(CInt(Math.Floor(u / 1.5F)), CInt(Math.Floor(v / 1.5F)), 13) > 0.97F, 0.0F, 1.0F)
                 Return Clamp01((Fbm(u / 3, v / 3, 14) * 0.5F + Fibers(u, v, 15) * 0.5F) * (0.7F + 0.3F * speck))
@@ -227,6 +242,29 @@ Public NotInheritable Class Papers
     End Function
 
     ''' <summary>纖維：幾個方向的細長雜訊疊起來。</summary>
+    ' 長纖維：每個方向是一條拉得很長的雜訊，取 0.5 的等高線變成細線，沿著纖維方向慢慢彎；六個方向取最亮的
+    Private Shared Function LongFibers(u As Single, v As Single, seed As Integer, along As Single, across As Single, count As Integer) As Single
+        Dim best = 0.0F
+        For k = 0 To count - 1
+            Dim a = Hash(k, 7, seed) * Math.PI
+            Dim ca = CSng(Math.Cos(a)), sa = CSng(Math.Sin(a))
+            Dim x = (u * ca + v * sa) / along, y = (-u * sa + v * ca) / across
+            y += (Noise(x * 2.5F, k * 3.7F, seed + 20) - 0.5F) * 3.5F ' 沿著纖維彎來彎去
+            Dim n = Noise(x, y, seed + k)
+            Dim ridge = 1 - Math.Abs(n * 2 - 1)
+            ' 只留等高線附近很窄的一條：細線（次方越高越細）
+            For i = 1 To 5
+                ridge *= ridge
+            Next
+            ' 纖維有頭有尾：沿纖維方向另一個雜訊決定這段有沒有
+            ridge *= SmoothStep(0.35F, 0.6F, Noise(x * 0.8F + 11, y * 0.15F, seed + 40 + k))
+            ' 每條纖維深淺不一
+            ridge *= 0.35F + 0.65F * Noise(x * 0.5F + 5, y * 0.3F, seed + 60 + k)
+            If ridge > best Then best = ridge
+        Next
+        Return best
+    End Function
+
     Private Shared Function Fibers(u As Single, v As Single, seed As Integer) As Single
         Dim sum = 0.0F
         For k = 0 To 3
@@ -313,27 +351,53 @@ Public NotInheritable Class Papers
         If strength <= 0 Then Return
         Dim px = Perspective.ReadPixels(bmp)
         Dim w = bmp.Width, h = bmp.Height
+        ' 每個像素的明暗倍率只跟紙紋、強度、光源有關：算一次留著（畫畫時每一筆都要重新算圖，原本每次重算要 90 ms）
+        Dim shade = ShadeMap(map, mapW, mapH, ox, oy, w, h, strength, lightAngle)
+        Threading.Tasks.Parallel.For(0, h, Sub(y)
+                                               For x = 0 To w - 1
+                                                   Dim i = (y * w + x) * 4
+                                                   If px(i + 3) = 0 Then Continue For
+                                                   Dim s = shade(y * w + x)
+                                                   For c = 0 To 2
+                                                       Dim v = px(i + c) * s
+                                                       px(i + c) = CByte(Math.Max(0, Math.Min(255, Math.Round(v))))
+                                                   Next
+                                               Next
+                                           End Sub)
+        Perspective.WritePixels(bmp, px)
+    End Sub
+
+    Private Shared ReadOnly ShadeLock As New Object()
+    Private Shared _shadeKey As (Map As Single(), MapW As Integer, MapH As Integer, Ox As Integer, Oy As Integer, W As Integer, H As Integer, Strength As Integer, Light As Integer)
+    Private Shared _shade As Single()
+
+    ''' <summary>表面紋理每個像素的明暗倍率（依高度的斜率與光源方向，凹處略暗）；最近一次的結果留著重用。</summary>
+    Private Shared Function ShadeMap(map As Single(), mapW As Integer, mapH As Integer, ox As Integer, oy As Integer, w As Integer, h As Integer,
+                                     strength As Integer, lightAngle As Integer) As Single()
+        Dim key = (map, mapW, mapH, ox, oy, w, h, strength, lightAngle)
+        SyncLock ShadeLock
+            If _shade IsNot Nothing AndAlso _shadeKey.Map Is map AndAlso _shadeKey.Equals(key) Then Return _shade
+        End SyncLock
         Dim la = lightAngle * Math.PI / 180
         Dim lx = CSng(Math.Cos(la)), ly = CSng(-Math.Sin(la))
         Dim k = strength / 100.0F
         Dim hAt = Function(x As Integer, y As Integer) map(Math.Max(0, Math.Min(mapH - 1, y)) * mapW + Math.Max(0, Math.Min(mapW - 1, x)))
-        For y = 0 To h - 1
-            For x = 0 To w - 1
-                Dim i = (y * w + x) * 4
-                If px(i + 3) = 0 Then Continue For
-                Dim gx = ox + x, gy = oy + y
-                Dim dx = hAt(gx + 1, gy) - hAt(gx - 1, gy), dy = hAt(gx, gy + 1) - hAt(gx, gy - 1)
-                ' 朝光的斜面變亮、背光變暗；凹處（高度低）略暗
-                Dim lit = -(dx * lx + dy * ly) * 2.2F
-                Dim shade = 1 + k * (lit * 0.9F - (0.5F - hAt(gx, gy)) * 0.25F)
-                For c = 0 To 2
-                    Dim v = px(i + c) * shade
-                    px(i + c) = CByte(Math.Max(0, Math.Min(255, Math.Round(v))))
-                Next
-            Next
-        Next
-        Perspective.WritePixels(bmp, px)
-    End Sub
+        Dim result(w * h - 1) As Single
+        Threading.Tasks.Parallel.For(0, h, Sub(y)
+                                               For x = 0 To w - 1
+                                                   Dim gx = ox + x, gy = oy + y
+                                                   Dim dx = hAt(gx + 1, gy) - hAt(gx - 1, gy), dy = hAt(gx, gy + 1) - hAt(gx, gy - 1)
+                                                   ' 朝光的斜面變亮、背光變暗；凹處（高度低）略暗
+                                                   Dim lit = -(dx * lx + dy * ly) * 2.2F
+                                                   result(y * w + x) = 1 + k * (lit * 0.9F - (0.5F - hAt(gx, gy)) * 0.25F)
+                                               Next
+                                           End Sub)
+        SyncLock ShadeLock
+            _shadeKey = key
+            _shade = result
+        End SyncLock
+        Return result
+    End Function
 
     '=====================================================================
     ' 雜訊

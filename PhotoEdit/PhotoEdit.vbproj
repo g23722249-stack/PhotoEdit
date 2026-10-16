@@ -20,6 +20,8 @@
   <!-- 貼圖資料夾：方案資料夾下的 Stick\主題\*.png，整個複製到輸出資料夾的 stick\（程式從這裡讀）。 -->
   <ItemGroup>
     <None Include="..\Stick\**\*" LinkBase="stick" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 使用手冊的套用前／後範例圖（uismoke manualimages 產生）。 -->
+    <None Include="..\Manual\**\*" LinkBase="manual" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

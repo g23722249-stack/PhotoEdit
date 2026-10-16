@@ -169,6 +169,25 @@ Partial Public NotInheritable Class OperaRoles
         Return New OperaLayer With {.Kind = OperaLayerKind.Glitter, .ColorArgb = Rgb(&HFFFFFF), .Pts = pts, .Opacity = 0.9, .Shade = False}
     End Function
 
+    ''' <summary>
+    ''' 關公臉譜的座標：照使用者給的臉譜圖量的標準座標（那張臉比真人寬、長），
+    ''' 橫向縮成 0.82；額頭壓扁 0.72；鼻子、嘴、下巴分段對到真人的位置（鼻底 0.62、嘴下 1.12、下巴 1.85）。
+    ''' </summary>
+    Private Shared Function GG(ParamArray v As Double()) As PointF()
+        Dim r = P(v)
+        For i = 0 To r.Length - 1
+            r(i) = New PointF(CSng(r(i).X * 0.82), CSng(GGY(r(i).Y)))
+        Next
+        Return r
+    End Function
+
+    Private Shared Function GGY(y As Double) As Double
+        If y < 0 Then Return y * 0.72
+        If y <= 0.8 Then Return y * 0.775
+        If y <= 1.25 Then Return 0.62 + (y - 0.8) * (0.5 / 0.45)
+        Return 1.12 + (y - 1.25) * (0.73 / 0.75)
+    End Function
+
     ' 常用形狀
     Private Shared ReadOnly Forehead As PointF() = P(0, -1.35, 0.55, -1.25, 0.85, -0.95, 0.95, -0.55, 0.9, -0.38, 0.55, -0.42, 0.18, -0.32, 0, -0.3)
 
@@ -298,15 +317,40 @@ Partial Public NotInheritable Class OperaRoles
         list.Add(r)
 
         ' ===== 臉譜 =====
-        r = New OperaRole With {.Name = Lang.T("關公"), .Group = OperaGroup.Lianpu, .Lift = 40, .BeardArgb = Rgb(&H151515), .BeardStyle = 1,
-                                .Note = Lang.T("紅整臉：忠義勇武。丹鳳眼、臥蠶眉，額上細紋，五綹長髯。")}
-        r.Layers.Add(Fill(&HB3242B))
-        r.Layers.Add(Stroke(&H141010, 0.13, P(0.1, -0.3, 0.45, -0.44, 0.8, -0.44, 1.0, -0.56), taper:=True))
-        r.Layers.Add(EyeLine(&H141010, 0.05, 1.08, -0.3))
-        r.Layers.Add(Stroke(&H5A0E12, 0.025, P(-0.4, -0.78, 0, -0.84, 0.4, -0.78), mirror:=False))
-        r.Layers.Add(Stroke(&H5A0E12, 0.025, P(-0.32, -0.92, 0, -0.98, 0.32, -0.92), mirror:=False))
-        r.Layers.Add(Stroke(&H5A0E12, 0.03, P(0.17, 0.6, 0.38, 0.92), op:=0.7))
-        r.Layers.Add(Lips(&H5A0E12, 1, 1, 0.9))
+        ' 關公（依使用者提供的臉譜圖；耳朵不畫——每一層都只畫在臉的範圍內）
+        r = New OperaRole With {.Name = Lang.T("關公"), .Group = OperaGroup.Lianpu, .Lift = 40,
+                                .Note = Lang.T("紅整臉：忠義勇武。濃眉斜飛、額頭與臉頰的黑紋、鼻樑一個小捲，黑鬍子圍住嘴、粉紅下巴，眉梢與臉頰各一顆痣。")}
+        r.Layers.Add(Fill(&HD41328, 0.93))
+        ' 鼻樑兩側較深的紅
+        r.Layers.Add(Stroke(&HAA2A2B, 0.07, GG(0.1, 0.22, 0.11, 0.42, 0.1, 0.6), taper:=True, op:=0.7))
+        ' 額頭：從頂上彎到眉頭的長紋、正中一條細紋
+        r.Layers.Add(Stroke(&H101010, 0.045, GG(0.45, -1.52, 0.41, -1.12, 0.3, -0.72, 0.17, -0.42, 0.115, -0.25, 0.13, -0.12), taper:=True))
+        r.Layers.Add(Stroke(&H101010, 0.025, GG(0, -1.02, 0, -0.5, 0, -0.14), mirror:=False, taper:=True))
+        ' 頂上與太陽穴的黑（接髮際）：用真人臉的座標——臉的範圍只到額頭 -1.1 左右，照原圖比例放會整塊落在範圍外
+        r.Layers.Add(Poly(&H101010, P(0, -0.84, 0.3, -0.82, 0.52, -0.74, 0.68, -0.6, 0.8, -0.46, 0.9, -0.34, 1.5, -0.3, 1.5, -2.2, 0, -2.2)))
+        ' 臉外圈的黑邊（真人臉的座標，超出臉的部分自然裁掉）
+        r.Layers.Add(Stroke(&H101010, 0.17, P(0.95, -0.5, 1.0, -0.05, 0.99, 0.45, 0.92, 0.9, 0.76, 1.28, 0.5, 1.6, 0.3, 1.74)))
+        ' 濃眉：從太陽穴斜下來，收在鼻樑兩側
+        r.Layers.Add(Poly(&H101010, GG(1.0, -0.77, 0.57, -0.48, 0.3, -0.28, 0.14, -0.13, 0.12, -0.07, 0.24, -0.07, 0.47, -0.18, 0.8, -0.33, 1.17, -0.52)))
+        ' 眼下的弧紋、臉頰兩條長紋
+        r.Layers.Add(Stroke(&H101010, 0.035, GG(0.68, 0.13, 0.86, 0.15, 0.99, 0.27), taper:=True))
+        r.Layers.Add(Stroke(&H101010, 0.04, GG(0.4, 0.84, 0.52, 1.1, 0.62, 1.38, 0.66, 1.55), taper:=True))
+        r.Layers.Add(Stroke(&H101010, 0.035, GG(0.62, 0.98, 0.72, 1.2, 0.78, 1.42), taper:=True))
+        ' 黑鬍子：從鼻翼兩側往下圍住嘴，兩邊一路到下顎
+        r.Layers.Add(Poly(&H101010, GG(0, 0.8, 0.12, 0.79, 0.2, 0.73, 0.21, 0.6, 0.19, 0.42, 0.2, 0.36, 0.25, 0.4, 0.33, 0.67, 0.42, 1.0, 0.46, 1.3, 0.53, 1.6, 0.58, 1.95,
+                                          0.42, 1.95, 0.38, 1.6, 0.34, 1.32, 0.3, 1.26, 0.15, 1.24, 0, 1.25)))
+        ' 粉紅的下巴
+        r.Layers.Add(Poly(&HFF8A80, GG(0, 1.45, 0.2, 1.43, 0.33, 1.36, 0.37, 1.6, 0.4, 2.0, 0, 2.0)))
+        ' 眼眶與往上拉的眼尾
+        r.Layers.Add(Outline(&H101010, 0.03, 1.25))
+        Dim wing = GG(1.08, -0.24)(0)
+        r.Layers.Add(EyeLine(&H101010, 0.045, wing.X, wing.Y))
+        ' 鼻樑上的小捲
+        r.Layers.Add(Stroke(&H101010, 0.025, GG(-0.06, 0.0, 0.02, 0.01, 0.04, 0.07, -0.01, 0.1, 0.05, 0.14), mirror:=False))
+        ' 痣：右眉梢上、左臉頰鼻旁
+        Dim mole1 = GG(0.79, -0.24)(0), mole2 = GG(-0.42, 0.47)(0)
+        r.Layers.Add(Oval(&H101010, mole1.X, mole1.Y, 0.03, 0.03, False))
+        r.Layers.Add(Oval(&H101010, mole2.X, mole2.Y, 0.03, 0.03, False))
         list.Add(r)
 
         r = New OperaRole With {.Name = Lang.T("包公"), .Group = OperaGroup.Lianpu, .Lift = 20, .BeardArgb = Rgb(&H151515), .BeardStyle = 1,

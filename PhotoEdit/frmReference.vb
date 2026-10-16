@@ -3,7 +3,7 @@ Imports System.Drawing.Drawing2D
 
 ''' <summary>
 ''' 參考圖（檢視 → 參考圖…，Ctrl+Shift+R）：臨摹時把原作開在旁邊的浮動視窗，不必切換程式。
-''' 點一下吸色（設成繪圖的線條色）；滾輪縮放、拖曳移動、按兩下看全圖。
+''' 左鍵吸色設成線條色、右鍵設成填色；滾輪縮放、拖曳移動、按兩下看全圖。
 ''' 「描圖」把參考圖半透明疊在畫布上對位用，只顯示在畫面上，不會存進文件或匯出。
 ''' </summary>
 Friend Class frmReference
@@ -13,6 +13,8 @@ Friend Class frmReference
     Private ReadOnly _view As New RefView()
     Private ReadOnly _open As New Button With {.Text = Lang.T("開啟圖片…"), .UseVisualStyleBackColor = True}
     Private ReadOnly _trace As New CheckBox With {.Text = Lang.T("描圖"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
+    Private ReadOnly _inkTone As New CheckBox With {.Text = Lang.T("墨色"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
+    Private ReadOnly _pick As New CheckBox With {.Text = Lang.T("畫筆取色"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
     Private ReadOnly _opacity As New Aqua.Slider With {.Minimum = 10, .Maximum = 80, .ShowTicks = False}
     Private ReadOnly _opacityLabel As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
     Private ReadOnly _status As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleLeft, .BackColor = Color.Transparent,
@@ -21,6 +23,8 @@ Friend Class frmReference
 
     ''' <summary>點一下參考圖吸到的顏色。</summary>
     Public Event ColorPicked(c As Color)
+    ''' <summary>按右鍵吸到的顏色（設成填色）。</summary>
+    Public Event FillColorPicked(c As Color)
     ''' <summary>描圖開關、不透明度或圖片換了：畫布要重畫。</summary>
     Public Event TraceChanged()
 
@@ -33,8 +37,8 @@ Friend Class frmReference
         MinButton = False
         StartPosition = FormStartPosition.Manual
         ShowInTaskbar = False
-        ClientSize = New Size(460, 420)
-        MinimumSize = New Size(320, 260)
+        ClientSize = New Size(560, 420)
+        MinimumSize = New Size(480, 260)
 
         AddHandler _open.Click, Sub() OpenWithDialog()
         AddHandler _trace.CheckedChanged, Sub()
@@ -42,6 +46,26 @@ Friend Class frmReference
                                               _trace.ForeColor = If(_trace.Checked OrElse Not ThemeManager.Dark, SystemColors.ControlText, Aqua.Theme.TextColor)
                                               RaiseEvent TraceChanged()
                                           End Sub
+        _pick.Checked = _settings.ReferenceColorPick
+        _inkTone.Checked = _settings.ReferenceInkTone
+        _view.Grayscale = _inkTone.Checked
+        StylePick()
+        AddHandler _inkTone.CheckedChanged, Sub()
+                                                StylePick()
+                                                _view.Grayscale = _inkTone.Checked
+                                                _view.Invalidate()
+                                                _settings.ReferenceInkTone = _inkTone.Checked
+                                                _settings.Save()
+                                                _status.Text = If(_inkTone.Checked, Lang.T("墨色：吸到的顏色換成同樣深淺的墨色（水墨畫用）。"),
+                                                                  Lang.T("左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。"))
+                                            End Sub
+        AddHandler _pick.CheckedChanged, Sub()
+                                             StylePick()
+                                             _settings.ReferenceColorPick = _pick.Checked
+                                             _settings.Save()
+                                             _status.Text = If(_pick.Checked, Lang.T("畫筆取色：每一筆自動用參考圖同一位置的顏色。"),
+                                                               Lang.T("左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。"))
+                                         End Sub
         _opacity.Value = Math.Max(10, Math.Min(80, _settings.TraceOpacity))
         _opacityLabel.Text = _opacity.Value & "%"
         AddHandler _opacity.ValueChanged, Sub()
@@ -50,7 +74,13 @@ Friend Class frmReference
                                               _settings.Save()
                                               If _trace.Checked Then RaiseEvent TraceChanged()
                                           End Sub
-        AddHandler _view.Picked, Sub(c)
+        AddHandler _view.PickedFill, Sub(c0)
+                                         Dim c = ToInk(c0)
+                                         _status.Text = Lang.F("已吸色 RGB({0}, {1}, {2})，設成填色。", c.R, c.G, c.B)
+                                         RaiseEvent FillColorPicked(c)
+                                     End Sub
+        AddHandler _view.Picked, Sub(c0)
+                                     Dim c = ToInk(c0)
                                      _status.Text = Lang.F("已吸色 RGB({0}, {1}, {2})，設成線條色。", c.R, c.G, c.B)
                                      RaiseEvent ColorPicked(c)
                                  End Sub
@@ -60,8 +90,8 @@ Friend Class frmReference
                                        Dim files = TryCast(e.Data.GetData(DataFormats.FileDrop), String())
                                        If files IsNot Nothing AndAlso files.Length > 0 Then LoadImage(files(0))
                                    End Sub
-        Controls.AddRange({_open, _trace, _opacity, _opacityLabel, _view, _status})
-        _status.Text = Lang.T("點一下吸色；滾輪縮放、拖曳移動、按兩下看全圖。")
+        Controls.AddRange({_open, _trace, _pick, _inkTone, _opacity, _opacityLabel, _view, _status})
+        _status.Text = Lang.T("左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。")
         LayoutBody()
         ThemeManager.Attach(Me)
         If Not String.IsNullOrEmpty(_settings.ReferencePath) AndAlso IO.File.Exists(_settings.ReferencePath) Then LoadImage(_settings.ReferencePath, quiet:=True)
@@ -86,6 +116,34 @@ Friend Class frmReference
         End Get
     End Property
 
+    ''' <summary>「畫筆取色」開著、而且有圖。</summary>
+    Public ReadOnly Property PickWhileDrawing As Boolean
+        Get
+            Return _pick.Checked AndAlso _view.Image IsNot Nothing
+        End Get
+    End Property
+
+    ''' <summary>參考圖上 (nx, ny)（0..1）附近 3×3 的平均色；超出範圍時 Nothing。</summary>
+    Public Function ColorAt(nx As Single, ny As Single) As Color?
+        Dim img = _view.Image
+        If img Is Nothing OrElse nx < 0 OrElse ny < 0 OrElse nx >= 1 OrElse ny >= 1 Then Return Nothing
+        Return ToInk(_view.SampleAt(CInt(Math.Floor(nx * img.Width)), CInt(Math.Floor(ny * img.Height))))
+    End Function
+
+    ''' <summary>「墨色」開著時：換成同樣亮度的墨色（略帶暖，像墨在紙上）；關著時原樣。</summary>
+    Private Function ToInk(c As Color) As Color
+        If Not _inkTone.Checked Then Return c
+        Dim l = 0.3 * c.R + 0.59 * c.G + 0.11 * c.B
+        Return Color.FromArgb(CInt(Math.Min(255, l)), CInt(Math.Min(255, l * 0.985)), CInt(Math.Min(255, l * 0.95)))
+    End Function
+
+    Private Sub StylePick()
+        _pick.BackColor = If(_pick.Checked, Color.FromArgb(255, 214, 120), If(ThemeManager.Dark, ThemeManager.ButtonBack, SystemColors.Control))
+        _pick.ForeColor = If(_pick.Checked OrElse Not ThemeManager.Dark, SystemColors.ControlText, Aqua.Theme.TextColor)
+        _inkTone.BackColor = If(_inkTone.Checked, Color.FromArgb(255, 214, 120), If(ThemeManager.Dark, ThemeManager.ButtonBack, SystemColors.Control))
+        _inkTone.ForeColor = If(_inkTone.Checked OrElse Not ThemeManager.Dark, SystemColors.ControlText, Aqua.Theme.TextColor)
+    End Sub
+
     Protected Overrides Sub OnResize(e As EventArgs)
         MyBase.OnResize(e)
         LayoutBody()
@@ -96,7 +154,9 @@ Friend Class frmReference
         Dim top = 23 + 8, w = ClientSize.Width, h = ClientSize.Height
         _open.SetBounds(10, top, 104, 28)
         _trace.SetBounds(120, top, 64, 28)
-        _opacity.SetBounds(190, top + 2, Math.Max(60, w - 190 - 58), 24)
+        _pick.SetBounds(190, top, 84, 28)
+        _inkTone.SetBounds(280, top, 56, 28)
+        _opacity.SetBounds(342, top + 2, Math.Max(60, w - 342 - 58), 24)
         _opacityLabel.SetBounds(w - 56, top, 46, 28)
         _view.SetBounds(10, top + 34, w - 20, Math.Max(40, h - top - 34 - 30))
         _status.SetBounds(10, h - 28, w - 20, 24)
@@ -164,6 +224,7 @@ Friend Class frmReference
         Private _downCenter As PointF
 
         Public Event Picked(c As Color)
+        Public Event PickedFill(c As Color)
 
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
@@ -206,8 +267,23 @@ Friend Class frmReference
             End If
             g.InterpolationMode = If(If(_zoom = 0, FitScale(), _zoom) > 2, InterpolationMode.NearestNeighbor, InterpolationMode.HighQualityBilinear)
             g.PixelOffsetMode = PixelOffsetMode.Half
-            g.DrawImage(_image, ImageRect())
+            If Grayscale Then
+                ' 墨色：看濃淡用灰階顯示（吸色時才換算，原圖不變）
+                Dim r = ImageRect()
+                Using attr As New Imaging.ImageAttributes()
+                    attr.SetColorMatrix(New Imaging.ColorMatrix(New Single()() {
+                        New Single() {0.3F, 0.3F, 0.3F, 0, 0}, New Single() {0.59F, 0.59F, 0.59F, 0, 0}, New Single() {0.11F, 0.11F, 0.11F, 0, 0},
+                        New Single() {0, 0, 0, 1, 0}, New Single() {0, 0, 0, 0, 1}}))
+                    g.DrawImage(_image, New PointF() {r.Location, New PointF(r.Right, r.Top), New PointF(r.Left, r.Bottom)},
+                                New RectangleF(0, 0, _image.Width, _image.Height), GraphicsUnit.Pixel, attr)
+                End Using
+            Else
+                g.DrawImage(_image, ImageRect())
+            End If
         End Sub
+
+        ''' <summary>灰階顯示（「墨色」開著時）。</summary>
+        Public Property Grayscale As Boolean
 
         Protected Overrides Sub OnMouseWheel(e As MouseEventArgs)
             MyBase.OnMouseWheel(e)
@@ -226,6 +302,13 @@ Friend Class frmReference
         Protected Overrides Sub OnMouseDown(e As MouseEventArgs)
             MyBase.OnMouseDown(e)
             Focus()
+            If _image IsNot Nothing AndAlso e.Button = MouseButtons.Right Then
+                ' 右鍵：吸成填色（同工具列色盤：左鍵線條、右鍵填色）
+                Dim ir = ImageRect()
+                Dim px = CInt(Math.Floor((e.X - ir.X) / ir.Width * _image.Width)), py = CInt(Math.Floor((e.Y - ir.Y) / ir.Height * _image.Height))
+                If px >= 0 AndAlso py >= 0 AndAlso px < _image.Width AndAlso py < _image.Height Then RaiseEvent PickedFill(AverageAt(px, py))
+                Return
+            End If
             If _image Is Nothing OrElse e.Button <> MouseButtons.Left Then Return
             _down = e.Location
             _dragged = False
@@ -259,6 +342,10 @@ Friend Class frmReference
         End Sub
 
         ''' <summary>3×3 平均：避開單一雜點（油畫的筆觸、JPG 的雜訊）。</summary>
+        Public Function SampleAt(x As Integer, y As Integer) As Color
+            Return AverageAt(x, y)
+        End Function
+
         Private Function AverageAt(x As Integer, y As Integer) As Color
             Dim r = 0, g = 0, b = 0, n = 0
             For yy = Math.Max(0, y - 1) To Math.Min(_image.Height - 1, y + 1)

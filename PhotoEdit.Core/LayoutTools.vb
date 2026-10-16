@@ -153,7 +153,7 @@ Partial Public NotInheritable Class DrawGeometry
         Dim lift = size * 0.75
         Return New DrawLayer With {.Shape = DrawShape.Text, .Text = text, .X = mx + g.N.X * lift, .Y = my + g.N.Y * lift,
                                    .W = size * (text.Length * 0.75 + 2), .H = size * 1.7, .Rotation = ang, .TextSize = size,
-                                   .FontName = layer.FontName, .TextColorArgb = layer.TextColorArgb, .TextBold = layer.TextBold,
+                                   .FontName = layer.FontName, .TextColorArgb = layer.TextColorArgb, .TextBold = layer.TextBold, .TextItalic = layer.TextItalic,
                                    .Filled = False, .Stroked = False}
     End Function
 

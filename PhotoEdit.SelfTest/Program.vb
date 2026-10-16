@@ -36,6 +36,8 @@ Module Program
             PaperTestsRun()
             PenInputTestsRun()
             BucketTestsRun()
+            InkBleedTestsRun()
+            ModelCatalogTestsRun()
             GradientTestsRun()
             SelectionFillTestsRun()
             EraserTestsRun()
