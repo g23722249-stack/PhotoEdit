@@ -133,7 +133,6 @@ Partial Friend Class frmEditor
         BuildTextPage(_tabs.AddTab(TabTitle("文字")))        ' 9 TabText
         BuildStickerPage(_tabs.AddTab(TabTitle("貼圖")))     ' 10 TabSticker
         BuildDecorPage(_tabs.AddTab(TabTitle("裝飾")))       ' 11 TabDecor
-        _tabs.GroupBreaks = {TabSelect, TabDraw, TabText} ' 分組之間留空隙、畫淡分隔線
         If Lang.Current = UiLanguage.English Then FitButtonTexts(_tabs)
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
