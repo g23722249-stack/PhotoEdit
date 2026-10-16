@@ -12,7 +12,7 @@ Imports PhotoEdit
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Const TabSelect As Integer = 11
+    Private Const TabSelect As Integer = 5
 
     Private Enum SelTool
         Rectangle = 0

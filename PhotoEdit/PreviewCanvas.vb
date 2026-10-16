@@ -409,6 +409,7 @@ Partial Friend Class PreviewCanvas
         End If
         zoom = Math.Min(MaxZoom, zoom)
         Dim a = If(anchor, New Point(ViewSize.Width \ 2, ViewSize.Height \ 2))
+        If MirrorActive Then a = New Point(ViewSize.Width - a.X, a.Y) ' 翻轉檢視：游標下的影像位置是翻過去的那一點
         Dim before = ScreenToNormalized(a)
         _zoom = zoom
         ' 讓 anchor 下的影像位置縮放後仍在 anchor 下。
@@ -436,6 +437,39 @@ Partial Friend Class PreviewCanvas
                              CSng(If(halfH >= 0.5, 0.5, Math.Max(halfH, Math.Min(1 - halfH, _center.Y)))))
         UpdateScrollBars()
     End Sub
+
+    Private _mirrorView As Boolean
+
+    ''' <summary>左右翻轉檢視（同 Painter、CSP：檢查比例用）：只在繪圖時把畫面左右翻過來，影像不變；座標換算用 ViewMirrorX 跟著翻。</summary>
+    Public Property MirrorView As Boolean
+        Get
+            Return _mirrorView
+        End Get
+        Set(value As Boolean)
+            If _mirrorView = value Then Return
+            _mirrorView = value
+            Invalidate()
+        End Set
+    End Property
+
+    ''' <summary>現在真的翻著（繪圖工具、有影像）。</summary>
+    Public ReadOnly Property MirrorActive As Boolean
+        Get
+            Return _mirrorView AndAlso _tool = CanvasTool.Draw AndAlso _image IsNot Nothing
+        End Get
+    End Property
+
+    ''' <summary>畫面 x 座標在翻轉檢視時對調（沒翻時原樣）；同一個式子正反都適用。</summary>
+    Public Function ViewMirrorX(x As Single) As Single
+        Return If(MirrorActive, ViewSize.Width - x, x)
+    End Function
+
+    ''' <summary>影像在畫面上看到的範圍（翻轉檢視時也是翻過去的位置）。</summary>
+    Public Function DisplayBounds() As RectangleF
+        Dim b = ImageBounds()
+        If Not MirrorActive Then Return b
+        Return New RectangleF(ViewSize.Width - b.Right, b.Y, b.Width, b.Height)
+    End Function
 
     ''' <summary>影像在畫布上的顯示位置（可能大於畫布）。</summary>
     Public Function ImageBounds() As RectangleF
@@ -531,6 +565,13 @@ Partial Friend Class PreviewCanvas
         Dim b = ImageBounds()
         ' 只畫看得到的部分：放大檢視時不必每次處理整張大圖。
         Dim visible = RectangleF.Intersect(b, ClientRectangle)
+        ' 左右翻轉檢視：照片（棋盤格、描圖）左右翻過來畫；繪圖的疊圖由 DrawHost 用翻過的座標畫（文字不會變反字）
+        Dim mirrorState As GraphicsState = Nothing
+        If MirrorActive Then
+            mirrorState = g.Save()
+            g.TranslateTransform(ViewSize.Width, 0)
+            g.ScaleTransform(-1, 1)
+        End If
         If _checkerboard AndAlso visible.Width > 0 Then
             ' 透明處顯示棋盤格。
             Using light As New SolidBrush(Color.FromArgb(235, 235, 235)), dark As New SolidBrush(Color.FromArgb(200, 200, 200))
@@ -554,6 +595,7 @@ Partial Friend Class PreviewCanvas
         End If
 
         DrawTrace(g, b, visible)
+        If mirrorState IsNot Nothing Then g.Restore(mirrorState)
         If _cropMode Then DrawCropOverlay(g, b)
         If IsPaintTool Then DrawBrush(g, b)
         If _tool = CanvasTool.Gradient Then DrawGradient(g, b)
@@ -864,7 +906,7 @@ Partial Friend Class PreviewCanvas
 
         If _drag = DragMode.Pan Then
             Dim b = ImageBounds()
-            _center = New PointF(_dragStartCenter.X - (e.X - _dragAnchor.X) / b.Width,
+            _center = New PointF(_dragStartCenter.X - (e.X - _dragAnchor.X) * If(MirrorActive, -1, 1) / b.Width,
                                  _dragStartCenter.Y - (e.Y - _dragAnchor.Y) / b.Height)
             ClampCenter()
             Invalidate()

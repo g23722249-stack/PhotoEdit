@@ -73,6 +73,7 @@ Partial Friend Class PreviewCanvas
     ''' <summary>平移檢視（螢幕像素；平移工具、中鍵拖曳）。符合視窗時不動。</summary>
     Public Sub PanBy(dx As Integer, dy As Integer)
         If _image Is Nothing OrElse _zoom = 0 OrElse (dx = 0 AndAlso dy = 0) Then Return
+        If MirrorActive Then dx = -dx ' 左右翻轉檢視：畫面往右拖＝影像座標往左
         Dim dispW = _image.Width * _imageScale * _zoom, dispH = _image.Height * _imageScale * _zoom
         _center = New PointF(CSng(_center.X - dx / dispW), CSng(_center.Y - dy / dispH))
         ClampCenter()

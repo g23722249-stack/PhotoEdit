@@ -547,7 +547,7 @@ Partial Friend Class frmEditor
         Dim b = DrawGeometry.GroupBounds(m.Select(Function(i) _recipe.Drawings(i)).Where(Function(d) d.Visible))
         If b.IsEmpty AndAlso b.Width <= 0 Then
             ' 空的群組（剛新增）：照片整個變淡，左上角標出所在的群組
-            Dim img0 = _canvas.ImageBounds()
+            Dim img0 = _canvas.DisplayBounds()
             Using br As New SolidBrush(Color.FromArgb(150, 255, 255, 255))
                 g.FillRectangle(br, img0)
             End Using
@@ -562,7 +562,7 @@ Partial Friend Class frmEditor
             Return
         End If
         ' 群組以外的東西（照片、其他圖形）蓋一層半透明白色，群組裡的物件挖空（同 Illustrator 的隔離模式）
-        Dim img = _canvas.ImageBounds()
+        Dim img = _canvas.DisplayBounds()
         Using veil As New Region(img)
             Dim px = PxPerUnit()
             For Each i In m
@@ -573,7 +573,7 @@ Partial Friend Class frmEditor
                         Dim rb = DrawingRenderer.RasterVisibleBounds(d, PhotoAspect())
                         If rb.IsEmpty Then Continue For
                         Dim p0 = UnitToScreen(rb.Location), p1 = UnitToScreen(New PointF(rb.Right, rb.Bottom))
-                        path.AddRectangle(RectangleF.FromLTRB(p0.X, p0.Y, p1.X, p1.Y))
+                        path.AddRectangle(RectangleF.FromLTRB(Math.Min(p0.X, p1.X), p0.Y, Math.Max(p0.X, p1.X), p1.Y))
                     Else
                         Dim w = CSng(Math.Max(6, d.StrokeWidth * px + 4))
                         For Each fig In DrawGeometry.Figures(d)
@@ -595,7 +595,7 @@ Partial Friend Class frmEditor
             End Using
         End Using
         Dim a = UnitToScreen(b.Location), c = UnitToScreen(New PointF(b.Right, b.Bottom))
-        Dim rect = RectangleF.FromLTRB(a.X - 8, a.Y - 8, c.X + 8, c.Y + 8)
+        Dim rect = RectangleF.FromLTRB(Math.Min(a.X, c.X) - 8, a.Y - 8, Math.Max(a.X, c.X) + 8, c.Y + 8)
         Using pen As New Pen(Color.FromArgb(127, 119, 221), 1.4F) With {.DashStyle = DashStyle.Dash}
             g.DrawRectangle(pen, rect.X, rect.Y, rect.Width, rect.Height)
         End Using

@@ -29,6 +29,7 @@ Friend Class frmReference
         Text = Lang.T("參考圖")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Sizable
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
         MinButton = False
         StartPosition = FormStartPosition.Manual
         ShowInTaskbar = False

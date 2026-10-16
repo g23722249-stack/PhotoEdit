@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -19,6 +19,7 @@ Partial Friend Class frmEditor
 
     Private Sub AddLayoutMenu(viewMenu As Aqua.MenuItem)
         viewMenu.AddItem(New Aqua.MenuItem("-"))
+        _layoutMenu("flipview") = viewMenu.AddItem(Item("flipview", Lang.T("左右翻轉檢視")))
         For Each m In {("rulers", Lang.T("顯示尺規 (Ctrl+Alt+R)")), ("grid", Lang.T("顯示格線 (Ctrl+')")), ("snapgrid", Lang.T("貼齊格線")),
                        ("snapguides", Lang.T("貼齊參考線")), ("gridsize", Lang.T("格線間距…")), ("clearguides", Lang.T("清除參考線"))}
             _layoutMenu(m.Item1) = viewMenu.AddItem(Item(m.Item1, m.Item2))
@@ -291,6 +292,25 @@ Partial Friend Class frmEditor
         Return 10 * p
     End Function
 
+    ''' <summary>左右翻轉檢視時右上角標出來（免得忘了關）。</summary>
+    Private Sub PaintMirrorBadge(g As Graphics)
+        If Not _canvas.MirrorActive Then Return
+        Dim text = Lang.T("↔ 左右翻轉檢視中")
+        Using f As New Font(_panelFont.FontFamily, 9.5F, FontStyle.Bold), bb As New SolidBrush(Color.FromArgb(220, 47, 128, 237))
+            Dim sz = g.MeasureString(text, f)
+            Dim r As New RectangleF(_canvas.ClientSize.Width - sz.Width - 26, If(_appSettings.ShowRulers, RulerSize + 8, 8), sz.Width + 14, sz.Height + 6)
+            g.FillRectangle(bb, r)
+            g.DrawString(text, f, Brushes.White, r.X + 7, r.Y + 3)
+        End Using
+    End Sub
+
+    Private Sub ToggleMirrorView()
+        _canvas.MirrorView = Not _canvas.MirrorView
+        If _layoutMenu.ContainsKey("flipview") Then _layoutMenu("flipview").Checked = _canvas.MirrorView
+        SetStatusMessage(If(_canvas.MirrorView, Lang.T("左右翻轉檢視：只翻畫面，照片和圖形都不會變；再按一次恢復。"), Lang.T("已恢復正常檢視。")))
+        _canvas.Invalidate()
+    End Sub
+
     Private Sub PaintRulers(g As Graphics)
         If Not _appSettings.ShowRulers Then Return
         Dim photoH = PhotoPixelSize().Height
@@ -306,7 +326,8 @@ Partial Friend Class frmEditor
             g.DrawLine(pen, 0, RulerSize - 1, w, RulerSize - 1)
             g.DrawLine(pen, RulerSize - 1, 0, RulerSize - 1, h)
             ' 上：x
-            Dim x0 = ScreenToUnit(New Point(RulerSize, 0)).X * photoH, x1 = ScreenToUnit(New Point(w, 0)).X * photoH
+            Dim xa = ScreenToUnit(New Point(RulerSize, 0)).X * photoH, xb = ScreenToUnit(New Point(w, 0)).X * photoH
+            Dim x0 = Math.Min(xa, xb), x1 = Math.Max(xa, xb) ' 翻轉檢視時數字由右往左
             Dim minor = stp / 5
             Dim k = Math.Floor(x0 / minor)
             While k * minor <= x1
@@ -315,7 +336,11 @@ Partial Friend Class frmEditor
                 If sx >= RulerSize Then
                     Dim major = Math.Abs(v / stp - Math.Round(v / stp)) < 0.0001
                     g.DrawLine(pen, sx, If(major, 2, RulerSize - 5), sx, RulerSize - 1)
-                    If major Then g.DrawString(CInt(Math.Round(v)).ToString(), f, tb, sx + 2, 1)
+                    If major Then
+                        Dim txt = CInt(Math.Round(v)).ToString()
+                        Dim tw = If(_canvas.MirrorActive, g.MeasureString(txt, f).Width + 2, -2) ' 翻轉時數字寫在刻度左邊
+                        g.DrawString(txt, f, tb, sx - tw, 1)
+                    End If
                 End If
                 k += 1
             End While
@@ -721,6 +746,7 @@ Partial Friend Class frmEditor
             Case "rulers", "grid", "snapgrid", "snapguides" : ToggleLayout(name)
             Case "gridsize" : ShowGridSpacing()
             Case "clearguides" : ClearGuides()
+            Case "flipview" : ToggleMirrorView()
             Case Else : Return False
         End Select
         Return True

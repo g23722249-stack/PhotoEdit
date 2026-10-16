@@ -36,7 +36,7 @@ Partial Friend Class frmEditor
         Dim wa = Screen.FromControl(Me).WorkingArea
         SuspendLayout()
         _fsHidden = New List(Of (Ctl As Control, Visible As Boolean))()
-        For Each c In New Control() {_sidePanel, _splitter, _statusLabel, _drawBar, _drawStrip, _presetStrip, _cropPanel}
+        For Each c In New Control() {_sidePanel, _splitter, _statusLabel, _drawBar, _drawStrip, _cropPanel}
             _fsHidden.Add((c, c.Visible))
             c.Visible = False
         Next

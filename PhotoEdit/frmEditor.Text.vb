@@ -7,7 +7,7 @@ Imports PhotoEdit
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Const TabText As Integer = 7
+    Private Const TabText As Integer = 9
 
     Private ReadOnly _insertInfo As New ComboBox()
     Private ReadOnly _textVertical As New CheckBox()

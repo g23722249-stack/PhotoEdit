@@ -6,10 +6,10 @@
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Const TabRepair As Integer = 3
-    Private Const TabLocal As Integer = 4
-    Private Const TabDecor As Integer = 5
-    Private Const TabSticker As Integer = 6
+    Private Const TabRepair As Integer = 1
+    Private Const TabLocal As Integer = 3
+    Private Const TabDecor As Integer = 11
+    Private Const TabSticker As Integer = 10
 
     Private _localIndex As Integer = -1
     Private _overlayIndex As Integer = -1

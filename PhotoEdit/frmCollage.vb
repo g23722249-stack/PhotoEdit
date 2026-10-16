@@ -41,6 +41,7 @@ Friend Class frmCollage
         MinimumSize = New Size(860, 600)
         StartPosition = FormStartPosition.CenterParent
         WindowBorderStyle = Aqua.FormBorderStyle.Sizable
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
 
         Dim root As New Aqua.MenuItem()
         Dim fileMenu = root.AddItem(New Aqua.MenuItem(Lang.T("檔案")))

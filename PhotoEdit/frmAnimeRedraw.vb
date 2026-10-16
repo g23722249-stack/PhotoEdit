@@ -62,6 +62,7 @@ Friend Class frmAnimeRedraw
         Text = Lang.T("宮崎風 AI 重繪")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
         MinButton = False
         MaxButton = False
         StartPosition = FormStartPosition.CenterParent

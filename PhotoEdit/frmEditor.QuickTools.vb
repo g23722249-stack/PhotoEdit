@@ -439,6 +439,7 @@ Partial Friend Class frmEditor
         Private ReadOnly _touchStrValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _widthTiles As New List(Of Button)()
         Private ReadOnly _nodeBtns As New Dictionary(Of String, Button)()
+        Private ReadOnly _viewBtns As New List(Of Button)()
         Private _editBackground As Boolean
         Private _syncing As Boolean
         Private _modal As Boolean
@@ -453,7 +454,7 @@ Partial Friend Class frmEditor
             KeyPreview = True
             Font = _font
             DoubleBuffered = True
-            ClientSize = New Size(452, 642)
+            ClientSize = New Size(452, 718)
             Tag = ThemeManager.SkipTreeTag ' 自己用 ThemeManager 的顏色畫
 
             ' 顏色：前景、背景（點一下選要改哪一個，按兩下開完整選色器）、對調；小色環；近期與常用色票
@@ -548,6 +549,37 @@ Partial Friend Class frmEditor
                                                  End Sub
             Controls.Add(_docSwatches)
             y += 34
+
+            ' 檢視：符合視窗、100%、左右翻轉檢視；排版：尺規、格線、貼齊（原本要用快捷鍵，筆按不到）
+            _captions.Add((Lang.T("檢視"), y + 6))
+            For Each v In {("fit", Lang.T("符合視窗"), 0), ("actual", "100%", 1), ("flipview", Lang.T("左右翻轉"), 2)}
+                Dim cmd = v.Item1
+                Dim b As New Button With {.Text = v.Item2, .FlatStyle = FlatStyle.Flat, .Tag = cmd}
+                b.SetBounds(110 + v.Item3 * 110, y, 104, 30)
+                AddHandler b.Click, Sub()
+                                        _ed.QuickCommand(cmd)
+                                        SyncFromEditor()
+                                    End Sub
+                _viewBtns.Add(b)
+                Controls.Add(b)
+            Next
+            y += 38
+            _captions.Add((Lang.T("排版"), y + 6))
+            ' 依字數給寬度（「貼齊參考線」最長），四個剛好排滿 110～436
+            Dim bx = 110
+            For Each v In {("rulers", Lang.T("尺規"), 60), ("grid", Lang.T("格線"), 60), ("snapgrid", Lang.T("貼齊格線"), 92), ("snapguides", Lang.T("貼齊參考線"), 102)}
+                Dim cmd = v.Item1
+                Dim b As New Button With {.Text = v.Item2, .FlatStyle = FlatStyle.Flat, .Tag = cmd}
+                b.SetBounds(bx, y, v.Item3, 30)
+                bx += v.Item3 + 4
+                AddHandler b.Click, Sub()
+                                        _ed.QuickCommand(cmd)
+                                        SyncFromEditor()
+                                    End Sub
+                _viewBtns.Add(b)
+                Controls.Add(b)
+            Next
+            y += 38
 
             ' 常用筆刷（右鍵換成別的筆刷）
             _brushCaptionY = y + 4
@@ -796,10 +828,15 @@ Partial Friend Class frmEditor
                     Dim isOn = s.Kind = curSym OrElse (s.Kind = SymmetryKind.Rotate AndAlso curSym = SymmetryKind.Kaleido)
                     s.Button.BackColor = If(isOn, accent, normal) : s.Button.ForeColor = If(isOn, Color.White, ForeColor)
                 Next
+                For Each b In _viewBtns
+                    Dim isOn = _ed.QuickToggleState(CStr(b.Tag))
+                    b.BackColor = If(isOn, accent, normal) : b.ForeColor = If(isOn, Color.White, ForeColor)
+                Next
                 Dim docs = _ed.DocSwatches()
                 _docIds = docs.Select(Function(d) d.Id).ToArray()
                 _docSwatches.Colors = docs.Select(Function(d) Color.FromArgb(255, Color.FromArgb(d.Argb))).ToArray()
                 _docSwatches.Names = docs.Select(Function(d) d.Name).ToArray()
+                _docSwatches.Visible = docs.Count > 0 ' 沒有色票時藏起來，面板上的提示才看得到
                 Dim brushes = _ed.QuickBrushes()
                 Dim current = _ed._drawStyle.Brush
                 For i = 0 To QuickBrushCount - 1
@@ -837,7 +874,10 @@ Partial Friend Class frmEditor
 
         Protected Overrides Sub OnVisibleChanged(e As EventArgs)
             MyBase.OnVisibleChanged(e)
-            If Visible Then ApplyColors()
+            If Visible Then
+                ApplyColors()
+                SyncFromEditor() ' 重套配色會把亮起的按鈕洗掉：再同步一次
+            End If
         End Sub
 
         Protected Overrides Sub OnPaint(e As PaintEventArgs)

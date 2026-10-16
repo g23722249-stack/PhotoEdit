@@ -119,18 +119,21 @@ Partial Friend Class frmEditor
 
         ' 中：分頁
         _tabs.Dock = DockStyle.Fill
-        BuildAdjustPage(_tabs.AddTab(TabTitle("調整")))
-        BuildEffectsPage(_tabs.AddTab(TabTitle("效果")))
-        BuildPortraitPage(_tabs.AddTab(TabTitle("人像")))
-        BuildRepairPage(_tabs.AddTab(TabTitle("修補")))
-        BuildLocalPage(_tabs.AddTab(TabTitle("局部")))
-        BuildDecorPage(_tabs.AddTab(TabTitle("裝飾")))
-        BuildStickerPage(_tabs.AddTab(TabTitle("貼圖")))
-        BuildTextPage(_tabs.AddTab(TabTitle("文字")))
-        BuildCutoutPage(_tabs.AddTab(TabTitle("去背")))
-        BuildDrawPage(_tabs.AddTab(TabTitle("繪圖")))
-        BuildLayersPage(_tabs.AddTab(TabTitle("圖層")))
-        BuildSelectPage(_tabs.AddTab(TabTitle("選取")))
+        ' 順序：修照片（調整、修補、人像、局部、效果）｜選取、去背｜繪圖、圖層｜文字、貼圖、裝飾
+        ' 各分頁的常數（TabRepair、TabSelect…）要跟這裡的順序一致
+        BuildAdjustPage(_tabs.AddTab(TabTitle("調整")))      ' 0
+        BuildRepairPage(_tabs.AddTab(TabTitle("修補")))      ' 1 TabRepair
+        BuildPortraitPage(_tabs.AddTab(TabTitle("人像")))    ' 2 TabPortrait
+        BuildLocalPage(_tabs.AddTab(TabTitle("局部")))       ' 3 TabLocal
+        BuildEffectsPage(_tabs.AddTab(TabTitle("效果")))     ' 4
+        BuildSelectPage(_tabs.AddTab(TabTitle("選取")))      ' 5 TabSelect
+        BuildCutoutPage(_tabs.AddTab(TabTitle("去背")))      ' 6 TabCutout
+        BuildDrawPage(_tabs.AddTab(TabTitle("繪圖")))        ' 7 TabDraw
+        BuildLayersPage(_tabs.AddTab(TabTitle("圖層")))      ' 8 TabLayers
+        BuildTextPage(_tabs.AddTab(TabTitle("文字")))        ' 9 TabText
+        BuildStickerPage(_tabs.AddTab(TabTitle("貼圖")))     ' 10 TabSticker
+        BuildDecorPage(_tabs.AddTab(TabTitle("裝飾")))       ' 11 TabDecor
+        _tabs.GroupBreaks = {TabSelect, TabDraw, TabText} ' 分組之間留空隙、畫淡分隔線
         If Lang.Current = UiLanguage.English Then FitButtonTexts(_tabs)
         _tabs.SelectedIndex = 0
         AddHandler _tabs.SelectedIndexChanged, Sub() OnSideTabChanged()
@@ -168,12 +171,38 @@ Partial Friend Class frmEditor
         Return New PageLayout(page, designWidth)
     End Function
 
+    ' ---- 調整頁的濾鏡區塊（原本在主視窗下方） ----
+    Private ReadOnly _filterFold As New Button With {.FlatStyle = FlatStyle.Flat}
+    Private ReadOnly _filterHint As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(105, 110, 120)}
+    Private _filterPage As Control
+    Private _filterBottom As Integer
+
+    ''' <summary>調整頁：上方濾鏡（可以收起），下方手動調整；同人像頁「一鍵美顏在上、手動調整在下」的排法。</summary>
     Private Sub BuildAdjustPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
+        _filterPage = page
+        ' 濾鏡（標題右邊的收起／展開）
+        AddHeading(L, Lang.T("濾鏡"), reserveRight:=78)
+        _filterFold.SetBounds(L.Width - 74, L.Y - 31, 74, 24)
+        _filterFold.Cursor = Cursors.Hand
+        _help.SetHelp("filters.fold", _filterFold)
+        AddHandler _filterFold.Click, Sub() SetFiltersCollapsed(Not _appSettings.FiltersCollapsed)
+        L.Add(_filterFold)
+        _presetStrip.SetBounds(8, L.Y, L.Width - 8, _presetStrip.Height)
+        L.Add(_presetStrip)
+        L.Y += _presetStrip.Height + 2
+        _filterHint.SetBounds(8, L.Y, L.Width - 10, 20)
+        L.Add(_filterHint)
+        L.Y += 24
+        _filterBottom = L.Y
+        AddHandler _presetStrip.CategoryChanged, Sub() UpdateFilterHint()
+        UpdateFilterHint()
+        ' 手動調整
+        AddHeading(L, Lang.T("手動調整"))
         AddButtonPair(L, Lang.T("自動增強"), "btn.auto", Sub() RunCommand("auto"),
                          Lang.T("自動白平衡"), "btn.autowb", Sub() RunCommand("autowb"))
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())
-        AddHeading(L, Lang.T("光線與色彩"))
+        AddSubHeading(L, Lang.T("光線與色彩"))
         AddRow(L, New SliderRow With {.Key = "exposure", .Caption = Lang.T("曝光"), .Minimum = -30, .Maximum = 30,
             .Format = Function(v) (v / 10.0).ToString("+0.0;-0.0;0.0") & " EV",
             .GetValue = Function(r) CInt(Math.Round(r.Exposure * 10)), .SetValue = Sub(r, v) r.Exposure = v / 10.0})
@@ -183,8 +212,59 @@ Partial Friend Class frmEditor
         AddRow(L, MakeRow("temperature", Lang.T("色溫"), -100, 100, signed, Function(r) r.Temperature, Sub(r, v) r.Temperature = v))
         AddRow(L, MakeRow("tint", Lang.TC("tint", "色調"), -100, 100, signed, Function(r) r.Tint, Sub(r, v) r.Tint = v))
         AddRow(L, MakeRow("saturation", Lang.T("飽和度"), -100, 100, signed, Function(r) r.Saturation, Sub(r, v) r.Saturation = v))
-        AddHeading(L, Lang.T("細節"))
+        AddSubHeading(L, Lang.T("細節"))
         AddRow(L, MakeRow("sharpness", Lang.T("銳利度"), 0, 100, AddressOf Plain, Function(r) r.Sharpness, Sub(r, v) r.Sharpness = v))
+        If _appSettings.FiltersCollapsed Then SetFiltersCollapsed(True, save:=False) Else UpdateFoldText()
+    End Sub
+
+    ''' <summary>繪畫、漫畫類濾鏡的筆觸與紙張在「效果」頁籤；其他類提示可以往下微調。</summary>
+    Private Sub UpdateFilterHint()
+        Dim c = _presetStrip.Category
+        _filterHint.Text = If(c = Preset.PaintCategory OrElse c = Preset.ComicCategory,
+                              Lang.T("筆觸、紙張在「效果」頁籤細調"), Lang.T("點一下套用，下面的滑桿可以再微調"))
+    End Sub
+
+    Private Sub UpdateFoldText()
+        _filterFold.Text = If(_appSettings.FiltersCollapsed, Lang.T("展開 ▾"), Lang.T("收起 ▴"))
+    End Sub
+
+    ''' <summary>收起／展開濾鏡：下面的控制項跟著上下移（同繪圖分頁的「進階」）。</summary>
+    Private Sub SetFiltersCollapsed(collapsed As Boolean, Optional save As Boolean = True)
+        Dim wasVisible = _presetStrip.Visible
+        If collapsed = Not wasVisible Then
+            UpdateFoldText()
+            Return
+        End If
+        Dim top = _presetStrip.Top, delta = _filterBottom - top
+        _filterPage.SuspendLayout()
+        For Each c As Control In _filterPage.Controls
+            ' 收起：原本在濾鏡下面的往上移；展開：現在在濾鏡位置以下的往下移
+            Dim from = If(collapsed, _filterBottom, top)
+            If c IsNot _presetStrip AndAlso c IsNot _filterHint AndAlso c.Top >= from - 1 Then
+                c.Top += If(collapsed, -delta, delta)
+            End If
+        Next
+        _presetStrip.Visible = Not collapsed
+        _filterHint.Visible = Not collapsed
+        _filterPage.ResumeLayout()
+        If save Then
+            _appSettings.FiltersCollapsed = collapsed
+            _appSettings.Save()
+        Else
+            _appSettings.FiltersCollapsed = collapsed
+        End If
+        UpdateFoldText()
+    End Sub
+
+    ''' <summary>小標題（區塊裡的分組）：灰字＋細線，比 AddHeading 輕。</summary>
+    Private Sub AddSubHeading(L As PageLayout, title As String)
+        Dim lbl As New Label With {.Text = title, .AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(95, 102, 115)}
+        lbl.SetBounds(8, L.Y + 2, L.Width - 8, 18)
+        L.Add(lbl)
+        Dim line As New Label With {.BackColor = Color.FromArgb(214, 220, 230), .AutoSize = False}
+        line.SetBounds(8, L.Y + 21, L.Width - 8, 1)
+        L.Add(line)
+        L.Y += 26
     End Sub
 
     Private Sub BuildEffectsPage(page As Aqua.TabPage)
@@ -197,7 +277,7 @@ Partial Friend Class frmEditor
         AddHeading(L, Lang.T("色彩濾鏡"))
         AddRow(L, MakeRow("toninghue", Lang.T("色相"), 0, 359, Function(v) v & "°", Function(r) r.ToningHue, Sub(r, v) r.ToningHue = v))
         AddRow(L, MakeRow("toningstrength", Lang.T("強度"), 0, 100, AddressOf Plain, Function(r) r.ToningStrength, Sub(r, v) r.ToningStrength = v))
-        AddHint(L, Lang.T("例如：飽和度 -100 + 色相 35° = 褐色老照片。") & vbCrLf & Lang.T("下方濾鏡列可一次套用整組風格。"))
+        AddHint(L, Lang.T("例如：飽和度 -100 + 色相 35° = 褐色老照片。") & vbCrLf & Lang.T("「調整」頁籤上方的濾鏡可以一次套用整組風格。"))
         BuildArtSection(L)
         BuildPaperSection(L)
     End Sub

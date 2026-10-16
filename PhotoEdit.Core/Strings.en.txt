@@ -2906,3 +2906,19 @@ KDE Plasma（按鈕在右）	KDE Plasma (buttons on the right)
 寬度樣式（套到選取的線，沒選時給之後畫的線）	Width style (applies to the selected line, or to lines you draw next)
 選取的物件	Selected objects
 節點（節點工具點選節點後可用）	Nodes (available after selecting nodes with the Node tool)
+左右翻轉檢視	Flip View Horizontally
+↔ 左右翻轉檢視中	↔ View flipped
+左右翻轉檢視：只翻畫面，照片和圖形都不會變；再按一次恢復。	View flipped horizontally: only the display is mirrored, the photo and shapes don't change; click again to restore.
+已恢復正常檢視。	Normal view restored.
+符合視窗	Fit
+左右翻轉	Flip
+尺規	Rulers
+濾鏡	Filters
+筆觸、紙張在「效果」頁籤細調	Fine-tune strokes and paper on the FX tab
+點一下套用，下面的滑桿可以再微調	Click to apply, then fine-tune with the sliders below
+展開 ▾	Show ▾
+收起 ▴	Hide ▴
+「調整」頁籤上方的濾鏡可以一次套用整組風格。	The filters at the top of the Adj tab apply a whole look at once.
+上方是濾鏡（色調、復古、繪畫、漫畫，點一下套用整組風格），下方是手動調整：曝光、對比、亮部、暗部、色溫、飽和度與銳利度，也有一鍵自動增強。	Filters on top (tone, retro, painting, comic — click to apply a whole look), manual adjustments below: exposure, contrast, highlights, shadows, temperature, saturation and sharpness, plus one-click auto enhance.
+收起濾鏡	Hide Filters
+把濾鏡區塊收起來，手動調整的滑桿往上移；再按一次展開。會記住你的選擇。	Collapses the filters so the manual sliders move up; click again to expand. Your choice is remembered.

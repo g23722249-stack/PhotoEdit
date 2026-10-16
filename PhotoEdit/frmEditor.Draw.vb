@@ -11,7 +11,7 @@ Imports PhotoEdit
 Partial Friend Class frmEditor
     Implements PreviewCanvas.IDrawHost
 
-    Private Const TabDraw As Integer = 9
+    Private Const TabDraw As Integer = 7
     Private Const HandleRadius As Single = 7
     Private Const RotateHandleOffset As Single = 26
 
@@ -711,6 +711,7 @@ Partial Friend Class frmEditor
     End Function
 
     Private Function ScreenToUnit(p As Point) As PointF
+        If _canvas.MirrorActive Then p = New Point(CInt(_canvas.ViewMirrorX(p.X)), p.Y) ' 左右翻轉檢視
         Dim q = DisplayToPhoto(_canvas.ClientToNormalized(p))
         Return New PointF(CSng(q.X * PhotoAspect()), q.Y)
     End Function
@@ -718,7 +719,7 @@ Partial Friend Class frmEditor
     Private Function UnitToScreen(u As PointF) As PointF
         Dim n = PhotoToDisplay(New PointF(CSng(u.X / PhotoAspect()), u.Y))
         Dim b = _canvas.ImageBounds()
-        Return New PointF(b.X + n.X * b.Width, b.Y + n.Y * b.Height)
+        Return New PointF(_canvas.ViewMirrorX(b.X + n.X * b.Width), b.Y + n.Y * b.Height) ' 左右翻轉檢視時 x 對調
     End Function
 
     ''' <summary>畫面上一個單位（照片高度）有幾個螢幕像素。</summary>
@@ -793,6 +794,7 @@ Partial Friend Class frmEditor
     Private Function RotateHandlePos(d As DrawLayer) As PointF
         Dim top = UnitToScreen(DrawGeometry.LocalToWorld(d, New PointF(0, CSng(-Math.Abs(d.H) / 2))))
         Dim dir = DrawGeometry.Rotate(New PointF(0, -RotateHandleOffset), d.Rotation)
+        If _canvas.MirrorActive Then dir.X = -dir.X ' 翻轉檢視：轉的方向在畫面上也翻過來
         Return New PointF(top.X + dir.X, top.Y + dir.Y)
     End Function
 
@@ -1494,7 +1496,7 @@ Partial Friend Class frmEditor
                     Dim rb = If(showBox, DrawingRenderer.RasterVisibleBounds(sel, PhotoAspect()), RectangleF.Empty)
                     If Not rb.IsEmpty Then
                         Dim a = UnitToScreen(rb.Location), b = UnitToScreen(New PointF(rb.Right, rb.Bottom))
-                        Dim box = RectangleF.FromLTRB(a.X, a.Y, b.X, b.Y)
+                        Dim box = RectangleF.FromLTRB(Math.Min(a.X, b.X), a.Y, Math.Max(a.X, b.X), b.Y) ' 翻轉檢視時左右對調
                         g.DrawRectangle(outer, box.X, box.Y, box.Width, box.Height)
                         g.DrawRectangle(inner, box.X, box.Y, box.Width, box.Height)
                     End If
@@ -1561,6 +1563,7 @@ Partial Friend Class frmEditor
         PaintTools(g) ' 刀線、縮放框
         PaintFx(g) ' 陰影方向、透明度起訖、封套
         PaintRulers(g) ' 尺規（最上面）
+        PaintMirrorBadge(g) ' 左右翻轉檢視中
     End Sub
 
     ''' <summary>拖曳中的新形狀：用目前的線條色與粗細畫外形（實際筆刷效果放開後才算）。</summary>

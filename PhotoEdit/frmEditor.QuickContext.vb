@@ -1,4 +1,4 @@
-Imports System.Drawing.Drawing2D
+﻿Imports System.Drawing.Drawing2D
 Imports PhotoEdit
 
 ''' <summary>
@@ -25,6 +25,19 @@ Partial Friend Class frmEditor
                 If _photo IsNot Nothing AndAlso EffectTargets().Count > 0 Then Return QuickContext.Objects
         End Select
         Return QuickContext.Brushes
+    End Function
+
+    ''' <summary>快速面板檢視、排版按鈕的開關狀態（符合視窗、100% 是動作，但目前正是那樣時也亮起）。</summary>
+    Friend Function QuickToggleState(cmd As String) As Boolean
+        Select Case cmd
+            Case "flipview" : Return _canvas.MirrorView
+            Case "rulers" : Return _appSettings.ShowRulers
+            Case "grid" : Return _appSettings.ShowGrid
+            Case "snapgrid" : Return _appSettings.SnapGrid
+            Case "snapguides" : Return _appSettings.SnapGuides
+            Case "fit" : Return _canvas.IsFit
+        End Select
+        Return False
     End Function
 
     ' ---- 修飾筆刷 ----

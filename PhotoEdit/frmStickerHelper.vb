@@ -87,6 +87,7 @@ Friend Class frmStickerHelper
         MinimumSize = New Size(1000, 680)
         StartPosition = FormStartPosition.CenterParent
         WindowBorderStyle = Aqua.FormBorderStyle.Sizable
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
         KeyPreview = True
         Font = _font
         Padding = New Padding(4, 25, 4, 16)

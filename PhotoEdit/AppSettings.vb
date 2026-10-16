@@ -55,6 +55,8 @@ Friend Class AppSettings
     Public Property MyLooks As List(Of NamedLook)
     ''' <summary>右側面板上方的直方圖展開（預設收起，只剩標題列）。</summary>
     Public Property HistogramExpanded As Boolean
+    ''' <summary>調整頁的濾鏡區塊收起來了。</summary>
+    Public Property FiltersCollapsed As Boolean
     ''' <summary>最近開啟的檔案（照片與專案，新的在前，最多 10 個）。</summary>
     Public Property RecentFiles As List(Of String)
 

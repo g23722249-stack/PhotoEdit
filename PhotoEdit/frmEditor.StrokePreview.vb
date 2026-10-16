@@ -302,9 +302,10 @@ Partial Friend Class frmEditor
         Dim k = 1.0F / _pvRenderH
         Dim a = UnitToScreen(New PointF(r.X * k, r.Y * k)), b = UnitToScreen(New PointF(r.Right * k, r.Bottom * k))
         ' 格子之間不能有縫：位置取整後相鄰的格子剛好接上
-        Dim dest = Rectangle.FromLTRB(CInt(Math.Round(a.X)), CInt(Math.Round(a.Y)), CInt(Math.Round(b.X)), CInt(Math.Round(b.Y)))
-        If dest.Width <= 0 OrElse dest.Height <= 0 Then Return
-        g.DrawImage(img, dest, 0, 0, img.Width, img.Height, GraphicsUnit.Pixel, ia)
+        Dim ax = CInt(Math.Round(a.X)), ay = CInt(Math.Round(a.Y)), bx = CInt(Math.Round(b.X)), by = CInt(Math.Round(b.Y))
+        If ax = bx OrElse by <= ay Then Return
+        ' 左上、右上、左下三點：左右翻轉檢視時右上在左邊，圖跟著翻
+        g.DrawImage(img, {New Point(ax, ay), New Point(bx, ay), New Point(ax, by)}, New Rectangle(0, 0, img.Width, img.Height), GraphicsUnit.Pixel, ia)
     End Sub
 
     ''' <summary>放開後、畫面重算完之前：畫留著的預覽。</summary>

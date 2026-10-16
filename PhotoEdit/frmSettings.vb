@@ -25,6 +25,7 @@ Friend Class frmSettings
         Text = Lang.T("設定")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
         MinButton = False
         MaxButton = False
         StartPosition = FormStartPosition.CenterParent

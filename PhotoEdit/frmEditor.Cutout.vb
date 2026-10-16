@@ -8,7 +8,7 @@ Imports PhotoEdit
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Const TabCutout As Integer = 8
+    Private Const TabCutout As Integer = 6
 
     Private _aiMask As Bitmap
     Private _aiMaskModel As CutoutModel = CutoutModel.General

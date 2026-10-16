@@ -68,6 +68,7 @@ Friend Class frmBeautyAdjust
         Text = Lang.T("美顏手動調整")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
+        RoundCorners = False ' 小工具視窗：方角（圓角的描線會被裁掉一半）
         MinButton = False
         MaxButton = False
         StartPosition = FormStartPosition.CenterParent

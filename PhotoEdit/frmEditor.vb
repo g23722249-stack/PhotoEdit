@@ -24,7 +24,7 @@ Partial Friend Class frmEditor
     Private ReadOnly _canvas As New PreviewCanvas()
     Private ReadOnly _histogramView As New HistogramView()
     Private ReadOnly _sidePanel As New Panel()
-    Private ReadOnly _presetStrip As New PresetStrip()
+    Private ReadOnly _presetStrip As New PresetStrip(embedded:=True) ' 放在「調整」頁籤上方（見 frmEditor.SidePanel.vb）
     Private _showHelpItem As Aqua.MenuItem
     Private ReadOnly _cropPanel As New Panel()
     Private ReadOnly _cropRatio As New ComboBox()
@@ -97,18 +97,16 @@ Partial Friend Class frmEditor
 
         _statusLabel.Dock = DockStyle.Bottom
 
-        _presetStrip.Dock = DockStyle.Bottom
         _presetStrip.AttachHelp(_help)
         _help.Active = _appSettings.ShowHelp
         AddHandler FormClosed, Sub() _help.Dispose()
         _canvas.Dock = DockStyle.Fill
         _canvas.AllowDrop = True
 
-        ' 加入順序決定停靠順序（最後加入的最先停靠）：狀態列最底、右側面板全高，濾鏡列與裁切列只在畫布下方。
+        ' 加入順序決定停靠順序（最後加入的最先停靠）：狀態列最底、右側面板全高，裁切列只在畫布下方（濾鏡在「調整」頁籤）。
         Controls.Add(If(_mdi, BuildDocHost(), CType(_canvas, Control)))
         Controls.Add(_drawBar)
         Controls.Add(_drawStrip)
-        Controls.Add(_presetStrip)
         Controls.Add(_cropPanel)
         Controls.Add(_splitter)
         Controls.Add(_sidePanel)
@@ -354,7 +352,7 @@ Partial Friend Class frmEditor
             Case "zoomin" : _canvas.ZoomIn()
             Case "zoomout" : _canvas.ZoomOut()
             Case "heal"
-                _tabs.SelectedIndex = 3
+                _tabs.SelectedIndex = TabRepair
                 _healToggle.Checked = Not _healToggle.Checked
             Case "clearspots" : ApplyChange(Sub(r) r.Spots = Nothing)
             Case "autostraighten" : RunAutoStraighten()

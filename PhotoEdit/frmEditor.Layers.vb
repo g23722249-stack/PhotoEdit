@@ -8,7 +8,7 @@ Imports PhotoEdit
 ''' </summary>
 Partial Friend Class frmEditor
 
-    Private Const TabLayers As Integer = 10
+    Private Const TabLayers As Integer = 8
 
     Private ReadOnly _stackList As New ListBox()
     Private ReadOnly _stackBlend As New ComboBox()
