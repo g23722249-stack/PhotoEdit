@@ -81,7 +81,7 @@ Friend Class DrawToolStrip
             y += ((grp.Slots.Count + 1) \ 2) * (ButtonSize + Gap) + 2
         Next
         _colorTop = y
-        _colors.SetBounds(2, y + HeaderH, Width - 4, _colors.PreferredHeight)
+        _colors.SetBounds(2, y + HeaderH, BaseWidth - 4, _colors.PreferredHeight)
         AddHandler _colors.Picked, Sub(t, c) RaiseEvent ColorPicked(t, c)
         AddHandler _colors.BoxClicked, Sub(t) RaiseEvent ColorBoxClicked(t)
         AddHandler _colors.Swap, Sub() RaiseEvent SwapColors()
@@ -96,7 +96,11 @@ Friend Class DrawToolStrip
                                           End Sub
         Controls.Add(_colors)
         UpdateButtons()
+        _built = True
+        FitWidth()
     End Sub
+
+    Private _built As Boolean
 
     Private ReadOnly Property BaseWidth As Integer
         Get
@@ -104,12 +108,31 @@ Friend Class DrawToolStrip
         End Get
     End Property
 
-    ' 視窗太矮、要捲動時：加寬一條捲軸的寬度，第二欄的按鈕才不會被捲軸蓋住
+    ' 視窗太矮、要捲動時：加寬一條捲軸的寬度，第二欄的按鈕才不會被捲軸蓋住（不會出現橫向捲軸）
     Protected Overrides Sub OnResize(e As EventArgs)
         MyBase.OnResize(e)
-        Dim content = _colorTop + HeaderH + _colors.PreferredHeight + Padding.Vertical + 4
-        Dim w = BaseWidth + If(content > Height, SystemInformation.VerticalScrollBarWidth, 0)
-        If Width <> w Then Width = w
+        FitWidth()
+    End Sub
+
+    Private _fitting As Boolean
+
+    Private Sub FitWidth()
+        If Not _built OrElse _fitting Then Return
+        _fitting = True
+        Try
+            Dim content = _colorTop + HeaderH + _colors.PreferredHeight + Padding.Vertical + 4
+            ' 捲軸寬用實際量到的（高 DPI 時和系統常數不一定一樣）；還沒出現時先用系統常數
+            Dim bar = If(VerticalScroll.Visible AndAlso Width > ClientSize.Width, Width - ClientSize.Width, SystemInformation.VerticalScrollBarWidth)
+            Dim w = BaseWidth + If(content > Height, bar, 0)
+            If Width <> w Then Width = w
+            ' 內容本來就比基本寬度窄：不要橫向捲動
+            If HorizontalScroll.Visible Then
+                AutoScroll = False
+                AutoScroll = True
+            End If
+        Finally
+            _fitting = False
+        End Try
     End Sub
 
     Private Shared Function V(ParamArray tools As Integer()) As Integer()

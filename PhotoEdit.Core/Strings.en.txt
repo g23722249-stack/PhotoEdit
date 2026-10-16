@@ -2888,3 +2888,17 @@ KDE Plasma（按鈕在右）	KDE Plasma (buttons on the right)
 兩端尖	Taper Both
 中間粗	Thick Middle
 中間細	Thin Middle
+向量手繪	Vector Freehand
+筆壓：{0}	Pen pressure: {0}
+軟（輕輕畫就很濃）	Soft (light strokes are already dark)
+硬（要用力才濃）	Firm (press hard for dark strokes)
+標準	Normal
+筆壓	Pressure
+硬	Firm
+軟	Soft
+左右	Left-right
+上下	Top-bottom
+四向	Four-way
+文件色票	Document Swatches
+（在左側色彩面板按「＋」加入）	(add them with "+" in the color panel on the left)
+全部恢復預設	Restore All Defaults

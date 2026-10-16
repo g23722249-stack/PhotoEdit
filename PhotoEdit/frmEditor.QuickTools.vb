@@ -18,7 +18,95 @@ Partial Friend Class frmEditor
         SelectMove
         Text
         Color
+        ' 以下可以放進輪盤（右鍵換格子）：對應繪圖工具列的工具
+        Pen
+        Node
+        VectorFreehand
+        Rectangle
+        Ellipse
+        AttrDropper
+        TouchUp
+        WidthTool
+        Knife
+        SmartFill
+        Pan
+        Zoom
     End Enum
+
+    ''' <summary>輪盤第 2～8 格的預設（同原本的固定 8 格）。</summary>
+    Private Shared ReadOnly DefaultRadialTools As QuickTool() = {QuickTool.Eraser, QuickTool.Eyedropper, QuickTool.Bucket, QuickTool.Gradient,
+                                                                 QuickTool.SelectMove, QuickTool.Text, QuickTool.Color}
+
+    ''' <summary>快速工具的短名稱（輪盤格子寫得下）。</summary>
+    Friend Shared Function QuickToolName(q As QuickTool) As String
+        Select Case q
+            Case QuickTool.Brush : Return Lang.T("筆刷")
+            Case QuickTool.Eraser : Return Lang.T("橡皮擦")
+            Case QuickTool.Eyedropper : Return Lang.T("吸管")
+            Case QuickTool.Bucket : Return Lang.T("填色")
+            Case QuickTool.Gradient : Return Lang.T("漸層")
+            Case QuickTool.SelectMove : Return Lang.T("選取")
+            Case QuickTool.Text : Return Lang.T("文字")
+            Case QuickTool.Color : Return Lang.T("色彩")
+            Case QuickTool.Pen : Return Lang.T("鋼筆")
+            Case QuickTool.Node : Return Lang.T("節點")
+            Case QuickTool.VectorFreehand : Return Lang.T("向量手繪")
+            Case QuickTool.Rectangle : Return Lang.T("矩形")
+            Case QuickTool.Ellipse : Return Lang.T("橢圓")
+            Case QuickTool.AttrDropper : Return Lang.T("屬性吸管")
+            Case QuickTool.TouchUp : Return Lang.T("修飾筆刷")
+            Case QuickTool.WidthTool : Return Lang.T("寬度")
+            Case QuickTool.Knife : Return Lang.T("刀具")
+            Case QuickTool.SmartFill : Return Lang.T("智慧填色")
+            Case QuickTool.Pan : Return Lang.T("平移")
+            Case QuickTool.Zoom : Return Lang.T("縮放")
+        End Select
+        Return ""
+    End Function
+
+    ''' <summary>對應的繪圖工具列工具；不是單純切工具的（筆刷、橡皮擦、吸管、色彩…）回傳 Nothing。</summary>
+    Friend Shared Function ToolIdOf(q As QuickTool) As Integer?
+        Select Case q
+            Case QuickTool.Pen : Return CInt(DrawShape.Path)
+            Case QuickTool.Node : Return DrawIcons.NodeTool
+            Case QuickTool.VectorFreehand : Return CInt(DrawShape.Freehand)
+            Case QuickTool.Rectangle : Return CInt(DrawShape.Rectangle)
+            Case QuickTool.Ellipse : Return CInt(DrawShape.Ellipse)
+            Case QuickTool.AttrDropper : Return DrawIcons.AttrDropperTool
+            Case QuickTool.TouchUp : Return DrawIcons.TouchUpTool
+            Case QuickTool.WidthTool : Return DrawIcons.WidthTool
+            Case QuickTool.Knife : Return DrawIcons.KnifeTool
+            Case QuickTool.SmartFill : Return DrawIcons.SmartFillTool
+            Case QuickTool.Pan : Return DrawIcons.PanTool
+            Case QuickTool.Zoom : Return DrawIcons.ZoomTool
+        End Select
+        Return Nothing
+    End Function
+
+    ''' <summary>輪盤 8 格：第 1 格筆刷（外圈展開常用筆刷），其餘依設定。</summary>
+    Friend Function RadialTools() As QuickTool()
+        Dim saved = _appSettings.RadialTools
+        Dim rest = DefaultRadialTools.ToArray()
+        If saved IsNot Nothing AndAlso saved.Count = rest.Length Then
+            For i = 0 To rest.Length - 1
+                Dim v = saved(i)
+                If [Enum].IsDefined(GetType(QuickTool), v) AndAlso v <> CInt(QuickTool.Brush) Then rest(i) = CType(v, QuickTool)
+            Next
+        End If
+        Return {QuickTool.Brush}.Concat(rest).ToArray()
+    End Function
+
+    ''' <summary>把輪盤第 slot 格（1～7）換成 q；Nothing＝全部恢復預設。</summary>
+    Friend Sub SetRadialTool(slot As Integer, q As QuickTool?)
+        If Not q.HasValue Then
+            _appSettings.RadialTools = Nothing
+        Else
+            Dim list = RadialTools().Skip(1).Select(Function(x) CInt(x)).ToList()
+            list(slot - 1) = CInt(q.Value)
+            _appSettings.RadialTools = list
+        End If
+        _appSettings.Save()
+    End Sub
 
     Private _quickPanel As QuickPanel
     Private _radial As RadialMenu
@@ -85,6 +173,10 @@ Partial Friend Class frmEditor
             Case CInt(DrawShape.CalloutRect), CInt(DrawShape.CalloutEllipse), CInt(DrawShape.CalloutCloud), CInt(DrawShape.CalloutBubble), CInt(DrawShape.CalloutShout)
                 Return QuickTool.Text
         End Select
+        For Each q In [Enum].GetValues(GetType(QuickTool)).Cast(Of QuickTool)()
+            Dim id = ToolIdOf(q)
+            If id.HasValue AndAlso id.Value = _drawStrip.SelectedTool Then Return q
+        Next
         Return QuickTool.Brush
     End Function
 
@@ -113,6 +205,9 @@ Partial Friend Class frmEditor
                     Dim x = Math.Min(wa.Right - _colorWin.Width, near.Value.X + 160), y = Math.Max(wa.Top, Math.Min(wa.Bottom - _colorWin.Height, near.Value.Y - 150))
                     _colorWin.Location = New Point(Math.Max(wa.Left, x), y)
                 End If
+            Case Else
+                Dim id = ToolIdOf(tool)
+                If id.HasValue Then _drawStrip.SelectedTool = id.Value
         End Select
         UpdateDrawHint()
         Dim p = _canvas.PointToClient(_canvas.PointerPosition)
@@ -266,6 +361,38 @@ Partial Friend Class frmEditor
         RunCommand(name)
     End Sub
 
+    ''' <summary>筆壓軟硬三段：−1 硬、0 標準、1 軟（設定裡的「軟硬」−50／0／50）。</summary>
+    Friend Property QuickPressure As Integer
+        Get
+            Return If(_appSettings.PenSoftness > 15, 1, If(_appSettings.PenSoftness < -15, -1, 0))
+        End Get
+        Set(value As Integer)
+            _appSettings.PenSoftness = Math.Sign(value) * 50
+            _appSettings.Save()
+            SetStatusMessage(Lang.F("筆壓：{0}", If(value > 0, Lang.T("軟（輕輕畫就很濃）"), If(value < 0, Lang.T("硬（要用力才濃）"), Lang.T("標準")))))
+        End Set
+    End Property
+
+    ''' <summary>對稱繪圖（同繪圖分頁「進階 → 對稱」）。</summary>
+    Friend ReadOnly Property CurrentSymmetry As SymmetryKind
+        Get
+            Return If(StyleTarget(_recipe), _drawStyle).Symmetry
+        End Get
+    End Property
+
+    Friend Sub QuickSetSymmetry(kind As SymmetryKind)
+        _drawSym.SelectedIndex = CInt(kind) ' 走同一個處理（中心設在照片中間）
+    End Sub
+
+    ''' <summary>文件色票（全域色）。</summary>
+    Friend Function DocSwatches() As List(Of ColorSwatch)
+        Return If(_recipe?.Swatches, New List(Of ColorSwatch)())
+    End Function
+
+    Friend Sub QuickPickSwatch(id As String, background As Boolean)
+        PickSwatch(If(background, 1, 0), id)
+    End Sub
+
     ''' <summary>繪圖面板更新時，開著的快速面板跟著同步。</summary>
     Private Sub SyncQuickPanel()
         If _quickPanel IsNot Nothing AndAlso Not _quickPanel.IsDisposed AndAlso _quickPanel.Visible Then _quickPanel.SyncFromEditor()
@@ -293,6 +420,15 @@ Partial Friend Class frmEditor
         Private ReadOnly _opacityValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _brushTiles As New List(Of BrushChip)()
         Private ReadOnly _layers As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
+        Private ReadOnly _stab As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .ShowTicks = False}
+        Private ReadOnly _stabValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
+        Private ReadOnly _pressure As New List(Of Button)()
+        Private ReadOnly _sym As New List(Of (Button As Button, Kind As SymmetryKind))()
+        Private ReadOnly _docSwatches As New SwatchRow With {.Columns = 12}
+        Private _docIds As String() = {}
+        ''' <summary>畫在面板上的標題（文字、y）。</summary>
+        Private ReadOnly _captions As New List(Of (Text As String, Y As Integer))()
+        Private _brushCaptionY As Integer
         Private _editBackground As Boolean
         Private _syncing As Boolean
         Private _modal As Boolean
@@ -307,7 +443,7 @@ Partial Friend Class frmEditor
             KeyPreview = True
             Font = _font
             DoubleBuffered = True
-            ClientSize = New Size(452, 488)
+            ClientSize = New Size(452, 642)
             Tag = ThemeManager.SkipTreeTag ' 自己用 ThemeManager 的顏色畫
 
             ' 顏色：前景、背景（點一下選要改哪一個，按兩下開完整選色器）、對調；小色環；近期與常用色票
@@ -341,14 +477,16 @@ Partial Friend Class frmEditor
             Next
             Controls.AddRange({_fg, _bg, _swap, _wheel, _recent, _custom})
 
-            ' 筆刷大小、不透明度（就是繪圖分頁的「粗細」「不透明度」）
+            ' 筆刷大小、不透明度、穩定器（就是繪圖分頁的「粗細」「不透明度」「穩定器」）
             Dim y = HeaderH + 150
-            For Each entry In {(_size, _sizeValue, "dw_width"), (_opacity, _opacityValue, "dw_opacity")}
+            For Each entry In {(_size, _sizeValue, "dw_width", Lang.T("筆刷大小")), (_opacity, _opacityValue, "dw_opacity", Lang.T("不透明度")),
+                               (_stab, _stabValue, "dw_stabilizer", Lang.T("穩定器"))}
                 Dim s = entry.Item1, v = entry.Item2, key = entry.Item3
+                _captions.Add((entry.Item4, y + 4))
                 s.SetBounds(110, y + 2, 270, 24)
                 v.SetBounds(384, y, 52, 28)
                 AddHandler s.ValueChanged, Sub()
-                                               v.Text = If(key = "dw_width", s.Value.ToString(), s.Value & "%")
+                                               v.Text = If(key = "dw_opacity", s.Value & "%", If(key = "dw_stabilizer" AndAlso s.Value = 0, Lang.T("關"), s.Value.ToString()))
                                                If _syncing Then Return
                                                Dim target = _ed.DrawRowSlider(key)
                                                If target IsNot Nothing AndAlso target.Value <> s.Value Then target.Value = s.Value
@@ -357,7 +495,52 @@ Partial Friend Class frmEditor
                 y += 32
             Next
 
+            ' 筆壓軟硬（設定裡的「軟硬」三段）
+            y += 4
+            _captions.Add((Lang.T("筆壓"), y + 6))
+            For Each pr In {(-1, Lang.T("硬")), (0, Lang.T("標準")), (1, Lang.T("軟"))}
+                Dim level = pr.Item1
+                Dim b As New Button With {.Text = pr.Item2, .FlatStyle = FlatStyle.Flat, .Tag = level}
+                b.SetBounds(110 + (level + 1) * 82, y, 78, 30)
+                AddHandler b.Click, Sub()
+                                        _ed.QuickPressure = level
+                                        SyncFromEditor()
+                                    End Sub
+                _pressure.Add(b)
+                Controls.Add(b)
+            Next
+            y += 36
+
+            ' 對稱繪圖
+            _captions.Add((Lang.T("對稱"), y + 6))
+            Dim syms = {(SymmetryKind.None, Lang.T("關")), (SymmetryKind.MirrorX, Lang.T("左右")), (SymmetryKind.MirrorY, Lang.T("上下")),
+                        (SymmetryKind.MirrorXY, Lang.T("四向")), (SymmetryKind.Rotate, Lang.T("放射"))}
+            For i = 0 To syms.Length - 1
+                Dim kind = syms(i).Item1
+                Dim b As New Button With {.Text = syms(i).Item2, .FlatStyle = FlatStyle.Flat}
+                b.SetBounds(110 + i * 66, y, 62, 30)
+                AddHandler b.Click, Sub()
+                                        _ed.QuickSetSymmetry(kind)
+                                        SyncFromEditor()
+                                    End Sub
+                _sym.Add((b, kind))
+                Controls.Add(b)
+            Next
+            y += 40
+
+            ' 文件色票（全域色）：套到上面選的前景或背景，並連上色票
+            _captions.Add((Lang.T("文件色票"), y + 4))
+            _docSwatches.SetBounds(110, y, 326, 28)
+            AddHandler _docSwatches.PickedIndex, Sub(i)
+                                                     If i < 0 OrElse i >= _docIds.Length Then Return
+                                                     _ed.QuickPickSwatch(_docIds(i), _editBackground)
+                                                     SyncFromEditor()
+                                                 End Sub
+            Controls.Add(_docSwatches)
+            y += 34
+
             ' 常用筆刷（右鍵換成別的筆刷）
+            _brushCaptionY = y + 4
             y += 30
             For i = 0 To QuickBrushCount - 1
                 Dim slot = i
@@ -448,12 +631,28 @@ Partial Friend Class frmEditor
                 _bg.Selected = _editBackground
                 _recent.Colors = Aqua.ColorPicker.SavedRecentColors()
                 _custom.Colors = Aqua.ColorPicker.SavedCustomColors()
-                For Each entry In {(_size, "dw_width"), (_opacity, "dw_opacity")}
+                For Each entry In {(_size, "dw_width"), (_opacity, "dw_opacity"), (_stab, "dw_stabilizer")}
                     Dim src = _ed.DrawRowSlider(entry.Item2)
                     If src IsNot Nothing Then entry.Item1.Value = src.Value
                 Next
                 _sizeValue.Text = _size.Value.ToString()
                 _opacityValue.Text = _opacity.Value & "%"
+                _stabValue.Text = If(_stab.Value = 0, Lang.T("關"), _stab.Value.ToString())
+                Dim accent = Color.FromArgb(47, 128, 237)
+                Dim normal = If(ThemeManager.Dark, ThemeManager.ButtonBack, Color.White)
+                For Each b In _pressure
+                    Dim isOn = CInt(b.Tag) = _ed.QuickPressure
+                    b.BackColor = If(isOn, accent, normal) : b.ForeColor = If(isOn, Color.White, ForeColor)
+                Next
+                Dim curSym = _ed.CurrentSymmetry
+                For Each s In _sym
+                    Dim isOn = s.Kind = curSym OrElse (s.Kind = SymmetryKind.Rotate AndAlso curSym = SymmetryKind.Kaleido)
+                    s.Button.BackColor = If(isOn, accent, normal) : s.Button.ForeColor = If(isOn, Color.White, ForeColor)
+                Next
+                Dim docs = _ed.DocSwatches()
+                _docIds = docs.Select(Function(d) d.Id).ToArray()
+                _docSwatches.Colors = docs.Select(Function(d) Color.FromArgb(255, Color.FromArgb(d.Argb))).ToArray()
+                _docSwatches.Names = docs.Select(Function(d) d.Name).ToArray()
                 Dim brushes = _ed.QuickBrushes()
                 Dim current = _ed._drawStyle.Brush
                 For i = 0 To QuickBrushCount - 1
@@ -514,9 +713,11 @@ Partial Friend Class frmEditor
                 g.DrawString(Lang.T("背景色"), small, s2, 94, HeaderH + 74)
                 g.DrawString(Lang.T("近期色票"), small, s2, 288, HeaderH + 6)
                 g.DrawString(Lang.T("常用色票"), small, s2, 288, HeaderH + 52)
-                g.DrawString(Lang.T("筆刷大小"), _font, fg, 16, HeaderH + 154)
-                g.DrawString(Lang.T("不透明度"), _font, fg, 16, HeaderH + 186)
-                g.DrawString(Lang.T("常用筆刷（右鍵可換）"), _font, fg, 16, HeaderH + 220)
+                For Each cap In _captions
+                    g.DrawString(cap.Text, _font, fg, 16, cap.Y)
+                Next
+                If _docIds.Length = 0 Then g.DrawString(Lang.T("（在左側色彩面板按「＋」加入）"), small, s2, _docSwatches.Left + 4, _docSwatches.Top + 6)
+                g.DrawString(Lang.T("常用筆刷（右鍵可換）"), _font, fg, 16, _brushCaptionY)
                 g.DrawString(Lang.T("快速圖層"), _font, fg, 16, _layers.Top + 4)
                 Dim hint = Lang.F("{0} 開關　｜　{1} 輪盤　｜　Esc 關閉　｜　按兩下色塊開完整選色器", _ed._appSettings.QuickPanelHotkey, _ed._appSettings.QuickRadialHotkey)
                 Using sf As New StringFormat With {.Alignment = StringAlignment.Center}
@@ -618,7 +819,14 @@ Partial Friend Class frmEditor
         Inherits Control
         Private _colors As Color() = {}
         Private _hot As Integer = -1
+        Private ReadOnly _tip As New ToolTip()
         Public Event Picked(c As Color)
+        ''' <summary>點到第幾個（文件色票用，要知道是哪一個色票）。</summary>
+        Public Event PickedIndex(i As Integer)
+        ''' <summary>每列幾格（預設 7）。</summary>
+        Public Property Columns As Integer = 7
+        ''' <summary>滑鼠停留時顯示的名稱（可以不設）。</summary>
+        Public Property Names As String() = {}
         Public Sub New()
             SetStyle(ControlStyles.UserPaint Or ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
         End Sub
@@ -633,18 +841,20 @@ Partial Friend Class frmEditor
         End Property
         Private ReadOnly Property Cell As Single
             Get
-                Return Width / 7.0F
+                Return Width / CSng(Math.Max(1, Columns))
             End Get
         End Property
         Private Function DotRect(i As Integer) As RectangleF
             Dim c = Cell
-            Return New RectangleF((i Mod 7) * c + 2, (i \ 7) * c + 2, c - 4, c - 4)
+            Dim k = Math.Max(1, Columns)
+            Return New RectangleF((i Mod k) * c + 2, (i \ k) * c + 2, c - 4, c - 4)
         End Function
         Protected Overrides Sub OnPaint(e As PaintEventArgs)
             Dim g = e.Graphics
             g.Clear(Parent.BackColor)
             g.SmoothingMode = SmoothingMode.AntiAlias
-            Dim count = Math.Max(_colors.Length, If(Height > Cell * 1.5F, 21, 7))
+            Dim count = Math.Max(_colors.Length, If(Height > Cell * 1.5F, Columns * 3, Columns))
+            If Columns <> 7 AndAlso _colors.Length = 0 Then Return ' 文件色票沒有時不畫空格（面板寫提示）
             For i = 0 To count - 1
                 Dim r = DotRect(i)
                 If i < _colors.Length AndAlso Not _colors(i).IsEmpty Then
@@ -670,7 +880,10 @@ Partial Friend Class frmEditor
         Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
             MyBase.OnMouseMove(e)
             Dim h = HitTest(e.Location)
-            If h <> _hot Then _hot = h : Cursor = If(h >= 0, Cursors.Hand, Cursors.Default) : Invalidate()
+            If h <> _hot Then
+                _hot = h : Cursor = If(h >= 0, Cursors.Hand, Cursors.Default) : Invalidate()
+                _tip.SetToolTip(Me, If(h >= 0 AndAlso h < Names.Length, Names(h), ""))
+            End If
         End Sub
         Protected Overrides Sub OnMouseLeave(e As EventArgs)
             MyBase.OnMouseLeave(e)
@@ -679,7 +892,10 @@ Partial Friend Class frmEditor
         Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
             MyBase.OnMouseClick(e)
             Dim i = HitTest(e.Location)
-            If i >= 0 AndAlso e.Button = MouseButtons.Left Then RaiseEvent Picked(_colors(i))
+            If i >= 0 AndAlso e.Button = MouseButtons.Left Then
+                RaiseEvent Picked(_colors(i))
+                RaiseEvent PickedIndex(i)
+            End If
         End Sub
     End Class
 
@@ -737,9 +953,8 @@ Partial Friend Class frmEditor
         Private Const Outer As Single = 146, Inner As Single = 54
         Private Const RingIn As Single = 152, RingOut As Single = 236
         Private Const RingSlots As Integer = QuickBrushCount + 1 ' 最後一格「更多…」
-        Private Shared ReadOnly Items As (Tool As QuickTool, Name As String)() = {
-            (QuickTool.Brush, Lang.T("筆刷")), (QuickTool.Eraser, Lang.T("橡皮擦")), (QuickTool.Eyedropper, Lang.T("吸管")), (QuickTool.Bucket, Lang.T("填色")),
-            (QuickTool.Gradient, Lang.T("漸層")), (QuickTool.SelectMove, Lang.T("選取")), (QuickTool.Text, Lang.T("文字")), (QuickTool.Color, Lang.T("色彩"))}
+        ''' <summary>8 格：第 1 格筆刷，其餘可以右鍵換（設定裡記住）。</summary>
+        Private Items As (Tool As QuickTool, Name As String)() = {}
         Private ReadOnly _ed As frmEditor
         Private ReadOnly _font As New Font(Lang.UiFont, 9.5F)
         Private ReadOnly _small As New Font(Lang.UiFont, 8.5F)
@@ -764,6 +979,7 @@ Partial Friend Class frmEditor
             ClientSize = New Size(Big, Big)
             Tag = ThemeManager.SkipTreeTag
             SetExpanded(False, force:=True)
+            RefreshItems()
         End Sub
 
         ''' <summary>輪盤中心在視窗裡的座標。</summary>
@@ -786,6 +1002,7 @@ Partial Friend Class frmEditor
                                  Math.Max(wa.Top - (Big - Small) \ 2, Math.Min(wa.Bottom - (Big + Small) \ 2, p.Y - Big \ 2)))
             _hot = -1 : _hotRing = -1 : _hotCenter = False
             SetExpanded(False)
+            RefreshItems()
             RefreshBrushes()
             Show(_ed)
             Activate()
@@ -803,6 +1020,10 @@ Partial Friend Class frmEditor
                 old?.Dispose()
             End Using
             Invalidate()
+        End Sub
+
+        Private Sub RefreshItems()
+            Items = _ed.RadialTools().Select(Function(q) (q, QuickToolName(q))).ToArray()
         End Sub
 
         ''' <summary>重新讀常用筆刷、畫筆觸樣張（用前景色）。</summary>
@@ -953,9 +1174,9 @@ Partial Friend Class frmEditor
                 TextRenderer.DrawText(g, Lang.T("滾輪換筆刷"), _small, New Rectangle(CInt(c) - 44, CInt(c) + 22, 88, 16), If(dark, Color.FromArgb(150, 158, 172), Color.FromArgb(120, 126, 138)),
                                       TextFormatFlags.HorizontalCenter)
             Else
-                Dim cur = Items.First(Function(x) x.Tool = current)
-                DrawItemIcon(g, cur.Tool, New RectangleF(c - 14, c - 26, 28, 28), accent)
-                TextRenderer.DrawText(g, cur.Name, _font, New Rectangle(CInt(c) - 40, CInt(c) + 4, 80, 20), fore, TextFormatFlags.HorizontalCenter)
+                ' 目前的工具可能不在輪盤上（換掉了）：照樣顯示
+                DrawItemIcon(g, current, New RectangleF(c - 14, c - 26, 28, 28), accent)
+                TextRenderer.DrawText(g, QuickToolName(current), _font, New Rectangle(CInt(c) - 40, CInt(c) + 4, 80, 20), fore, TextFormatFlags.HorizontalCenter)
             End If
             ' 中間上方的全螢幕圖示：點中間切換全螢幕（滑鼠在中間時變藍）
             Using p As New Pen(If(_hotCenter, accent, If(dark, Color.FromArgb(130, 138, 152), Color.FromArgb(150, 156, 168))), 1.6F)
@@ -1011,6 +1232,9 @@ Partial Friend Class frmEditor
                         g.DrawLine(p, r.X + r.Width * 0.18F, r.Bottom - r.Height * 0.18F, r.X + r.Width * 0.62F, r.Y + r.Height * 0.38F)
                         g.FillEllipse(b, r.X + r.Width * 0.56F, r.Y + r.Height * 0.08F, r.Width * 0.36F, r.Height * 0.36F)
                     End Using
+                Case QuickTool.Pen, QuickTool.Node, QuickTool.VectorFreehand, QuickTool.Rectangle, QuickTool.Ellipse, QuickTool.AttrDropper,
+                     QuickTool.TouchUp, QuickTool.WidthTool, QuickTool.Knife, QuickTool.SmartFill, QuickTool.Pan, QuickTool.Zoom
+                    DrawIcons.DrawTool(g, ToolIdOf(tool).Value, r, col) ' 同繪圖工具列的圖示
                 Case QuickTool.Color
                     Dim cols = {Color.FromArgb(235, 70, 60), Color.FromArgb(250, 200, 50), Color.FromArgb(70, 190, 110), Color.FromArgb(60, 130, 230)}
                     For k = 0 To 3
@@ -1059,6 +1283,13 @@ Partial Friend Class frmEditor
                                        End Sub)
                 Return
             End If
+            Dim hs = HitSector(e.Location)
+            If e.Button = MouseButtons.Right AndAlso hs >= 1 Then
+                ' 右鍵：把這格換成別的工具（第 1 格筆刷固定）
+                _menuOpen = True
+                ShowSlotMenu(hs, e.Location)
+                Return
+            End If
             If e.Button <> MouseButtons.Left Then Hide() : Return
             If hr >= 0 Then
                 Hide()
@@ -1072,6 +1303,35 @@ Partial Friend Class frmEditor
             ElseIf Polar(e.Location).R < Inner Then
                 _ed.ToggleFullScreen() ' 點中間：切換全螢幕
             End If
+        End Sub
+
+        ''' <summary>輪盤第 slot 格的換工具選單。</summary>
+        Private Sub ShowSlotMenu(slot As Integer, at As Point)
+            Dim menu As New ContextMenuStrip()
+            Dim cur = Items(slot).Tool
+            For Each q In [Enum].GetValues(GetType(QuickTool)).Cast(Of QuickTool)()
+                If q = QuickTool.Brush Then Continue For
+                Dim mi = CType(menu.Items.Add(Lang.T("換成「") & QuickToolName(q) & Lang.T("」")), ToolStripMenuItem)
+                mi.Checked = q = cur
+                Dim pick = q
+                AddHandler mi.Click, Sub()
+                                         _ed.SetRadialTool(slot, pick)
+                                         RefreshItems()
+                                         Invalidate()
+                                     End Sub
+            Next
+            menu.Items.Add(New ToolStripSeparator())
+            AddHandler menu.Items.Add(Lang.T("全部恢復預設")).Click, Sub()
+                                                                     _ed.SetRadialTool(0, Nothing)
+                                                                     RefreshItems()
+                                                                     Invalidate()
+                                                                 End Sub
+            AddHandler menu.Closed, Sub()
+                                        _menuOpen = False
+                                        menu.BeginInvoke(Sub() menu.Dispose())
+                                        BeginInvoke(Sub() If Visible AndAlso Not ContainsFocus AndAlso Form.ActiveForm IsNot Me Then Activate())
+                                    End Sub
+            menu.Show(Me, at)
         End Sub
 
         ''' <summary>滾輪：在常用筆刷間循環（往下下一個、往上上一個），外圈跟著展開顯示。</summary>

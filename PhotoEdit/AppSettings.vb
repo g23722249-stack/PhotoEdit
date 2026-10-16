@@ -49,6 +49,8 @@ Friend Class AppSettings
     Public Property GridSpacing As Integer = 50
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
+    ''' <summary>輪盤第 2～8 格的工具（QuickTool 的值；第 1 格固定是筆刷）。Nothing＝預設。</summary>
+    Public Property RadialTools As List(Of Integer)
     ''' <summary>我的妝容（美顏手動調整「存成我的妝容」）：名稱＋整組設定，出現在一鍵美顏小圖的最後面。</summary>
     Public Property MyLooks As List(Of NamedLook)
     ''' <summary>右側面板上方的直方圖展開（預設收起，只剩標題列）。</summary>
