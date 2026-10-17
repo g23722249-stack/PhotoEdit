@@ -232,15 +232,22 @@ Partial Class frmEditor
         t.Add(ManualBlock.Heading(Lang.T("7. 勾線")))
         t.Add(ManualBlock.Steps(
             Lang.T("先關掉「畫筆取色」。F9：「＋ 新圖層」（勾線），毛筆大小 5、不透明度 90%，色票點焦墨（最黑），暈開調小到 15。"),
-            Lang.T("勾眼睛、眉、鼻、嘴、臉的輪廓、頭髮的邊與衣領；線條一筆到底，不要來回描。")))
+            Lang.T("勾頭髮的邊、衣領與手；線條一筆到底，不要來回描。臉先不勾，下一步另外畫。")))
+        t.Add(ManualBlock.Note(Lang.T("前面淡墨、中墨、濃墨與勾線都避開臉：大筆在臉上只會留下一塊塊墨漬，五官要一筆一筆照著畫。")))
         t.Add(ManualBlock.Picture("tutorial_ink_07.jpg", Lang.T("焦墨勾線。")))
 
-        t.Add(ManualBlock.Heading(Lang.T("8. 點睛與髮絲")))
-        t.Add(ManualBlock.Para(Lang.T("常用筆刷沒有「墨水」筆：在快速面板任一格（例如「麥克筆」）按右鍵，換成「墨水」。墨水筆大小 3、暈開 10，在眼睛、嘴角、髮絲上加幾筆細節。")))
+        t.Add(ManualBlock.Heading(Lang.T("8. 臉：白描與點睛")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("F9：「＋ 新圖層」（臉），毛筆大小 3、不透明度 70%、色票淡墨、暈開 12：輕輕勾下眼瞼。"),
+            Lang.T("色票換中墨：鼻翼與鼻底各輕輕帶一小筆。鼻樑不勾線，交給渲染。"),
+            Lang.T("在快速面板「麥克筆」那格按右鍵換成「墨水」。墨水筆、中墨：先把眼珠塗滿；再換焦墨點瞳孔。"),
+            Lang.T("換回毛筆，大小 6、不透明度 90%、色票濃墨：上眼瞼像杏仁一筆到底（中間重、兩端收），壓住眼珠上緣，眼睛才不會瞪大；嘴從兩邊嘴角往中間各一筆，嘴角微微上揚。"),
+            Lang.T("大小 3、色票中墨：把嘴的中段輕輕連起來。")))
+        t.Add(ManualBlock.Note(Lang.T("先塗眼珠、後勾上眼瞼；眼瞼離眼珠太遠，看起來會像眉毛。蒙娜麗莎沒有眉毛，眼皮上也不要加線。")))
 
         t.Add(ManualBlock.Heading(Lang.T("9. 渲染")))
-        t.Add(ManualBlock.Para(Lang.T("F9：「＋ 新圖層」（渲染），常用筆刷選「水彩」，大小 30、不透明度 35%、色票淡墨、暈開 70。在臉頰、下巴、脖子與手的陰影處淡淡染幾筆，讓亮部和暗部接起來。")))
-        t.Add(ManualBlock.Picture("tutorial_ink_08.jpg", Lang.T("勾線、點睛與渲染之後。")))
+        t.Add(ManualBlock.Para(Lang.T("F9：「＋ 新圖層」（渲染），毛筆大小 40、不透明度 30%、色票淡墨、暈開 85（濕筆）。光從左上來：沿右半邊臉頰、左頰邊與下巴底大筆染開；大小改 18，染眼窩、鼻樑左側、鼻下、下唇下與嘴角。最後換「水彩」、大小 30、不透明度 35%、暈開 70，染手的陰影。")))
+        t.Add(ManualBlock.Picture("tutorial_ink_08.jpg", Lang.T("臉部白描、點睛與渲染之後。")))
 
         t.Add(ManualBlock.Heading(Lang.T("10. 落款與收尾")))
         t.Add(ManualBlock.Steps(
@@ -249,7 +256,7 @@ Partial Class frmEditor
             Lang.T("存檔（.pedx 保留每個圖層）或匯出成 PNG／JPG。")))
         t.Add(ManualBlock.Picture("tutorial_ink_09.jpg", Lang.T("完成。")))
         t.Add(ManualBlock.Picture("tutorial_ink_10.jpg", Lang.T("左：原畫；右：水墨。")))
-        t.Add(ManualBlock.Picture("tutorial_ink_09e.jpg", Lang.T("編輯器裡：淡墨、中墨、濃墨、勾線、渲染各一層，印章是向量矩形，隨時可以修改。")))
+        t.Add(ManualBlock.Picture("tutorial_ink_09e.jpg", Lang.T("編輯器裡：淡墨、中墨、濃墨、勾線、臉、渲染各一層，印章是向量矩形，隨時可以修改。")))
 
         t.Add(ManualBlock.Heading(Lang.T("工具切換一覽")))
         t.Add(ManualBlock.Steps(
@@ -260,8 +267,8 @@ Partial Class frmEditor
             Lang.T("中墨：F9 新圖層、毛筆 22、70%、暈開 45；參考圖「畫筆取色」開。"),
             Lang.T("濃墨：F9 新圖層、毛筆 14、85%、暈開 30；畫筆取色照開。"),
             Lang.T("勾線：畫筆取色關；F9 新圖層、毛筆 5、90%、焦墨、暈開 15。"),
-            Lang.T("點睛：F9 在「麥克筆」格按右鍵換成墨水；墨水 3、暈開 10。"),
-            Lang.T("渲染：F9 新圖層、水彩 30、35%、淡墨、暈開 70。"),
+            Lang.T("臉：F9 新圖層、毛筆 3、70%、淡墨、暈開 12 → 中墨；「麥克筆」格右鍵換成墨水，中墨塗眼珠、焦墨點瞳孔 → 毛筆 6、90%、濃墨 → 毛筆 3、中墨。"),
+            Lang.T("渲染：F9 新圖層、毛筆 40、30%、淡墨、暈開 85 → 毛筆 18 → 水彩 30、35%、暈開 70（手）。"),
             Lang.T("落款：工具列矩形、朱紅填色、不描邊、100%。"),
             Lang.T("收尾：圖層頁籤隱藏草稿。")))
 

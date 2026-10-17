@@ -194,15 +194,28 @@ Partial Public NotInheritable Class PortraitRetouch
                 hair(i) = CSng(Math.Max(dark * Math.Max(top, rim), rim * notSkin))
             Next
         Next
-        ' 額頭的參考顏色：眉毛上方正中間
-        Dim fR = 0.0, fG = 0.0, fB = 0.0, fN = 0
+        ' 紋理：亮度起伏在附近的平均。皮膚平滑，頭髮一絲一絲（淺色、金髮的顏色和皮膚很像，要靠這個分）
+        Dim tex(n - 1) As Single
+        Using g As New Mat(rh, rw, MatType.CV_32FC1, Scalar.All(0))
+            For y = 1 To rh - 2
+                For x = 1 To rw - 2
+                    Dim i = y * rw + x
+                    g.Set(Of Single)(y, x, Math.Abs(lum(i + 1) - lum(i - 1)) + Math.Abs(lum(i + rw) - lum(i - rw)))
+                Next
+            Next
+            Dim r = Math.Max(2, CInt(d * 0.03))
+            Cv2.Blur(g, g, New OpenCvSharp.Size(r * 2 + 1, r * 2 + 1))
+            tex = GetFloats(g)
+        End Using
+        ' 額頭的參考顏色與紋理：眉毛上方正中間
+        Dim fR = 0.0, fG = 0.0, fB = 0.0, fT = 0.0, fN = 0
         For y = 0 To rh - 1
             For x = 0 To rw - 1
                 Dim i = y * rw + x
                 If inner(i) < 0.5 Then Continue For
                 Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
                 If Math.Abs(cq.X) > 0.4 OrElse cq.Y < -0.75 OrElse cq.Y > -0.4 OrElse lum(i) < lref * 0.62 Then Continue For
-                fR += cR(i) : fG += cG(i) : fB += cB(i) : fN += 1
+                fR += cR(i) : fG += cG(i) : fB += cB(i) : fT += tex(i) : fN += 1
             Next
         Next
         Dim faceMask As Single()
@@ -210,10 +223,15 @@ Partial Public NotInheritable Class PortraitRetouch
             fillPoly(m, ovalOuter, 255)
             ' 額頭比網格估的高、或帽沿瀏海下的陰影：從眉毛上方每一行往上走，色相和額頭一樣（只是較暗）的皮膚也算臉、不當頭髮，碰到頭髮、帽子、背景就停
             If fN > 0 Then
-                fR /= fN : fG /= fN : fB /= fN
+                fR /= fN : fG /= fN : fB /= fN : fT /= fN
                 Dim fs = Math.Max(1.0, fR + fG + fB)
+                Dim texMax = fT * 2.2 + 3
+                ' 臉邊外擴的那圈：紋理比額頭粗很多的是頭髮（淺色頭髮不暗、也夠暖，前面的判斷抓不到）
+                For i = 0 To n - 1
+                    If inner(i) < 0.5 Then hair(i) = CSng(Math.Max(hair(i), Smooth(tex(i), texMax, texMax * 1.6)))
+                Next
                 Dim skinLike = Function(i As Integer) As Boolean
-                                   If lum(i) < lref * 0.25 Then Return False
+                                   If lum(i) < lref * 0.25 OrElse tex(i) > texMax Then Return False
                                    Dim s3 = Math.Max(1.0, cR(i) + cG(i) + cB(i))
                                    Dim dr = cR(i) / s3 - fR / fs, dg = cG(i) / s3 - fG / fs, db = cB(i) / s3 - fB / fs
                                    Return Math.Sqrt(dr * dr + dg * dg + db * db) < 0.06
@@ -226,7 +244,7 @@ Partial Public NotInheritable Class PortraitRetouch
                         Dim i = y * rw + x
                         Dim cq = toCan(New Point2f(rx0 + x, ry0 + y))
                         If cq.Y > -0.35 Then Continue For
-                        If Math.Abs(cq.X) > 0.95 OrElse cq.Y < -1.5 Then Exit For
+                        If Math.Abs(cq.X) > 0.95 OrElse cq.Y < -1.2 Then Exit For ' 髮際很少比眼距的 1.2 倍更高
                         If startY(x) < 0 Then
                             If inner(i) < 0.5 OrElse Not skinLike(i) Then Exit For
                             startY(x) = y
