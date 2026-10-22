@@ -1023,7 +1023,7 @@ AI 算好的遮罩會保留，再按「自動去背」可以立刻套用。	The 
 畫出 64 種材質紋理，分六類：自然（石頭、大理石、沙漠…）、植物（木紋、樹葉、苔蘚…）、建築（磚牆、水泥、鐵鏽…）、手工（紙張、布料、皮革…）、金屬（鋼、銅、金、水銀…）、生物（豹紋、蛇皮、魚鱗…）。	Paints 64 material textures in six groups: Nature (stone, marble, desert…), Plants (wood, leaves, moss…), Building (brick, concrete, rust…), Craft (paper, fabric, leather…), Metal (steel, copper, gold, mercury…), Creatures (leopard, snakeskin, fish scales…).
 在下方「效果」先選分類再選材質；用來填滿形狀效果最好。布料、磁磚等可調色的材質用線條色。	Under "Effect" below, pick a group and then a texture; works best for filling shapes. Tintable textures such as fabric and tiles use the line color.
 特效筆	Effect brush
-沿著筆畫產生 68 種特效，分七類：光／能量、火／煙／爆炸、液體／自然、動態效果、魔法／科幻、漫畫效果、動畫／特攝／電影（傳奇哥吉拉-原子吐息：從起點往終點越噴越粗；傳奇基多拉-引力光線：金色鋸齒閃電光束；1995紅蓮哥吉拉-放射熱線：紅橘光束纏著閃電般的螺旋，越噴越粗；奧特曼-斯派修姆光線：手掌星芒＋藍白平行光條；奧特曼-哉佩利敖光線：從手部散開的粗金色光柱；奧特曼-M87光線：彩虹色掃描線組成的寬光帶）。	Creates 68 effects along the stroke in seven groups: Light/Energy, Fire/Smoke/Explosion, Liquid/Nature, Motion, Magic/Sci-fi, Comic effects, Anime/Tokusatsu/Film (Legendary Godzilla atomic breath: grows thicker from start to end; Legendary Ghidorah gravity beams: golden jagged lightning beams; 1995 Burning Godzilla spiral ray: a red-orange beam wrapped in a lightning-like spiral, growing thicker; Ultraman Specium Ray: a star burst at the hand + blue-white parallel beams; Ultraman Zeperion Ray: a thick golden beam spreading from the hands; Ultraman M87 Ray: a wide band of rainbow scan lines).
+沿著筆畫產生 70 種特效，分七類：光／能量、火／煙／爆炸、液體／自然、動態效果、魔法／科幻、漫畫效果、動畫／特攝／電影（傳奇哥吉拉-原子吐息：從起點往終點越噴越粗；傳奇基多拉-引力光線：金色鋸齒閃電光束；1995紅蓮哥吉拉-放射熱線：紅橘光束纏著閃電般的螺旋，越噴越粗；奧特曼-斯派修姆光線：手掌星芒＋藍白平行光條；奧特曼-哉佩利敖光線：從手部散開的粗金色光柱；奧特曼-M87光線：彩虹色掃描線組成的寬光帶；吉爾克斯-角射線攻擊：從角尖射出、一束綠色細閃電狀的能量光束；正宗哥吉拉-放射線流：集中的細長雷射光束，熾熱的白光芯，外圍是棉絮狀的紫色熱氣流）。	Creates 70 effects along the stroke in seven groups: Light/Energy, Fire/Smoke/Explosion, Liquid/Nature, Motion, Magic/Sci-fi, Comic effects, Anime/Tokusatsu/Film (Legendary Godzilla atomic breath: grows thicker from start to end; Legendary Ghidorah gravity beams: golden jagged lightning beams; 1995 Burning Godzilla spiral ray: a red-orange beam wrapped in a lightning-like spiral, growing thicker; Ultraman Specium Ray: a star burst at the hand + blue-white parallel beams; Ultraman Zeperion Ray: a thick golden beam spreading from the hands; Ultraman M87 Ray: a wide band of rainbow scan lines; Gilkrus horn ray: a green beam of thin lightning-like filaments shot from the horn tip; Shin Godzilla radiation beam: a concentrated, thin, long laser beam with a white-hot core wrapped in wispy purple heat).
 在下方「效果」先選分類再選特效；集中線、放射線、衝擊波、黑洞、HUD 以每一筆的中心為準。	Under "Effect" below, pick a group and then an effect; speed lines, radial lines, shock waves, black holes and HUD use the center of each stroke.
 效果分類	Effect group
 特效筆或紋理筆的分類；換分類時會套用該類的第一項。	Group of the effect brush or texture brush; changing the group applies its first item.
@@ -2354,6 +2354,8 @@ Y2K 辣妹	Y2K gal
 動畫／特攝／電影	Anime / Tokusatsu / Film
 傳奇哥吉拉-原子吐息	Legendary Godzilla - Atomic Breath
 傳奇基多拉-引力光線	Legendary Ghidorah - Gravity Beams
+吉爾克斯-角射線攻擊	Gilkrus - Horn Ray
+正宗哥吉拉-放射線流	Shin Godzilla - Radiation Beam
 1995紅蓮哥吉拉-放射熱線	1995 Burning Godzilla - Spiral Ray
 奧特曼-斯派修姆光線	Ultraman - Specium Ray
 奧特曼-哉佩利敖光線	Ultraman - Zeperion Ray

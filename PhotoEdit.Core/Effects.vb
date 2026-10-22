@@ -314,6 +314,8 @@ Partial Public NotInheritable Class DrawingRenderer
             Case FxKind.SpeciumRay : Return all(w * 5)
             Case FxKind.ZeperionRay : Return all(w * 7)
             Case FxKind.M87Ray : Return all(w * 4)
+            Case FxKind.HornRay : Return all(w * 7)
+            Case FxKind.ShinBeam : Return all(w * 6)
             Case Else : Return all(w * 2)
         End Select
     End Function
@@ -1655,6 +1657,188 @@ Partial Public NotInheritable Class DrawingRenderer
                         x.Glow(ex, ey, w * 0.15, White, 1.4 * fl * (1 - f * f) * step0 / (w * 0.15))
                     Next
                     x.Glow(ox, oy, w * 1.4, White, 0.5 * fl)
+                Next
+                FlushLightHot(cv, x.Light)
+                Array.Clear(x.Light, 0, x.Light.Length)
+
+            Case FxKind.HornRay
+                ' 吉爾克斯的角射線攻擊：從角尖射出的一束綠色細閃電。十幾股很細的鋸齒電絲擠在一起，
+                ' 離開角尖後慢慢散開、互相交錯；旁邊不時竄出細小的分岔與往外彎的電絲，外面罩著淡綠的霧光，
+                ' 角尖一團白綠色的強光。電絲密集處亮到發白，邊緣是線條色。
+                Dim hotCore = Rgb.Lerp(t, White, 0.8)
+                Dim haze = Rgb.Lerp(t, New Rgb(0.1, 0.6, 0.15), 0.35)
+                ' 一股電絲：很細，粗細隨位置稍微變化
+                Dim filament = Sub(pts As List(Of PointF), thick As Double, amount As Double)
+                                   If pts.Count < 2 Then Return
+                                   Dim rr = Math.Max(0.5, w * thick)
+                                   Dim fs = Math.Max(0.3, rr * 0.5)
+                                   Walk(pts.ToArray(), Nothing, CSng(fs), Sub(px, py, pp, dx, dy, s, tot)
+                                                                              x.Glow(px, py, rr * 4.5, t, 0.6 * amount * fl * fs / (rr * 4.5))
+                                                                              x.Glow(px, py, rr * 1.3, hotCore, 0.75 * amount * fl * fs / (rr * 1.3))
+                                                                              x.Glow(px, py, rr * 0.5, White, 0.7 * amount * fl * fs / (rr * 0.5))
+                                                                          End Sub)
+                               End Sub
+                For k = 0 To x.Paths.Count - 1
+                    Dim p = x.Paths(k)
+                    Dim seed = layer.Seed + k * 43
+                    ' 沿筆畫的取樣點與方向（用來把每股電絲往兩側錯開）
+                    Dim bs As New List(Of PointF)(), bn As New List(Of PointF)(), ba As New List(Of Double)()
+                    Walk(p, Nothing, CSng(Math.Max(1, w * 0.5)), Sub(px, py, pp, dx, dy, s, tot)
+                                                                     bs.Add(Pt(px, py)) : bn.Add(Pt(-dy, dx)) : ba.Add(If(tot > 0, s / tot, 0))
+                                                                 End Sub)
+                    If bs.Count < 2 Then
+                        x.Glow(p(0).X, p(0).Y, w * 1.5, t, 0.8 * fl)
+                        x.Glow(p(0).X, p(0).Y, w * 0.5, White, fl)
+                        Continue For
+                    End If
+                    ' 淡綠霧光，往前越來越寬
+                    Dim hs = Math.Max(0.8, w * 0.4)
+                    Walk(p, Nothing, CSng(hs), Sub(px, py, pp, dx, dy, s, tot)
+                                                   Dim a = If(tot > 0, s / tot, 0)
+                                                   Dim hr = w * (1.6 + 2.6 * a)
+                                                   x.Glow(px, py, hr, haze, 0.7 * fl * hs / hr)
+                                               End Sub)
+                    ' 電絲：每股有自己的散開方向與蜿蜒，角尖處全部收在一起
+                    Dim strands = 14
+                    For j = 0 To strands - 1
+                        Dim side = (j / (strands - 1.0)) * 2 - 1
+                        Dim spread = side * w * (0.6 + 0.6 * x.R())
+                        Dim phase = j * 3.7
+                        Dim basePts As New List(Of PointF)()
+                        For i = 0 To bs.Count - 1
+                            Dim a = ba(i)
+                            Dim wob = (Noise1(CSng(i * 0.35 + phase), seed + j * 13) - 0.5) * w * 1.4 * Math.Min(1, a * 4)
+                            Dim off = spread * Math.Pow(a, 0.8) + wob
+                            basePts.Add(Pt(bs(i).X + bn(i).X * off, bs(i).Y + bn(i).Y * off))
+                        Next
+                        Dim jag = JaggedPath(basePts.ToArray(), w * 0.45, seed + j * 71, x.Rnd, 0.9 + 0.5 * x.R())
+                        filament(jag, 0.05 + 0.04 * x.R(), 0.55 + 0.45 * x.R())
+                        ' 分岔：順著光束往前竄，只稍微往外偏（先岔開一點、再跟光束平行往前），偶爾一條長的。
+                        ' 方向取光束本身（basePts）的走向，不用鋸齒的局部方向，否則分岔會往上下亂竄。
+                        Dim nb = basePts.Count
+                        Walk(jag.ToArray(), Nothing, CSng(Math.Max(2, w * 1.2)), Sub(px, py, pp, dx, dy, s, tot)
+                                                                                     If s < w * 1.5 OrElse x.R() > 0.18 Then Return
+                                                                                     Dim bi = Math.Min(nb - 2, CInt((If(tot > 0, s / tot, 0)) * (nb - 1)))
+                                                                                     Dim fdx = CDbl(basePts(bi + 1).X - basePts(bi).X), fdy = CDbl(basePts(bi + 1).Y - basePts(bi).Y)
+                                                                                     Dim fl0 = Math.Max(0.0001, Math.Sqrt(fdx * fdx + fdy * fdy))
+                                                                                     fdx /= fl0 : fdy /= fl0
+                                                                                     Dim outward = If(side = 0, If(x.R() < 0.5, -1, 1), Math.Sign(side))
+                                                                                     Dim longOne = x.R() < 0.2
+                                                                                     Dim len = w * If(longOne, 3 + x.R() * 4, 0.8 + x.R() * 1.6)
+                                                                                     Dim lat = len * (0.12 + 0.18 * x.R()) * outward
+                                                                                     ' 折點：往前 len，側移沿 sin 曲線岔開後趨平
+                                                                                     Dim knots As New List(Of PointF)()
+                                                                                     For q = 0 To 4
+                                                                                         Dim u = q / 4.0
+                                                                                         Dim fwd = len * u, side2 = lat * Math.Sin(u * Math.PI / 2)
+                                                                                         knots.Add(Pt(px + fdx * fwd - fdy * side2, py + fdy * fwd + fdx * side2))
+                                                                                     Next
+                                                                                     Dim br As New List(Of PointF) From {knots(0)}
+                                                                                     For q = 1 To knots.Count - 1
+                                                                                         br.AddRange(Bolt(knots(q - 1), knots(q), 0.3, 2, x.Rnd).Skip(1))
+                                                                                     Next
+                                                                                     filament(br, 0.035, 0.5)
+                                                                                 End Sub)
+                    Next
+                    ' 角尖的強光
+                    x.Glow(p(0).X, p(0).Y, w * 2.6, t, 0.7 * fl)
+                    x.Glow(p(0).X, p(0).Y, w * 1.1, hotCore, 1.1 * fl)
+                    x.Glow(p(0).X, p(0).Y, w * 0.45, White, 1.3 * fl)
+                Next
+                FlushLightHot(cv, x.Light)
+                Array.Clear(x.Light, 0, x.Light.Length)
+
+            Case FxKind.ShinBeam
+                ' 正宗哥吉拉的放射線流：集中、細長、筆直的雷射光束。中心是熾熱的白光（邊緣帶一點暖黃），外層粉橘，
+                ' 再外面是線條色（紫）的柔光，以及一團團棉絮狀、往後拖的紫色高溫熱氣流；粗細幾乎不變，只有一點點閃爍。
+                ' 嘴部一個小亮點；命中處爆出粉橘色的光團與飛散的火星。
+                Dim warmCore = New Rgb(1, 0.86, 0.55)
+                Dim whiteHot = New Rgb(1, 0.98, 0.93)
+                Dim pinkMid = Rgb.Lerp(t, New Rgb(1, 0.45, 0.3), 0.7)
+                Dim haze = Rgb.Lerp(t, New Rgb(0.45, 0.2, 0.8), 0.3)
+                Dim ember = New Rgb(1, 0.55, 0.15)
+                For k = 0 To x.Paths.Count - 1
+                    Dim p = x.Paths(k)
+                    Dim seed = layer.Seed + k * 47
+                    ' 外圍很淡的紫霧（底）
+                    Dim hs = Math.Max(0.8, w * 0.4)
+                    Walk(p, Nothing, CSng(hs), Sub(px, py, pp, dx, dy, s, tot)
+                                                   Dim a = If(tot > 0, s / tot, 0)
+                                                   Dim hr = w * (1.6 + 1.0 * a)
+                                                   x.Glow(px, py, hr, haze, 0.18 * fl * hs / hr)
+                                               End Sub)
+                    ' 棉絮狀的紫色熱氣流：雜訊決定哪裡濃、哪裡斷，每團是幾個往後拖、越來越小的柔光，兩側各自起伏
+                    Dim ws = Math.Max(0.8, w * 0.18)
+                    Walk(p, Nothing, CSng(ws), Sub(px, py, pp, dx, dy, s, tot)
+                                                   Dim a = If(tot > 0, s / tot, 0)
+                                                   For j = 0 To 1
+                                                       Dim sideSign = If(j = 0, -1, 1)
+                                                       Dim dens = Noise1(CSng(s / (w * 1.2)), seed + 17 + j * 31) - 0.38
+                                                       If dens <= 0 OrElse x.R() > 0.55 Then Continue For
+                                                       Dim off = sideSign * w * (0.35 + 0.9 * x.R()) * (0.8 + 0.6 * a)
+                                                       Dim br = w * (0.25 + 0.45 * x.R()) * (0.8 + 0.6 * a)
+                                                       Dim cx = px - dy * off, cy = py + dx * off
+                                                       Dim c = Rgb.Lerp(haze, t, 0.3 + 0.5 * x.R())
+                                                       Dim a0 = 0.9 * fl * dens * ws / br
+                                                       For q = 0 To 4
+                                                           ' 往後拖（反著光束方向），稍微往外飄
+                                                           Dim bx = cx - dx * br * 0.7 * q - dy * sideSign * br * 0.12 * q
+                                                           Dim by = cy - dy * br * 0.7 * q + dx * sideSign * br * 0.12 * q
+                                                           x.Glow(bx, by, br * (1 - 0.13 * q), c, a0 * (1 - 0.18 * q))
+                                                       Next
+                                                   Next
+                                               End Sub)
+                    ' 光束本體：紫色柔光、粉橘中層、淡黃白熱細芯
+                    Dim sp = Math.Max(0.4, w * 0.03)
+                    Walk(p, Nothing, CSng(sp), Sub(px, py, pp, dx, dy, s, tot)
+                                                   Dim a = If(tot > 0, s / tot, 0)
+                                                   Dim flick = 0.85 + 0.3 * Noise1(CSng(s / (w * 1.5)), seed)
+                                                   Dim rr = w * (0.22 + 0.08 * a) * (0.95 + 0.1 * flick)
+                                                   x.Glow(px, py, rr * 4, t, 0.45 * fl * flick * sp / (rr * 4))
+                                                   x.Glow(px, py, rr * 1.7, pinkMid, 0.5 * fl * flick * sp / (rr * 1.7))
+                                               End Sub)
+                    ' 嘴部的小亮點
+                    x.Glow(p(0).X, p(0).Y, w * 1.0, t, 0.6 * fl)
+                    x.Glow(p(0).X, p(0).Y, w * 0.4, warmCore, 1.1 * fl)
+                    ' 命中處：粉橘光團＋往前散開的紫霧＋火星
+                    Dim e = p(p.Length - 1)
+                    Dim b = p(Math.Max(0, p.Length - 4))
+                    Dim len = DrawGeometry.Dist(b, e)
+                    Dim ux = If(len > 0.01, (e.X - b.X) / len, 1.0), uy = If(len > 0.01, (e.Y - b.Y) / len, 0.0)
+                    x.Glow(e.X, e.Y, w * 3.5, haze, 0.5 * fl)
+                    x.Glow(e.X, e.Y, w * 1.8, pinkMid, 0.7 * fl)
+                    For j = 0 To 29
+                        Dim fwd = x.R() * w * 2.5, lat = x.RS() * w * (1 + fwd / w * 0.6)
+                        Dim br = w * (0.4 + x.R() * 0.7)
+                        x.Glow(e.X + ux * fwd - uy * lat, e.Y + uy * fwd + ux * lat, br, x.Mix(0.2 + 0.5 * x.R()), 0.18 * fl)
+                    Next
+                    For j = 0 To 24
+                        Dim ang = Math.Atan2(uy, ux) + x.RS() * 1.6
+                        Dim dist = w * (0.8 + x.R() * 3.5)
+                        Dim q = PolarPt(e.X, e.Y, dist, ang)
+                        Dim r = Math.Max(0.6, w * (0.04 + x.R() * 0.06))
+                        x.Glow(q.X, q.Y, r * 3, ember, 0.35 * fl)
+                        x.Glow(q.X, q.Y, r, New Rgb(1, 0.85, 0.5), 0.9 * fl)
+                    Next
+                Next
+                FlushLightHot(cv, x.Light)
+                Array.Clear(x.Light, 0, x.Light.Length)
+                ' 金黃色的芯另外疊上去：和紫色光暈一起曝光會變成白色，分開才保得住黃
+                For k = 0 To x.Paths.Count - 1
+                    Dim p = x.Paths(k)
+                    Dim seed = layer.Seed + k * 47
+                    Dim sp = Math.Max(0.4, w * 0.03)
+                    Walk(p, Nothing, CSng(sp), Sub(px, py, pp, dx, dy, s, tot)
+                                                   Dim a = If(tot > 0, s / tot, 0)
+                                                   Dim flick = 0.85 + 0.3 * Noise1(CSng(s / (w * 1.5)), seed)
+                                                   Dim rr = w * (0.22 + 0.08 * a) * (0.95 + 0.1 * flick)
+                                                   x.Glow(px, py, rr * 1.0, warmCore, 0.7 * fl * sp / rr)
+                                                   x.Glow(px, py, rr * 0.55, whiteHot, 1.8 * fl * sp / (rr * 0.55))
+                                                   x.Glow(px, py, rr * 0.22, White, 1.2 * fl * sp / (rr * 0.22))
+                                               End Sub)
+                    Dim e = p(p.Length - 1)
+                    x.Glow(e.X, e.Y, w * 0.9, warmCore, 0.8 * fl)
+                    x.Glow(e.X, e.Y, w * 0.45, whiteHot, 1.2 * fl)
                 Next
                 FlushLightHot(cv, x.Light)
                 Array.Clear(x.Light, 0, x.Light.Length)

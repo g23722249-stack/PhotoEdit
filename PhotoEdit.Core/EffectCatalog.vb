@@ -78,6 +78,8 @@ Public Enum FxKind
     SpeciumRay = 65
     ZeperionRay = 66
     M87Ray = 67
+    HornRay = 68
+    ShinBeam = 69
 End Enum
 
 ''' <summary>紋理筆的材質（數值存進編輯檔，不可更動；新的往後加）。</summary>
@@ -212,7 +214,9 @@ Public NotInheritable Class EffectCatalog
         New Category With {.Name = Lang.T("動畫／特攝／電影"), .Items = {
             E(FxKind.AtomicBreath, Lang.T("傳奇哥吉拉-原子吐息"), 40, 120, 255), E(FxKind.GravityBeam, Lang.T("傳奇基多拉-引力光線"), 255, 196, 70),
             E(FxKind.SpiralHeatRay, Lang.T("1995紅蓮哥吉拉-放射熱線"), 255, 80, 25), E(FxKind.SpeciumRay, Lang.T("奧特曼-斯派修姆光線"), 60, 170, 255),
-            E(FxKind.ZeperionRay, Lang.T("奧特曼-哉佩利敖光線"), 255, 165, 45), E(FxKind.M87Ray, Lang.T("奧特曼-M87光線"), 255, 110, 200, False)}}}
+            E(FxKind.ZeperionRay, Lang.T("奧特曼-哉佩利敖光線"), 255, 165, 45), E(FxKind.M87Ray, Lang.T("奧特曼-M87光線"), 255, 110, 200, False),
+            E(FxKind.HornRay, Lang.T("吉爾克斯-角射線攻擊"), 90, 255, 110),
+            E(FxKind.ShinBeam, Lang.T("正宗哥吉拉-放射線流"), 185, 85, 255)}}}
 
     Public Shared ReadOnly MaterialCategories As Category() = {
         New Category With {.Name = Lang.T("自然材質"), .Items = {

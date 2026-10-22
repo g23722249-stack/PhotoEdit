@@ -151,7 +151,7 @@ Module DrawingTests
         ' 目錄：每個效果／材質都在某個分類裡、名稱不重複
         Dim fxValues = [Enum].GetValues(GetType(FxKind)).Cast(Of Integer)().ToList()
         Dim fxInCatalog = EffectCatalog.FxCategories.SelectMany(Function(cat) cat.Items).Select(Function(i) i.Value).ToList()
-        Check("68 種特效都在分類目錄裡（7 類）", fxValues.Count = 68 AndAlso fxInCatalog.Count = 68 AndAlso fxValues.All(Function(v) fxInCatalog.Contains(v)) AndAlso
+        Check("70 種特效都在分類目錄裡（7 類）", fxValues.Count = 70 AndAlso fxInCatalog.Count = 70 AndAlso fxValues.All(Function(v) fxInCatalog.Contains(v)) AndAlso
               EffectCatalog.FxCategories.Length = 7)
         Dim matValues = [Enum].GetValues(GetType(MaterialKind)).Cast(Of Integer)().ToList()
         Dim matInCatalog = EffectCatalog.MaterialCategories.SelectMany(Function(cat) cat.Items).Select(Function(i) i.Value).ToList()
