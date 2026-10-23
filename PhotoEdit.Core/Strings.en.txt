@@ -2983,3 +2983,50 @@ AI 模型	AI Models
 已結合 {0} 個圖形：重疊的地方變成洞；Ctrl+K 打散可以再拆開。	Combined {0} shapes: overlapping areas are holes; Ctrl+K (Break Apart) splits them again.
 打散要選一個有兩條以上路徑的圖形（例如結合過的圖形、轉成曲線的字）。	Break Apart needs one shape with two or more paths (e.g. a combined shape or text converted to curves).
 已打散成 {0} 個圖形。	Broken apart into {0} shapes.
+互動式填色	Interactive Fill
+網格填色	Mesh Fill
+PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp|PDF 文件|*.pdf	PNG image (keeps transparency)|*.png|JPEG image|*.jpg|BMP image|*.bmp|PDF document|*.pdf
+網格	Mesh
+移除網格	Remove mesh
+網格 列	Mesh rows
+互動式填色只能用在封閉的向量圖形上（文字、點陣圖層、線條不行）。	Interactive fill works only on closed vector shapes (not text, raster layers or lines).
+加了一個色標：點色盤換它的顏色、拖曳移動，Del 刪除。	Color stop added: click the palette to change its color, drag to move it, Del to remove it.
+網格填色只能用在封閉的向量圖形上（文字、點陣圖層、線條不行）。	Mesh fill works only on closed vector shapes (not text, raster layers or lines).
+加上了 3×3 的網格：點節點（Shift 多選）再點色盤換顏色，拖曳節點移動；上方可以改列數、欄數。	Added a 3×3 mesh: click nodes (Shift for several) then the palette to color them, drag nodes to move; change rows and columns above.
+先選一個封閉的向量圖形，或用左側的「網格填色」工具點一個圖形。	Select a closed vector shape first, or click a shape with the Mesh Fill tool on the left.
+互動式填色：在圖形上拖一條線做漸層（填色 → 第二色）；拖起點、終點、色標改位置，在漸層線上按兩下加色標，選了控制點再點色盤換顏色，Del 刪色標。	Interactive Fill: drag a line across a shape for a gradient (fill → second color); drag the start, end and stops to move them, double-click the line to add a stop, select a handle then click the palette to recolor it, Del removes a stop.
+網格填色：點一個圖形加上網格；點節點（Shift 多選）再點色盤換顏色，拖曳節點移動；上方改列數、欄數或移除網格。	Mesh Fill: click a shape to add a mesh; click nodes (Shift for several) then the palette to recolor, drag nodes to move; change rows, columns or remove the mesh above.
+段落	Paragraph
+左右對齊	Justify
+已存成 PDF：{0}（{1:0.0} × {2:0.0} 公分）	Saved as PDF: {0} ({1:0.0} × {2:0.0} cm)
+先開啟一張照片或「新增」一張影像，再匯入 SVG。	Open a photo or create a New image first, then import the SVG.
+匯入 SVG	Import SVG
+無法讀取 SVG：	Cannot read the SVG: 
+這個 SVG 裡沒有可以匯入的圖形。	This SVG has no shapes that can be imported.
+（沒匯入：	 (not imported: 
+已匯入 {0} 個圖形，可以用節點工具修改。	Imported {0} shapes; edit them with the node tool.
+匯入 SVG…	Import SVG…
+段落文字框（同 CorelDRAW 的段落文字）：字級固定，文字在框裡自動換行、可以分欄；放不下時框的下方出現紅色 ▼。關掉＝一般文字，置中、字太多時自動縮小。	Paragraph text frame (like CorelDRAW paragraph text): the font size stays fixed, text wraps inside the frame and can flow into columns; a red ▼ under the frame means it overflows. Off = artistic text, centered and shrunk to fit.
+用文字工具拖一個框就是段落文字，點一下是一般文字。拖曳框的控制點改大小，文字跟著重排。	Drag a frame with the Text tool for paragraph text; click once for artistic text. Drag the frame handles to resize and the text reflows.
+段落文字的對齊：靠左、置中、靠右、左右對齊（每行撐滿欄寬，段落最後一行靠左）。	Paragraph alignment: left, center, right, or justify (each line fills the column width; the last line of a paragraph stays left).
+行與行的距離，100% 是字型的標準行距。	Distance between lines; 100% is the font's normal line spacing.
+把框分成幾欄，文字排滿一欄再接到下一欄（像報紙、雜誌）。	Split the frame into columns; text fills one column then flows into the next (like newspapers and magazines).
+在圖形上拖一條線就是線性漸層（填色 → 第二色），同 CorelDRAW 的互動式填色工具。拖起點（圓）、終點（方塊）、色標（菱形）改位置；在漸層線上按兩下加一個色標。	Drag a line across a shape for a linear gradient (fill → second color), like CorelDRAW's Interactive Fill tool. Drag the start (circle), end (square) and stops (diamonds) to move them; double-click the gradient line to add a stop.
+點選一個控制點後點色盤，就換那一點的顏色；Del 刪除選取的色標。	Select a handle then click the palette to change its color; Del removes the selected stop.
+點一個封閉的圖形加上網格，每個節點一個顏色、顏色之間平滑過渡（同 CorelDRAW 的網格填色），畫水果、布料、金屬的光澤。	Click a closed shape to add a mesh; each node has its own color and the colors blend smoothly (like CorelDRAW's Mesh Fill) — for the sheen of fruit, fabric and metal.
+點節點（Shift 多選）再點色盤換顏色，拖曳節點移動顏色的位置；上方改列數、欄數或移除網格。	Click nodes (Shift for several) then the palette to recolor them; drag nodes to move the colors; change rows, columns or remove the mesh above.
+網格列數	Mesh rows
+網格節點的列數（2..8），改了會保留目前的顏色分布。	Number of node rows in the mesh (2..8); changing it keeps the current color layout.
+網格欄數	Mesh columns
+網格節點的欄數（2..8），改了會保留目前的顏色分布。	Number of node columns in the mesh (2..8); changing it keeps the current color layout.
+拿掉網格填色，變回單色填色。	Remove the mesh fill and go back to a solid fill.
+封閉圖形的填色：單色、線性漸層、放射漸層（填色 → 第二色）、圖樣、網格。	Fill for closed shapes: solid, linear gradient, radial gradient (fill → second color), pattern, mesh.
+整份文件用的紙張或材質（類似 Corel Painter 的紙張）：素描紙、水彩紙、畫布、粉彩紙、宣紙、棉紙（和紙）、牛皮紙、麻布、磚牆、木板…	Paper or surface for the whole document (like Corel Painter papers): sketch paper, watercolor paper, canvas, pastel paper, rice paper, washi, kraft paper, burlap, brick wall, wood…
+紅整臉：忠義勇武。濃眉斜飛、額頭與臉頰的黑紋、鼻樑一個小捲，黑鬍子圍住嘴、粉紅下巴，眉梢與臉頰各一顆痣。	Full red face: loyalty and valor. Thick slanting brows, black lines on the forehead and cheeks, a small curl on the nose bridge, a black beard around the mouth, a pink chin, and a mole at the brow tip and on the cheek.
+吸色範圍（像素）：範圍內去掉最暗、最亮的一部分再平均，老畫的裂紋、照片的雜點吸不到。要吸很細的線或小點時選 3×3。	Pick area (pixels): the darkest and brightest part of the area is dropped before averaging, so cracks in old paintings and photo noise are ignored. Choose 3×3 to pick very thin lines or small dots.
+吸色範圍 {0}×{0}：去掉最暗、最亮的再平均，吸不到裂紋與雜點（3×3 吸細節）。	Pick area {0}×{0}: darkest and brightest pixels dropped before averaging, cracks and noise are ignored (3×3 for fine details).
+常用筆刷	Favorite brushes
+紙張（顏料蓋住的地方變淡）	Paper (fades where paint covers it)
+顏料上的紋理	Texture on paint
+表面紋理壓印的範圍：整張照片（照片、文字、貼圖、繪圖一起）、只有繪圖圖層（照片本身不變），或紙張（畫上去的顏料越不透明紋理越淡：厚塗蓋住畫布、薄塗透出紋理，畫油畫、壓克力用）。	Where the surface texture is embossed: the whole photo (photo, text, stickers and drawings together), drawing layers only (the photo stays unchanged), or the paper (the more opaque the paint, the fainter the texture: thick paint covers the canvas, thin paint lets it show; for oil and acrylic painting).
+作用在「紙張」時，完全不透明的顏料上留下多少紋理：0 = 顏料完全蓋住，20% 左右像顏料順著畫布起伏。	With "Paper": how much texture remains on fully opaque paint. 0 = paint covers it completely; about 20% looks like paint following the canvas surface.

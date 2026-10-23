@@ -187,17 +187,39 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' 先算出「畫布」= 圖層疊在下面之上的顏色，筆刷在畫布上混色／推開／仿製，
     ''' 最後把結果換算回圖層的像素（下面的照片不動）。
     ''' </summary>
-    Friend Shared Sub ApplySamplingOp(layerPx As Byte(), belowPx As Byte(), w As Integer, h As Integer, op As DrawLayer, ox As Integer, oy As Integer)
-        Dim scale = CSng(h)
-        Dim figs = SamplingFigures(op, scale)
-        If figs.Count = 0 Then Return
-        Dim widthPx = CSng(Math.Max(1, op.StrokeWidth * scale))
+    ''' <summary>讀畫布的筆畫改動的範圍（圖層座標）：筆畫外框加上筆的半徑；沒有筆畫時空的。</summary>
+    Private Shared Function SamplingRegion(figs As List(Of DrawGeometry.Figure), op As DrawLayer, w As Integer, h As Integer) As Rectangle
+        If figs.Count = 0 Then Return Rectangle.Empty
+        Dim widthPx = CSng(Math.Max(1, op.StrokeWidth * h))
         Dim radius = Math.Max(1.0F, widthPx / 2)
         Dim reach = CInt(Math.Ceiling(radius)) + 2
         Dim pts = figs.SelectMany(Function(f) f.Points).ToList()
         Dim region = Rectangle.FromLTRB(CInt(Math.Floor(pts.Min(Function(p) p.X))) - reach, CInt(Math.Floor(pts.Min(Function(p) p.Y))) - reach,
                                         CInt(Math.Ceiling(pts.Max(Function(p) p.X))) + reach, CInt(Math.Ceiling(pts.Max(Function(p) p.Y))) + reach)
         region.Intersect(New Rectangle(0, 0, w, h))
+        Return region
+    End Function
+
+    ''' <summary>
+    ''' 這一筆讀到下面畫面的哪裡（下面畫面的像素座標）：改動範圍位移 (ox, oy)；仿製、修復筆另外讀來源那一塊。
+    ''' 點陣圖層的快取用它判斷下面哪裡改了才要重算這一筆。
+    ''' </summary>
+    Friend Shared Function SamplingReadRect(op As DrawLayer, w As Integer, h As Integer, ox As Integer, oy As Integer) As Rectangle
+        Dim region = SamplingRegion(SamplingFigures(op, CSng(h)), op, w, h)
+        If region.Width <= 0 OrElse region.Height <= 0 Then Return Rectangle.Empty
+        Dim r = region : r.Offset(ox, oy)
+        If op.Brush = BrushKind.Clone OrElse op.Brush = BrushKind.Heal Then
+            Dim src = r : src.Offset(CInt(Math.Round(op.CloneDX * h)), CInt(Math.Round(op.CloneDY * h)))
+            r = Rectangle.Union(r, src)
+        End If
+        r.Intersect(New Rectangle(0, 0, w, h))
+        Return r
+    End Function
+
+    Friend Shared Sub ApplySamplingOp(layerPx As Byte(), belowPx As Byte(), w As Integer, h As Integer, op As DrawLayer, ox As Integer, oy As Integer)
+        Dim scale = CSng(h)
+        Dim figs = SamplingFigures(op, scale)
+        Dim region = SamplingRegion(figs, op, w, h)
         If region.Width <= 0 OrElse region.Height <= 0 Then Return
         Dim rw = region.Width, rh = region.Height
 

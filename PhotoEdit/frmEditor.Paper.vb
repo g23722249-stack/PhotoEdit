@@ -11,6 +11,7 @@ Partial Friend Class frmEditor
     Private ReadOnly _paperGrid As New PaperGrid()
     Private ReadOnly _paperInvert As New CheckBox()
     Private ReadOnly _surfaceTarget As New ComboBox()
+    Private _surfaceOnPaintRow As SliderRow
 
     Private Sub BuildPaperSection(L As PageLayout)
         L.Y += 6
@@ -42,7 +43,7 @@ Partial Friend Class frmEditor
         AddRow(L, MakeRow("surface", Lang.T("表面紋理"), 0, 100, AddressOf Plain, Function(r) If(r.Paper?.SurfaceStrength, 0), Sub(r, v) EnsurePaper(r).SurfaceStrength = v))
         _help.SetHelpLinked("paper.target", _surfaceTarget, AddCaption(L, Lang.T("作用在"), L.Y), _surfaceTarget)
         _surfaceTarget.DropDownStyle = ComboBoxStyle.DropDownList
-        _surfaceTarget.Items.AddRange({Lang.T("整張照片（照片、文字、貼圖、繪圖）"), Lang.T("只有繪圖（照片本身不變）")})
+        _surfaceTarget.Items.AddRange({Lang.T("整張照片（照片、文字、貼圖、繪圖）"), Lang.T("只有繪圖（照片本身不變）"), Lang.T("紙張（顏料蓋住的地方變淡）")})
         _surfaceTarget.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
         AddHandler _surfaceTarget.SelectedIndexChanged, Sub()
                                                            If _syncing OrElse _surfaceTarget.SelectedIndex < 0 Then Return
@@ -51,6 +52,8 @@ Partial Friend Class frmEditor
                                                        End Sub
         L.Add(_surfaceTarget)
         L.Y += RowHeight
+        _surfaceOnPaintRow = MakeRow("surfaceonpaint", Lang.T("顏料上的紋理"), 0, 100, Function(v) v & "%", Function(r) If(r.Paper?.SurfaceOnPaint, 20), Sub(r, v) EnsurePaper(r).SurfaceOnPaint = v)
+        AddRow(L, _surfaceOnPaintRow)
         AddRow(L, MakeRow("lightangle", Lang.T("光源方向"), 0, 359, Function(v) v & "°", Function(r) If(r.Paper?.LightAngle, 135), Sub(r, v) EnsurePaper(r).LightAngle = v))
         AddHint(L, Lang.T("紙張是整份文件共用的：鉛筆、炭筆、粉筆、蠟筆、乾刷、水彩會吃紙紋（輕畫只碰到凸起），") &
                    Lang.T("其他筆刷輕微受影響；繪圖「進階」的紙紋吃色可調。藝術風格的紙紋也用這張紙。"))
@@ -101,6 +104,8 @@ Partial Friend Class frmEditor
         _paperGrid.SelectedKind = If(p Is Nothing, -1, CInt(p.Kind))
         _paperInvert.Checked = p IsNot Nothing AndAlso p.Invert
         _surfaceTarget.SelectedIndex = If(p Is Nothing, 0, CInt(p.SurfaceTarget))
+        ' 「顏料上的紋理」只在作用在「紙張」時有意義
+        If _surfaceOnPaintRow?.Slider IsNot Nothing Then _surfaceOnPaintRow.Slider.Enabled = p IsNot Nothing AndAlso p.SurfaceTarget = SurfaceTarget.Base
         If p IsNot Nothing AndAlso p.Kind = PaperKind.Custom Then _paperGrid.SetCustomPreview(p.CustomPath)
     End Sub
 

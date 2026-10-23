@@ -40,6 +40,9 @@ Friend Module DrawIcons
     Public Const TouchUpTool As Integer = -24
     ' 可變寬度：在線上拖曳讓那裡變粗變細（同 Illustrator 的寬度工具）
     Public Const WidthTool As Integer = -25
+    ' 互動式填色（拖出漸層、色標）與網格填色（同 CorelDRAW）
+    Public Const InteractiveFillTool As Integer = -26
+    Public Const MeshFillTool As Integer = -27
 
     ''' <summary>點陣工具的變化（實際上是「直接繪製」）：橡皮擦、仿製、修復、塗抹、混色、模糊、銳利化、加亮、加深、海綿。</summary>
     Public Function IsRasterVariant(tool As Integer) As Boolean
@@ -94,6 +97,8 @@ Friend Module DrawIcons
             Case AttrDropperTool : Return Lang.T("屬性吸管")
             Case TouchUpTool : Return Lang.T("修飾筆刷")
             Case WidthTool : Return Lang.T("寬度工具")
+            Case InteractiveFillTool : Return Lang.T("互動式填色")
+            Case MeshFillTool : Return Lang.T("網格填色")
             Case CInt(DrawShape.Raster) : Return Lang.T("筆刷")
         End Select
         Dim b = BrushOf(tool)
@@ -129,6 +134,8 @@ Friend Module DrawIcons
             Case AttrDropperTool : Return "draw.tool.attrdropper"
             Case TouchUpTool : Return "draw.tool.touchup"
             Case WidthTool : Return "draw.tool.width"
+            Case InteractiveFillTool : Return "draw.tool.ifill"
+            Case MeshFillTool : Return "draw.tool.mesh"
         End Select
         Return "draw.tool." & tool
     End Function
@@ -259,6 +266,27 @@ Friend Module DrawIcons
                     g.DrawEllipse(pen, 3.5F, 3.5F, 12, 12)
                     g.DrawLine(thick, 14.5F, 14.5F, 20.5F, 20.5F)
                     g.DrawLine(pen, 6.5F, 9.5F, 12.5F, 9.5F) : g.DrawLine(pen, 9.5F, 6.5F, 9.5F, 12.5F)
+                Case InteractiveFillTool
+                    ' 由深到淺的漸層方塊，上面一條漸層線與兩個控制點
+                    For k = 0 To 5
+                        Using fb As New SolidBrush(Color.FromArgb(230 - k * 38, color))
+                            g.FillRectangle(fb, 3 + k * 3, 6, 3, 15)
+                        End Using
+                    Next
+                    g.DrawRectangle(pen, 3, 6, 18, 15)
+                    g.DrawLine(pen, 5, 3, 19, 3)
+                    g.FillEllipse(br, 3, 1, 4, 4) : g.FillRectangle(bg, 17, 1, 4, 4) : g.DrawRectangle(pen, 17, 1, 4, 4)
+                Case MeshFillTool
+                    ' 方塊裡彎彎的網格線與節點
+                    g.DrawRectangle(pen, 3, 3, 18, 18)
+                    Using p1 As New GraphicsPath(), p2 As New GraphicsPath()
+                        p1.AddBezier(3, 12, 8, 9, 15, 15, 21, 12)
+                        p2.AddBezier(12, 3, 9, 8, 15, 15, 12, 21)
+                        g.DrawPath(pen, p1) : g.DrawPath(pen, p2)
+                    End Using
+                    For Each q In {New PointF(3, 3), New PointF(21, 3), New PointF(3, 21), New PointF(21, 21), New PointF(12, 12), New PointF(12, 3), New PointF(3, 12), New PointF(21, 12), New PointF(12, 21)}
+                        g.FillRectangle(br, q.X - 1.6F, q.Y - 1.6F, 3.2F, 3.2F)
+                    Next
                 Case WidthTool
                     ' 中間粗、兩端尖的線，粗的地方一個控制點與往外的箭頭
                     Using lens As New GraphicsPath()

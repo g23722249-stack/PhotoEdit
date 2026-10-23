@@ -105,8 +105,8 @@ Public NotInheritable Class SvgExport
         Dim closed = figs.Where(Function(f) f.Closed AndAlso f.Points.Length >= 3).ToList()
         ' 填色
         If d.Filled AndAlso closed.Count > 0 Then
-            Dim fill = ColorAttr("fill", d.FillColorArgb)
-            If d.FillGradient IsNot Nothing Then
+            Dim fill = ColorAttr("fill", If(d.FillMesh IsNot Nothing, d.FillMesh.AverageColor(), d.FillColorArgb)) ' SVG 沒有網格填色：用平均色
+            If d.FillGradient IsNot Nothing AndAlso d.FillMesh Is Nothing Then
                 Dim gid = newId("grad")
                 defs.Append(GradientDef(gid, DrawingRenderer.AbsoluteGradient(d), d.FillColorArgb, d.FillColor2Argb, h))
                 fill = $"fill=""url(#{gid})"""
@@ -200,7 +200,13 @@ Public NotInheritable Class SvgExport
                     stops.Add((i / 5.0, rainbow(i).ToArgb()))
                 Next
             Case Else
-                stops.Add((0, c1)) : stops.Add((1, c2))
+                stops.Add((0, c1))
+                If g.Stops IsNot Nothing Then
+                    For Each st In g.Stops.OrderBy(Function(x) x.Position)
+                        stops.Add((Math.Max(0, Math.Min(1, st.Position)), st.Argb)) ' 互動式填色加的中間色標
+                    Next
+                End If
+                stops.Add((1, c2))
         End Select
         If g.Reverse Then stops = stops.Select(Function(s) (Offset:=1 - s.Offset, Argb:=s.Argb)).OrderBy(Function(s) s.Offset).ToList()
         Dim stopXml = String.Concat(stops.Select(Function(s) $"<stop offset=""{N(s.Offset)}"" stop-color=""{Hex(s.Argb)}""" &

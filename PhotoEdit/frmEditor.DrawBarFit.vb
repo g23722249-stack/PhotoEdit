@@ -48,6 +48,8 @@ Partial Friend Class frmEditor
         ' 鏡射（小、常用）晚一點收
         If _btnMirrorV IsNot Nothing Then list.Add({_btnMirrorV}) : list.Add({_btnMirrorH})
         list.Add({_patternBar}) ' 圖樣列
+        list.Add({_paraBar}) ' 段落文字列
+        list.Add({_meshBar}) ' 網格列
         list.Add({_shapeParamBar}) ' 圖形參數列（輸入框，整列藏起來）
         ' 最後：屬性列的角度欄（輸入框不能放進選單，直接藏）
         If _propBoxes.ContainsKey("angle") Then

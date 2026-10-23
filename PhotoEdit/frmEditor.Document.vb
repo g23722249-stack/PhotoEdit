@@ -17,8 +17,8 @@ Partial Friend Class frmEditor
     Private _projectWorkDir As String
 
     Private Shared ReadOnly ProjectFilter As String = Lang.T("PhotoEdit 專案（保留圖層，可繼續修改）|*") & ProjectFile.Extension
-    Private Shared ReadOnly ImageFilter As String = Lang.T("PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp")
-    Private Shared ReadOnly ImageExtensions As String() = {".png", ".jpg", ".bmp"}
+    Private Shared ReadOnly ImageFilter As String = Lang.T("PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp|PDF 文件|*.pdf")
+    Private Shared ReadOnly ImageExtensions As String() = {".png", ".jpg", ".bmp", ".pdf"}
 
     ''' <summary>標題列與提示用的文件名稱。</summary>
     Private ReadOnly Property DocumentName As String
@@ -212,6 +212,7 @@ Partial Friend Class frmEditor
 
     ''' <summary>以全尺寸合併所有圖層存成 PNG／JPG／BMP。confirmMerge：有圖層時先提示會合併。</summary>
     Private Sub SaveFlatImage(file As String, confirmMerge As Boolean)
+        If Path.GetExtension(file).Equals(".pdf", StringComparison.OrdinalIgnoreCase) Then SavePdf(file) : Return
         ExitCropMode(apply:=True)
         CommitCalloutEditor()
         Dim format = Path.GetExtension(file).TrimStart("."c).ToUpperInvariant()

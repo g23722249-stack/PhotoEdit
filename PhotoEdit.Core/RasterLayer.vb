@@ -14,6 +14,8 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Const MinRasterCache As Integer = 8
     Private Const MaxRasterCache As Integer = 64
     Private Const RasterCacheBudget As Long = 600L * 1024 * 1024
+    ''' <summary>讀下面畫面的筆（塗抹、模糊…）之後每隔幾筆留一張檢查點。</summary>
+    Private Const CheckpointEvery As Integer = 32
     Private Shared ReadOnly _rasterCache As New Dictionary(Of ULong, Bitmap)()
     ''' <summary>
     ''' 快取裡每張圖的位元組數（放進去時記下）：算總量時不能去讀快取圖的 Width，別的執行緒可能正鎖著那張圖合成，
@@ -68,12 +70,32 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim ops = layer.Ops
         Dim keys(ops.Count) As ULong
         keys(0) = ChainHash(0UL, $"raster|{w}x{h}|{ox},{oy}" & PaperKey())
-        ' 有讀取畫布的筆時，下面的照片一改（例如調色），抹過的地方就要重算。
-        If below IsNot Nothing Then keys(0) = ChainHash(keys(0), BelowSignature(below))
-        ' 油漆桶取樣所有圖層：上面的圖層改了（例如線稿）也要重算
-        If above IsNot Nothing Then keys(0) = ChainHash(keys(0), "above|" & BelowSignature(above))
+        ' 每一筆只記它真正讀到的東西：普通的筆不讀下面；塗抹、模糊這類筆只讀筆畫附近（下面那幾格的雜湊）；
+        ' 油漆桶、內容感知填色讀整張。原本整層都綁著整張下面的雜湊，在下面的圖層畫一筆，這層就得從第一筆重畫起（幾千筆時一筆要一秒多）。
+        Dim belowSig As String = Nothing, aboveSig As String = Nothing
+        Dim tiles As BelowTiles = Nothing
         For i = 0 To ops.Count - 1
-            keys(i + 1) = ChainHash(keys(i), OpKey(ops(i)))
+            Dim op = ops(i)
+            Dim k = ChainStep(keys(i), op)
+            If below IsNot Nothing OrElse above IsNot Nothing Then
+                Select Case BelowDependency(op)
+                    Case BelowUse.Whole
+                        If below IsNot Nothing Then
+                            If belowSig Is Nothing Then belowSig = BelowSignature(below)
+                            k = ChainHash(k, belowSig)
+                        End If
+                        If above IsNot Nothing AndAlso op.Shape = DrawShape.Bucket Then
+                            If aboveSig Is Nothing Then aboveSig = "above|" & BelowSignature(above)
+                            k = ChainHash(k, aboveSig)
+                        End If
+                    Case BelowUse.Around
+                        If below IsNot Nothing Then
+                            If tiles Is Nothing Then tiles = New BelowTiles(below, w, h)
+                            k = ChainHash(k, tiles.Signature(SamplingReadRect(op, w, h, ox, oy)))
+                        End If
+                End Select
+            End If
+            keys(i + 1) = k
         Next
 
         ' 找快取裡最長的「前 k 筆」，從那裡接著畫。
@@ -104,8 +126,20 @@ Partial Public NotInheritable Class DrawingRenderer
         Else
             bmp = New Bitmap(w, h, PixelFormat.Format32bppArgb)
         End If
+        ' 第一筆讀下面畫面的筆：它之前的筆和下面無關，在那裡留一張檢查點；下面改了只要從這裡接著畫。
+        ' 之後每 CheckpointEvery 筆再留一張：下面改到哪一筆讀的地方，就從最近的檢查點接著畫
+        Dim firstDep = -1
+        If below IsNot Nothing OrElse above IsNot Nothing Then
+            For i = 0 To ops.Count - 1
+                If BelowDependency(ops(i)) <> BelowUse.None Then firstDep = i : Exit For
+            Next
+        End If
+        Dim samplePx As Byte() = Nothing ' 讀畫布的筆共用的整層像素（每筆只讀寫它改動的那一塊）
         For i = start To ops.Count - 1
             Dim op = ops(i)
+            If firstDep >= 0 AndAlso i > start AndAlso i >= firstDep AndAlso i > 0 AndAlso (i - firstDep) Mod CheckpointEvery = 0 Then
+                StoreRaster(keys(i), bmp.Clone(New Rectangle(0, 0, w, h), PixelFormat.Format32bppArgb), w, h)
+            End If
             ' 保留透明度：先記下每個像素的透明度，畫完再放回去（只改顏色，透明的地方不會被畫上）
             Dim keptAlpha As Byte() = If(op.KeepAlpha, Perspective.ReadPixels(bmp), Nothing)
             If op.Shape = DrawShape.Gradient Then
@@ -117,9 +151,14 @@ Partial Public NotInheritable Class DrawingRenderer
             ElseIf op.Region IsNot Nothing AndAlso op.FillContent = FillContent.Material AndAlso op.Filled Then
                 ApplyMaterialRegionOp(bmp, w, h, op)
             ElseIf Global.PhotoEdit.DrawLayer.SamplesCanvas(op.Brush) AndAlso op.Shape <> DrawShape.Raster AndAlso op.Item Is Nothing Then
-                Dim px = Perspective.ReadPixels(bmp)
-                ApplySamplingOp(px, below, w, h, op, ox, oy)
-                Perspective.WritePixels(bmp, px)
+                ' 只讀寫這一筆碰到的那一塊（仿製、修復筆連來源一起）；原本每筆都讀寫整層，一筆 5 ms
+                Dim area = SamplingReadRect(op, w, h, 0, 0)
+                If area.Width > 0 AndAlso area.Height > 0 Then
+                    If samplePx Is Nothing Then samplePx = New Byte(w * h * 4 - 1) {}
+                    CopyRegion(bmp, samplePx, w, area, toArray:=True)
+                    ApplySamplingOp(samplePx, below, w, h, op, ox, oy)
+                    CopyRegion(bmp, samplePx, w, area, toArray:=False)
+                End If
             Else
                 ApplyRasterOp(bmp, op, w, h)
             End If
@@ -132,15 +171,20 @@ Partial Public NotInheritable Class DrawingRenderer
             End If
         Next
 
+        Return StoreRaster(keys(ops.Count), bmp, w, h)
+    End Function
+
+    ''' <summary>放進快取（已經有同一個鍵時丟掉這張、傳回原本那張）；超過張數或記憶體預算時擠掉最久沒用的。</summary>
+    Private Shared Function StoreRaster(key As ULong, bmp As Bitmap, w As Integer, h As Integer) As Bitmap
         SyncLock _rasterCache
             Dim existing As Bitmap = Nothing
-            If _rasterCache.TryGetValue(keys(ops.Count), existing) Then
+            If _rasterCache.TryGetValue(key, existing) Then
                 bmp.Dispose()
                 Return existing
             End If
-            _rasterCache(keys(ops.Count)) = bmp
-            _rasterBytes(keys(ops.Count)) = CLng(w) * h * 4
-            _rasterOrder.AddFirst(keys(ops.Count))
+            _rasterCache(key) = bmp
+            _rasterBytes(key) = CLng(w) * h * 4
+            _rasterOrder.AddFirst(key)
             While _rasterOrder.Count > MaxRasterCache OrElse (_rasterOrder.Count > MinRasterCache AndAlso RasterCacheBytes() > RasterCacheBudget)
                 Dim old = _rasterOrder.Last.Value
                 _rasterOrder.RemoveLast()
@@ -155,6 +199,24 @@ Partial Public NotInheritable Class DrawingRenderer
         End SyncLock
         Return bmp
     End Function
+
+    ''' <summary>圖層像素（BGRA，w 寬）與點陣圖之間只複製一塊範圍：toArray＝圖 → 陣列。</summary>
+    Private Shared Sub CopyRegion(bmp As Bitmap, px As Byte(), w As Integer, area As Rectangle, toArray As Boolean)
+        Dim d = bmp.LockBits(area, If(toArray, ImageLockMode.ReadOnly, ImageLockMode.WriteOnly), PixelFormat.Format32bppArgb)
+        Try
+            Dim rowBytes = area.Width * 4
+            For y = 0 To area.Height - 1
+                Dim offset = ((area.Y + y) * w + area.X) * 4
+                If toArray Then
+                    Marshal.Copy(d.Scan0 + y * d.Stride, px, offset, rowBytes)
+                Else
+                    Marshal.Copy(px, offset, d.Scan0 + y * d.Stride, rowBytes)
+                End If
+            Next
+        Finally
+            bmp.UnlockBits(d)
+        End Try
+    End Sub
 
     ''' <summary>
     ''' 把一筆畫上去：一般筆畫與圖形疊在上面，橡皮擦依筆刷的覆蓋率減去下面的不透明度。
@@ -266,6 +328,67 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>接續前一個雜湊值（SHA1 取前 8 位元組），算出「前 k 筆」的快取鍵。</summary>
     ''' <summary>下面照片的指紋：均勻取約 16000 個像素算 SHA1（照片有改，抹過的地方才重算）。</summary>
+    Private Enum BelowUse
+        None
+        ''' <summary>只讀筆畫附近（塗抹、混色、模糊…）。</summary>
+        Around
+        ''' <summary>讀整張（油漆桶、內容感知填色）。</summary>
+        Whole
+    End Enum
+
+    ''' <summary>這一筆畫的時候讀了下面合成好的畫面哪裡（判斷和 RasterBitmap 裡畫的分支一致）。</summary>
+    Private Shared Function BelowDependency(op As Global.PhotoEdit.DrawLayer) As BelowUse
+        If op.Shape = DrawShape.Gradient Then Return BelowUse.None
+        If op.Shape = DrawShape.Bucket Then Return If(BucketNeedsBelow(op), BelowUse.Whole, BelowUse.None)
+        If op.Region IsNot Nothing Then Return If(op.FillContent = FillContent.ContentAware, BelowUse.Whole, BelowUse.None)
+        If Global.PhotoEdit.DrawLayer.SamplesCanvas(op.Brush) AndAlso op.Shape <> DrawShape.Raster AndAlso op.Item Is Nothing Then Return BelowUse.Around
+        Return BelowUse.None
+    End Function
+
+    ''' <summary>
+    ''' 下面合成好的畫面切成 64 × 64 的格子，每格一個雜湊（整張只掃一遍）；
+    ''' 一筆塗抹讀到的範圍＝它蓋到的那幾格的雜湊，別的地方改了不影響這一筆。
+    ''' </summary>
+    Private NotInheritable Class BelowTiles
+        Private Const Tile As Integer = 64
+        Private ReadOnly _hash As ULong(), _gw As Integer, _gh As Integer
+
+        Public Sub New(below As Byte(), w As Integer, h As Integer)
+            _gw = (w + Tile - 1) \ Tile : _gh = (h + Tile - 1) \ Tile
+            Dim gw = _gw
+            Dim hash(_gw * _gh - 1) As ULong
+            Threading.Tasks.Parallel.For(0, _gh, Sub(ty)
+                                                     Dim y0 = ty * Tile, rows = Math.Min(Tile, h - y0)
+                                                     Dim buf(Tile * 4 * Tile - 1) As Byte
+                                                     For tx = 0 To gw - 1
+                                                         Dim x0 = tx * Tile, cols = Math.Min(Tile, w - x0)
+                                                         Dim n = 0
+                                                         For y = y0 To y0 + rows - 1
+                                                             Buffer.BlockCopy(below, (y * w + x0) * 4, buf, n, cols * 4)
+                                                             n += cols * 4
+                                                         Next
+                                                         If n < buf.Length Then Array.Clear(buf, n, buf.Length - n)
+                                                         hash(ty * gw + tx) = BitConverter.ToUInt64(System.Security.Cryptography.SHA1.HashData(buf), 0) Xor CULng(n)
+                                                     Next
+                                                 End Sub)
+            _hash = hash
+        End Sub
+
+        ''' <summary>範圍（下面畫面的像素座標）蓋到的格子的雜湊；範圍空的時候固定字串。</summary>
+        Public Function Signature(r As Rectangle) As String
+            If r.Width <= 0 OrElse r.Height <= 0 Then Return "below:none"
+            Dim tx0 = r.Left \ Tile, tx1 = (r.Right - 1) \ Tile, ty0 = r.Top \ Tile, ty1 = (r.Bottom - 1) \ Tile
+            Dim sb As New System.Text.StringBuilder("below:")
+            sb.Append(tx0).Append(","c).Append(ty0).Append(","c).Append(tx1).Append(","c).Append(ty1)
+            For ty = ty0 To ty1
+                For tx = tx0 To tx1
+                    sb.Append("|"c).Append(_hash(ty * _gw + tx).ToString("x"))
+                Next
+            Next
+            Return sb.ToString()
+        End Function
+    End Class
+
     Private Shared Function BelowSignature(below As Byte()) As String
         Dim pixels = below.Length \ 4
         Dim stepPx = Math.Max(1, pixels \ 16384)
@@ -278,32 +401,83 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ' 每一筆的內容雜湊：算一次記在那一筆上（畫了幾千筆時，每次算圖不必把所有筆再序列化一次）。
     ' 指紋（點數、顏色、粗細…）變了就重算，正在畫、還在變長的那一筆也對。
-    Private Shared ReadOnly _opKeys As New Runtime.CompilerServices.ConditionalWeakTable(Of DrawLayer, Tuple(Of String, String))()
+    Private Shared ReadOnly _opKeys As New Runtime.CompilerServices.ConditionalWeakTable(Of DrawLayer, Tuple(Of Integer, String))()
 
-    Private Shared Function OpFingerprint(op As DrawLayer) As String
+    ''' <summary>一筆的指紋（點數、顏色、粗細、位置、頭尾的點…）：用數字雜湊，不組字串（每次算圖每一筆都要算，幾千筆時字串格式化要十幾 ms）。</summary>
+    Private Shared Function OpFingerprint(op As DrawLayer) As Integer
         Dim pts = 0
         If op.Strokes IsNot Nothing Then
             For Each st In op.Strokes
                 pts += If(st.Points?.Count, 0)
             Next
         End If
-        Dim ends = ""
+        Dim h As New HashCode()
+        h.Add(pts) : h.Add(If(op.Strokes?.Count, 0)) : h.Add(If(op.Ops?.Count, 0)) : h.Add(If(op.Points?.Count, 0))
+        h.Add(op.StrokeColorArgb) : h.Add(op.FillColorArgb) : h.Add(op.StrokeWidth) : h.Add(op.Opacity) : h.Add(op.Eraser) : h.Add(op.Brush)
+        h.Add(op.X) : h.Add(op.Y) : h.Add(op.W) : h.Add(op.H) : h.Add(op.Rotation) : h.Add(op.Param1) : h.Add(op.Param2) : h.Add(op.Sides)
         If op.Strokes IsNot Nothing AndAlso op.Strokes.Count > 0 AndAlso op.Strokes(0).Points?.Count > 0 Then
             Dim p0 = op.Strokes(0).Points(0), ls = op.Strokes(op.Strokes.Count - 1)
             Dim p1 = If(ls.Points?.Count > 0, ls.Points(ls.Points.Count - 1), p0)
-            ends = $"{p0.X},{p0.Y},{p1.X},{p1.Y}"
+            h.Add(p0.X) : h.Add(p0.Y) : h.Add(p1.X) : h.Add(p1.Y)
         End If
-        Return $"{pts}|{If(op.Strokes?.Count, 0)}|{If(op.Ops?.Count, 0)}|{If(op.Points?.Count, 0)}|{op.StrokeColorArgb}|{op.FillColorArgb}|{op.StrokeWidth}|{op.Opacity}|{op.Eraser}|{op.Brush}|" &
-               $"{op.X},{op.Y},{op.W},{op.H},{op.Rotation},{op.Param1},{op.Param2},{op.Sides}|{ends}"
+        Return h.ToHashCode()
     End Function
 
     Private Shared Function OpKey(op As DrawLayer) As String
         Dim fp = OpFingerprint(op)
-        Dim hit As Tuple(Of String, String) = Nothing
+        Dim hit As Tuple(Of Integer, String) = Nothing
         If _opKeys.TryGetValue(op, hit) AndAlso hit.Item1 = fp Then Return hit.Item2
         Dim key = ChainHash(0UL, System.Text.Json.JsonSerializer.Serialize(op, _jsonOptions)).ToString("x16")
         _opKeys.AddOrUpdate(op, Tuple.Create(fp, key))
         Return key
+    End Function
+
+    ''' <summary>
+    ''' 圖層畫到畫面上的樣子的鍵（不含下面的畫面：由呼叫端把下面的圖層串起來）：點陣圖層＝每一筆的鍵串起來＋不透明度、混合、位移；
+    ''' 其他圖層＝整個圖層的 JSON。LayerStack 用它快取「底圖＋下面幾層」合成好的畫面。
+    ''' </summary>
+    Friend Shared Function StackKey(d As DrawLayer) As String
+        If d.Shape = DrawShape.Raster Then
+            Dim k = 0UL
+            If d.Ops IsNot Nothing Then
+                For Each op In d.Ops
+                    k = ChainStep(k, op)
+                Next
+            End If
+            Return $"R|{k:x16}|{d.Ops?.Count}|{d.Opacity}|{d.Blend}|{d.X:R}|{d.Y:R}"
+        End If
+        Return "V|" & System.Text.Json.JsonSerializer.Serialize(d, _jsonOptions)
+    End Function
+
+    ''' <summary>這一層畫的時候會不會看上面的圖層（油漆桶「取樣所有圖層」）：會的話下面幾層的合成不能快取。</summary>
+    Friend Shared Function ReadsAbove(d As DrawLayer) As Boolean
+        If d.Shape <> DrawShape.Raster OrElse d.Ops Is Nothing Then Return False
+        Return d.Ops.Any(Function(o) (o.Shape = DrawShape.Bucket AndAlso o.Bucket IsNot Nothing AndAlso o.Bucket.Sample = BucketSample.AllLayers) OrElse
+                                    (o.Shape = DrawShape.Raster AndAlso ReadsAbove(o)))
+    End Function
+
+    ' 每一筆接在前面之後的鍵也記在那一筆上（預覽、高解析度各一組）：畫了幾千筆時每次算圖不必每筆都再算一次 SHA1
+    Private NotInheritable Class ChainMemo
+        Public Prev(1) As ULong, Key(1) As String, Result(1) As ULong, Count As Integer, NextSlot As Integer
+    End Class
+    Private Shared ReadOnly _chainMemo As New Runtime.CompilerServices.ConditionalWeakTable(Of DrawLayer, ChainMemo)()
+
+    ''' <summary>ChainHash(prev, OpKey(op))，結果記在 op 上。</summary>
+    Private Shared Function ChainStep(prev As ULong, op As DrawLayer) As ULong
+        Dim key = OpKey(op)
+        Dim memo = _chainMemo.GetValue(op, Function(o) New ChainMemo())
+        SyncLock memo
+            For j = 0 To memo.Count - 1
+                If memo.Prev(j) = prev AndAlso ReferenceEquals(memo.Key(j), key) Then Return memo.Result(j)
+            Next
+        End SyncLock
+        Dim result = ChainHash(prev, key)
+        SyncLock memo
+            Dim slot = If(memo.Count < 2, memo.Count, memo.NextSlot)
+            memo.Prev(slot) = prev : memo.Key(slot) = key : memo.Result(slot) = result
+            If memo.Count < 2 Then memo.Count += 1 Else memo.NextSlot = 1 - memo.NextSlot
+        End SyncLock
+        Return result
     End Function
 
     Private Shared Function ChainHash(seed As ULong, text As String) As ULong

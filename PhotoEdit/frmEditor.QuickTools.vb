@@ -325,6 +325,37 @@ Partial Friend Class frmEditor
     End Sub
 
     ''' <summary>快速面板選了常用筆刷：換筆刷，工具換成直接繪製（不是畫筆工具時）。</summary>
+    ''' <summary>換筆刷時記進「最近用過的筆刷」（快速面板常用筆刷右邊那排）。從那排點選時不改順序，按鈕才不會在游標下跳動。</summary>
+    Private _keepRecentOrder As Boolean
+
+    Private Sub RememberBrush(b As BrushKind)
+        Dim list = If(_appSettings.RecentBrushes, New List(Of Integer)())
+        If _keepRecentOrder AndAlso list.Contains(CInt(b)) Then Return
+        list.Remove(CInt(b))
+        list.Insert(0, CInt(b))
+        If list.Count > 12 Then list.RemoveRange(12, list.Count - 12)
+        _appSettings.RecentBrushes = list
+        _appSettings.Save()
+    End Sub
+
+    ''' <summary>快速面板「最近」那排：最近用過、但不在常用筆刷 8 格裡的筆刷（最多 count 個）。</summary>
+    Friend Function RecentBrushes(count As Integer) As BrushKind()
+        Dim slots = QuickBrushes()
+        Return If(_appSettings.RecentBrushes, New List(Of Integer)()).
+            Where(Function(v) [Enum].IsDefined(GetType(BrushKind), v)).Select(Function(v) CType(v, BrushKind)).
+            Where(Function(k) Not slots.Contains(k)).Take(count).ToArray()
+    End Function
+
+    ''' <summary>從「最近」那排選筆刷（不改那排的順序）。</summary>
+    Friend Sub UseRecentBrush(b As BrushKind)
+        _keepRecentOrder = True
+        Try
+            UseQuickBrush(b)
+        Finally
+            _keepRecentOrder = False
+        End Try
+    End Sub
+
     Friend Sub UseQuickBrush(b As BrushKind)
         _pickOnce = False
         If _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Freehand) Then _drawStrip.SelectedTool = CInt(DrawShape.Raster)
@@ -424,6 +455,11 @@ Partial Friend Class frmEditor
         Private ReadOnly _sizeValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _opacityValue As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight}
         Private ReadOnly _brushTiles As New List(Of BrushChip)()
+        ' 常用筆刷標題右邊「最近」那排：最近用過、不在 8 格裡的筆刷（塗抹筆、模糊…不用再右鍵換格子）
+        Private Const RecentCount As Integer = 4
+        Private Const RecentLeft As Integer = 190
+        Private ReadOnly _recentBrushes As New List(Of Button)()
+        Private _recentKinds As BrushKind() = {}
         Private ReadOnly _layers As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
         Private ReadOnly _newLayer As New Button With {.Text = Lang.T("＋ 新圖層"), .FlatStyle = FlatStyle.Flat}
         Private ReadOnly _stab As New Aqua.Slider With {.Minimum = 0, .Maximum = 100, .ShowTicks = False}
@@ -608,6 +644,18 @@ Partial Friend Class frmEditor
                 Controls.Add(t)
             Next
             _ctx(QuickContext.Brushes) = _brushTiles.Cast(Of Control)().ToList()
+            For i = 0 To RecentCount - 1
+                Dim k = i
+                Dim b As New Button With {.FlatStyle = FlatStyle.Flat, .Visible = False, .Font = New Font(Lang.UiFont, 8.5F)}
+                b.SetBounds(RecentLeft + i * 61, _brushCaptionY - 3, 58, 24)
+                AddHandler b.Click, Sub()
+                                        If k >= _recentKinds.Length Then Return
+                                        _ed.UseRecentBrush(_recentKinds(k))
+                                        SyncFromEditor()
+                                    End Sub
+                _recentBrushes.Add(b)
+                Controls.Add(b)
+            Next
             BuildContexts(y)
             y += 116
 
@@ -776,7 +824,8 @@ Partial Friend Class frmEditor
                 Case QuickContext.Objects : Return Lang.T("選取的物件")
                 Case QuickContext.Nodes : Return Lang.T("節點（節點工具點選節點後可用）")
             End Select
-            Return Lang.T("常用筆刷（右鍵可換）")
+            ' 右邊有「最近」那排時標題縮短（英文的完整標題會蓋到按鈕）；右鍵可換的提示在那排還空著時看得到
+            Return If(_recentKinds.Length > 0, Lang.T("常用筆刷"), Lang.T("常用筆刷（右鍵可換）"))
         End Function
 
         Private Function CurrentChip() As ColorChip
@@ -862,6 +911,15 @@ Partial Friend Class frmEditor
                     _brushTiles(i).SetBrush(brushes(i), brushes(i) = current AndAlso _ed.CurrentQuickTool() = QuickTool.Brush, _ed.ForegroundColor)
                 Next
                 SyncContext()
+                _recentKinds = If(_ctxNow = QuickContext.Brushes, _ed.RecentBrushes(RecentCount), Array.Empty(Of BrushKind)())
+                For i = 0 To RecentCount - 1
+                    Dim b = _recentBrushes(i)
+                    b.Visible = i < _recentKinds.Length
+                    If Not b.Visible Then Continue For
+                    b.Text = DrawGeometry.BrushNames(CInt(_recentKinds(i)))
+                    Dim isOn = _recentKinds(i) = current AndAlso _ed.CurrentQuickTool() = QuickTool.Brush
+                    b.BackColor = If(isOn, accent, normal) : b.ForeColor = If(isOn, Color.White, ForeColor)
+                Next
                 Dim layers = _ed.QuickLayers()
                 _layers.Items.Clear()
                 _layers.Items.AddRange(layers.Select(Function(l) CObj(l.Name)).ToArray())
@@ -925,6 +983,7 @@ Partial Friend Class frmEditor
                 Next
                 If _docIds.Length = 0 Then g.DrawString(Lang.T("（在左側色彩面板按「＋」加入）"), small, s2, _docSwatches.Left + 4, _docSwatches.Top + 6)
                 g.DrawString(ContextCaption(), _font, fg, 16, _brushCaptionY)
+                If _recentKinds.Length > 0 Then g.DrawString(Lang.T("最近"), small, s2, 140, _brushCaptionY + 2)
                 g.DrawString(Lang.T("快速圖層"), _font, fg, 16, _layers.Top + 4)
                 Dim hint = Lang.F("{0} 開關　｜　{1} 輪盤　｜　Esc 關閉　｜　按兩下色塊開完整選色器", _ed._appSettings.QuickPanelHotkey, _ed._appSettings.QuickRadialHotkey)
                 Using sf As New StringFormat With {.Alignment = StringAlignment.Center}

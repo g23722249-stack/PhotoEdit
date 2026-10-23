@@ -113,7 +113,7 @@ Partial Public NotInheritable Class DrawingRenderer
                         End Select
                         t = Clamp(t)
                         If g.Reverse Then t = 1 - t
-                        Dim c = ColorAt(g.Colors, t, c1, c2)
+                        Dim c = If(g.Colors = GradientColors.StrokeToFill AndAlso g.Stops IsNot Nothing AndAlso g.Stops.Count > 0, ColorAtStops(g.Stops, t, c1, c2), ColorAt(g.Colors, t, c1, c2))
                         r = c.R : gg = c.G : b = c.B : a = c.A
                     End If
                     If g.Dither Then
@@ -150,6 +150,29 @@ Partial Public NotInheritable Class DrawingRenderer
                 Dim m = Mix(c1, c2, t)
                 Return (m.R, m.G, m.B, m.A)
         End Select
+    End Function
+
+    ''' <summary>圖形漸層在位置 t（0..1，沿起點→終點）的顏色（互動式填色加色標時取色）。</summary>
+    Public Shared Function GradientColorAt(layer As DrawLayer, t As Double) As Color
+        Dim g = layer.FillGradient
+        Dim c1 = Color.FromArgb(layer.FillColorArgb), c2 = Color.FromArgb(layer.FillColor2Argb)
+        If g Is Nothing Then Return c1
+        Dim c = If(g.Colors = GradientColors.StrokeToFill AndAlso g.Stops IsNot Nothing AndAlso g.Stops.Count > 0, ColorAtStops(g.Stops, t, c1, c2), ColorAt(g.Colors, t, c1, c2))
+        Return Color.FromArgb(CInt(Math.Max(0, Math.Min(255, c.A))), CInt(Math.Max(0, Math.Min(255, c.R))), CInt(Math.Max(0, Math.Min(255, c.G))), CInt(Math.Max(0, Math.Min(255, c.B))))
+    End Function
+
+    ''' <summary>有中間色標的漸層：起點 c1、色標（依位置）、終點 c2 之間分段內插。</summary>
+    Private Shared Function ColorAtStops(stops As List(Of GradientStop), t As Double, c1 As Color, c2 As Color) As (R As Double, G As Double, B As Double, A As Double)
+        Dim prevPos = 0.0, prevC = c1
+        For Each s In stops.OrderBy(Function(x) x.Position)
+            Dim p = Math.Max(0, Math.Min(1, s.Position))
+            If t <= p Then
+                Dim f = If(p - prevPos < 0.000001, 1, (t - prevPos) / (p - prevPos))
+                Return Mix(prevC, Color.FromArgb(s.Argb), f)
+            End If
+            prevPos = p : prevC = Color.FromArgb(s.Argb)
+        Next
+        Return Mix(prevC, c2, If(1 - prevPos < 0.000001, 1, (t - prevPos) / (1 - prevPos)))
     End Function
 
     Private Shared Function Mix(a As Color, b As Color, t As Double) As (R As Double, G As Double, B As Double, A As Double)

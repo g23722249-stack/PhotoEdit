@@ -50,7 +50,7 @@ Partial Friend Class frmEditor
             stroke.AddPoint(GeometryMapper.UnmapPoint(DisplayToPhoto(p), _recipe, pw, ph, fromCropped:=True))
         Next
         Dim originalPixels = screenRadius / _canvas.EffectiveZoom()
-        stroke.Radius = originalPixels / Math.Max(_photo.Image.Width, _photo.Image.Height) /
+        stroke.Radius = originalPixels / Math.Max(_photo.Width, _photo.Height) /
                         GeometryMapper.ScaleFactor(_recipe, pw, ph)
         Return stroke
     End Function

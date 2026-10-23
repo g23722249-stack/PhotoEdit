@@ -24,7 +24,8 @@ Partial Friend Class frmEditor
         Return tool = DrawIcons.SelectTool OrElse tool = DrawIcons.PanTool OrElse tool = DrawIcons.ZoomTool OrElse
                tool = DrawIcons.EyedropperTool OrElse tool = DrawIcons.ShapeBuilderTool OrElse tool = DrawIcons.KnifeTool OrElse
                tool = DrawIcons.ShadowTool OrElse tool = DrawIcons.TransparencyTool OrElse tool = DrawIcons.EnvelopeTool OrElse
-               tool = DrawIcons.AttrDropperTool OrElse tool = DrawIcons.TouchUpTool OrElse tool = DrawIcons.WidthTool
+               tool = DrawIcons.AttrDropperTool OrElse tool = DrawIcons.TouchUpTool OrElse tool = DrawIcons.WidthTool OrElse
+               tool = DrawIcons.InteractiveFillTool OrElse tool = DrawIcons.MeshFillTool
     End Function
 
     '---------------------------------------------------------------------
@@ -57,6 +58,11 @@ Partial Friend Class frmEditor
 
     ''' <summary>色盤：左鍵線條色、右鍵填色（同時打開填色）；記進最近用過的顏色。</summary>
     Private Sub PickStripColor(target As Integer, argb As Integer)
+        If FillToolColor(argb) Then ' 互動式填色的控制點、網格的節點
+            Aqua.ColorPicker.RememberRecentColor(Color.FromArgb(255, Color.FromArgb(argb)))
+            RefreshStripRecent(force:=True)
+            Return
+        End If
         If target = 1 Then
             SetDrawProp(Sub(d)
                             d.FillColorArgb = argb
@@ -125,6 +131,7 @@ Partial Friend Class frmEditor
             _panLast = e.Location
             Return True
         End If
+        If FillToolMouseDown(e, u) Then Return True ' 互動式填色、網格填色（見 frmEditor.DrawFillTools.vb）
         If FxMouseDown(e, u) Then Return True ' 陰影、透明度、封套（見 frmEditor.DrawBatch3.vb）
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.PanTool
@@ -174,6 +181,7 @@ Partial Friend Class frmEditor
             _panLast = e.Location
             Return True
         End If
+        If FillToolMouseMove(e, u) Then Return True
         If FxMouseMove(e, u) Then Return True
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.PanTool
@@ -229,6 +237,7 @@ Partial Friend Class frmEditor
             _panLast = Nothing
             Return True
         End If
+        If FillToolMouseUp() Then Return True
         If FxMouseUp() Then Return True
         Select Case _drawStrip.SelectedTool
             Case DrawIcons.ZoomTool
@@ -348,6 +357,7 @@ Partial Friend Class frmEditor
     ''' <summary>新工具的操作提示；不是新工具時回傳 Nothing。</summary>
     Private Function ToolHint(tool As Integer) As String
         If FxHint(tool) IsNot Nothing Then Return FxHint(tool)
+        If FillToolHint(tool) IsNot Nothing Then Return FillToolHint(tool)
         Select Case tool
             Case DrawIcons.PanTool : Return Lang.T("平移：拖曳移動畫面（放大後才需要）。任何工具按住滑鼠中鍵拖曳也可以平移。")
             Case DrawIcons.ZoomTool : Return Lang.T("縮放：點一下放大、Alt＋點（或右鍵）縮小，拖一個框放大到那個範圍。")

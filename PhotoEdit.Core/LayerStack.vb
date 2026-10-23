@@ -198,6 +198,61 @@ Public NotInheritable Class LayerStack
     '---------------------------------------------------------------------
 
     ''' <summary>依堆疊順序畫上所有顯示中的文字、貼圖與繪圖圖層（各自的不透明度與混合模式）。</summary>
+    '---------------------------------------------------------------------
+    ' 「底圖＋下面幾層」的快取：在第 k 層畫的時候，底圖和第 k 層下面的圖層都沒變，
+    ' 把它們合成好的畫面留著，下一筆直接從第 k 層畫起（原本每一筆都要把所有圖層疊一次，8 層時每筆多 60 ms）。
+    '---------------------------------------------------------------------
+
+    Private NotInheritable Class PrefixEntry
+        Public Key As ULong
+        Public Pixels As Byte()
+    End Class
+    Private Const MaxPrefix As Integer = 4
+    Private Shared ReadOnly _prefixLock As New Object()
+    Private Shared ReadOnly _prefix As New LinkedList(Of PrefixEntry)()
+    ''' <summary>上一次合成時每個圖層的鍵（依畫面大小）：找出這次是哪一層改了。</summary>
+    Private Shared ReadOnly _lastKeys As New Dictionary(Of String, String())()
+
+    Friend Shared Sub ClearPrefixCache()
+        SyncLock _prefixLock
+            _prefix.Clear()
+            _lastKeys.Clear()
+        End SyncLock
+    End Sub
+
+    Private Shared Function NextKey(prev As ULong, text As String) As ULong
+        Dim bytes = System.Text.Encoding.UTF8.GetBytes(text)
+        Dim buf(bytes.Length + 7) As Byte
+        BitConverter.GetBytes(prev).CopyTo(buf, 0)
+        bytes.CopyTo(buf, 8)
+        Return BitConverter.ToUInt64(System.Security.Cryptography.SHA1.HashData(buf), 0)
+    End Function
+
+    Private Shared Function FindPrefix(key As ULong) As Byte()
+        SyncLock _prefixLock
+            Dim node = _prefix.First
+            While node IsNot Nothing
+                If node.Value.Key = key Then
+                    _prefix.Remove(node)
+                    _prefix.AddFirst(node)
+                    Return node.Value.Pixels
+                End If
+                node = node.Next
+            End While
+        End SyncLock
+        Return Nothing
+    End Function
+
+    Private Shared Sub StorePrefix(key As ULong, pixels As Byte())
+        SyncLock _prefixLock
+            If _prefix.Any(Function(e) e.Key = key) Then Return
+            _prefix.AddFirst(New PrefixEntry With {.Key = key, .Pixels = pixels})
+            While _prefix.Count > MaxPrefix
+                _prefix.RemoveLast()
+            End While
+        End SyncLock
+    End Sub
+
     Public Shared Sub Draw(bmp As Bitmap, recipe As EditRecipe)
         ClipRender.ApplyPhotoClip(bmp, recipe) ' 照片放進形狀：形狀外面變透明
         Dim layers = Order(recipe).Where(Function(r) r.Visible).ToList()
@@ -216,8 +271,54 @@ Public NotInheritable Class LayerStack
         If layers.Any(Function(r) r.IsOverlay AndAlso r.Overlay.Kind = OverlayKind.Text AndAlso r.Overlay.FillMode = TextFill.Photo) Then
             photo = DirectCast(bmp.Clone(), Bitmap) ' 還沒蓋上任何圖層的照片（「照片本身」填字用）
         End If
+        ' 能不能快取下面幾層：沒有 PowerClip、沒有「照片本身」填字、沒有會看上面圖層的油漆桶，也不是在記錄顏料覆蓋（表面紋理「紙張」）
+        Dim n = layers.Count
+        Dim cacheable = n >= 2 AndAlso photo Is Nothing AndAlso Not LayerBlend.CoverageActive(bmp) AndAlso lastOfFrame.Count = 0 AndAlso clipOfLayer.All(Function(c) Not c.HasValue) AndAlso
+                        Not layers.Any(Function(r) Not r.IsOverlay AndAlso DrawingRenderer.ReadsAbove(r.Drawing))
+        Dim prefixKeys As ULong() = Nothing
+        Dim firstK = 0, saveAt = -1
+        If cacheable Then
+            Dim itemKeys = layers.Select(Function(r) If(r.IsOverlay, "O|" & System.Text.Json.JsonSerializer.Serialize(r.Overlay), DrawingRenderer.StackKey(r.Drawing))).ToArray()
+            Dim basePx = Perspective.ReadPixels(bmp)
+            ' 底圖的雜湊：兩個 HashCode 拼成 64 位元（SHA1 整張要 10 ms，這樣 4 ms）
+            Dim h1 As New HashCode(), h2 As New HashCode()
+            h1.Add(1) : h1.AddBytes(basePx)
+            h2.Add(2) : h2.AddBytes(basePx)
+            Dim baseKey = (CULng(CUInt(h1.ToHashCode() And &H7FFFFFFF)) << 32) Or CULng(CUInt(h2.ToHashCode() And &H7FFFFFFF))
+            Dim sizeKey = $"{bmp.Width}x{bmp.Height}"
+            ReDim prefixKeys(n - 1)
+            Dim prev = NextKey(baseKey, sizeKey & "|" & If(recipe.Paper Is Nothing, "", System.Text.Json.JsonSerializer.Serialize(recipe.Paper)))
+            For k = 0 To n - 1
+                prev = NextKey(prev, itemKeys(k))
+                prefixKeys(k) = prev
+            Next
+            ' 從快取裡最長的「底圖＋前 k 層」接著畫
+            For k = n - 1 To 0 Step -1
+                Dim px = FindPrefix(prefixKeys(k))
+                If px IsNot Nothing Then
+                    Perspective.WritePixels(bmp, px)
+                    firstK = k + 1
+                    Exit For
+                End If
+            Next
+            ' 這次留哪一個：第一個和上次不一樣的圖層的下面（之後多半繼續畫在那一層）；沒有上次的紀錄時留最上層的下面；全都一樣時留整張
+            Dim last As String() = Nothing
+            SyncLock _prefixLock
+                _lastKeys.TryGetValue(sizeKey, last)
+                _lastKeys(sizeKey) = itemKeys
+            End SyncLock
+            If last Is Nothing Then
+                saveAt = n - 2
+            Else
+                Dim d = 0
+                While d < n AndAlso d < last.Length AndAlso last(d) = itemKeys(d)
+                    d += 1
+                End While
+                saveAt = If(d >= n AndAlso last.Length = n, n - 1, d - 1)
+            End If
+        End If
         Try
-            For k = 0 To layers.Count - 1
+            For k = firstK To layers.Count - 1
                 Dim r = layers(k)
                 If r.IsOverlay Then
                     Creative.DrawOverlayOnto(bmp, r.Overlay, photo)
@@ -248,6 +349,7 @@ Public NotInheritable Class LayerStack
                 For Each kv In lastOfFrame
                     If kv.Value = k AndAlso kv.Key.Visible AndAlso kv.Key.Stroked Then DrawingRenderer.DrawOne(bmp, ClipRender.FramePart(kv.Key, fillOnly:=False))
                 Next
+                If k = saveAt AndAlso prefixKeys IsNot Nothing Then StorePrefix(prefixKeys(k), Perspective.ReadPixels(bmp))
             Next
         Finally
             photo?.Dispose()

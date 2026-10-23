@@ -160,6 +160,7 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>清空快取（測試用）。</summary>
     Public Shared Sub ClearCache()
+        LayerStack.ClearPrefixCache()
         SyncLock _cache
             For Each v In _cache.Values
                 SyncLock v
@@ -272,7 +273,9 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 1. 填色
         If layer.Filled AndAlso closedFigs.Count > 0 Then
             Dim mask = FillMask(closedFigs, region, layer.EvenOdd)
-            If layer.FillPattern IsNot Nothing Then
+            If layer.FillMesh IsNot Nothing Then
+                ShadeMesh(cv, mask, layer, region, h) ' 網格填色（MeshFill.vb）
+            ElseIf layer.FillPattern IsNot Nothing Then
                 ShadePattern(cv, mask, layer, h) ' 圖樣填色（見 LayoutTools.vb）
             ElseIf layer.FillGradient IsNot Nothing Then
                 ShadeGradient(cv, mask, layer, region, h) ' 向量漸層填色
@@ -318,7 +321,7 @@ Partial Public NotInheritable Class DrawingRenderer
 
         ' 3. 圖說文字（尺寸線的標籤也是）
         If DrawGeometry.HasText(layer.Shape) AndAlso Not String.IsNullOrWhiteSpace(layer.Text) Then
-            If DrawGeometry.IsPathText(layer) Then DrawPathText(cv, layer, region, scale) Else DrawText(cv, layer, region, scale)
+            If DrawGeometry.IsPathText(layer) OrElse (layer.Paragraph AndAlso layer.Shape = DrawShape.Text) Then DrawPathText(cv, layer, region, scale) Else DrawText(cv, layer, region, scale)
         End If
         If layer.Shape = DrawShape.Dimension Then
             Dim lbl = DrawGeometry.DimensionLabelLayer(layer)
@@ -425,6 +428,17 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Shared Sub ShadeGradient(cv As Canvas, mask As Single(), layer As DrawLayer, region As Rectangle, h As Integer)
         Dim g = AbsoluteGradient(layer)
         Dim px = GradientRegion(g, region, h, Color.FromArgb(layer.FillColorArgb), Color.FromArgb(layer.FillColor2Argb))
+        For i = 0 To mask.Length - 1
+            Dim m = mask(i)
+            If m <= 0 Then Continue For
+            Dim a = px(i * 4 + 3) / 255.0F * m
+            If a <= 0 Then Continue For
+            cv.Over(i, px(i * 4 + 2) / 255.0F, px(i * 4 + 1) / 255.0F, px(i * 4) / 255.0F, a)
+        Next
+    End Sub
+
+    Private Shared Sub ShadeMesh(cv As Canvas, mask As Single(), layer As DrawLayer, region As Rectangle, h As Integer)
+        Dim px = MeshRegion(layer, region, h)
         For i = 0 To mask.Length - 1
             Dim m = mask(i)
             If m <= 0 Then Continue For
@@ -859,6 +873,8 @@ Partial Public NotInheritable Class DrawingRenderer
         Dim emboss = brush = BrushKind.OilPaint OrElse brush = BrushKind.Acrylic OrElse
                      (brush = BrushKind.FX AndAlso layer.Fx = FxKind.Blood)
         If isFill Then emboss = False
+        ' 厚塗的起伏跟著筆的粗細：細筆的顏料薄，邊緣只有一點點起伏；不然一堆細筆疊起來每條邊都像刻出來的亮線、暗線
+        Dim embossK = If(isFill, 1.0F, Math.Max(0.25F, Math.Min(1.0F, widthPx / 32.0F)))
         ' 紙張：這支筆吃紙紋的程度（沒有紙張時 0）
         Dim grain = If(isFill, 0.0F, PaperGrainAmount(layer))
         Dim ownGrain = brush = BrushKind.Pencil OrElse brush = BrushKind.Charcoal OrElse brush = BrushKind.Chalk OrElse brush = BrushKind.Crayon OrElse brush = BrushKind.Watercolor
@@ -917,8 +933,8 @@ Partial Public NotInheritable Class DrawingRenderer
                     ' 以覆蓋率的斜率當作厚度起伏，光從左上來。
                     Dim e = (Sample(mask, cv, x - 1, y - 1) - Sample(mask, cv, x + 1, y + 1))
                     Select Case brush
-                        Case BrushKind.OilPaint : lum += e * 0.55F
-                        Case BrushKind.Acrylic : lum += e * 0.3F
+                        Case BrushKind.OilPaint : lum += e * 0.55F * embossK
+                        Case BrushKind.Acrylic : lum += e * 0.3F * embossK
                         Case BrushKind.FX
                             lum += e * 1.4F
                             If e > 0.18F Then lum += (e - 0.18F) * 2.2F
@@ -1005,8 +1021,10 @@ Partial Public NotInheritable Class DrawingRenderer
     ''' <summary>圖說文字：在文字範圍內置中、自動換行，放不下時縮小字級（最小 40%）。</summary>
     ''' <summary>路徑文字：每個字沿路徑排好（見 DrawGeometry.PathTextLayout），填文字色。</summary>
     Private Shared Sub DrawPathText(cv As Canvas, layer As DrawLayer, region As Rectangle, scale As Single)
-        Dim size As Single, family As FontFamily = Nothing
-        Dim places = DrawGeometry.PathTextLayout(layer, scale, size, family)
+        Dim size As Single, family As FontFamily = Nothing, overflow As Boolean
+        Dim places = If(layer.Paragraph AndAlso Not DrawGeometry.IsPathText(layer),
+                        DrawGeometry.ParagraphLayout(layer, scale, size, family, overflow), ' 段落文字框（ParagraphText.vb）
+                        DrawGeometry.PathTextLayout(layer, scale, size, family))
         If places.Count = 0 Then Return
         Dim style = layer.TextFontStyle
         Using bmp As New Bitmap(cv.W, cv.H, PixelFormat.Format32bppArgb)

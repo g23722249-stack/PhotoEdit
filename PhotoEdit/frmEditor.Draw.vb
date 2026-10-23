@@ -99,6 +99,8 @@ Partial Friend Class frmEditor
         eraserGroup.Controls.AddRange({_drawEraser, _eraseMode})
         _drawBar.Controls.Add(BuildFxBar()) ' 陰影、透明度、封套、調和（見 frmEditor.DrawBatch3.vb）
         _drawBar.Controls.Add(BuildPathTextBar()) ' 文字沿路徑（見 frmEditor.DrawBatch2.vb）
+        _drawBar.Controls.Add(BuildParagraphBar()) ' 段落文字框（見 frmEditor.DrawParagraph.vb）
+        _drawBar.Controls.Add(BuildMeshBar()) ' 網格填色的列、欄（見 frmEditor.DrawFillTools.vb）
         _drawBar.Controls.Add(BuildShapeBar()) ' 對齊、均分、焊接修剪、形狀建立（見 frmEditor.DrawShapes.vb）
         _drawBar.Controls.Add(BuildNodeBar()) ' 節點工具的尖角、平滑…（見 frmEditor.DrawPath.vb）
         _drawBar.Controls.Add(BuildGroupBar()) ' 群組按鈕、所在群組（在橡皮擦右邊；見 frmEditor.DrawGroups.vb）
@@ -345,6 +347,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub SetDrawBrush(b As BrushKind)
+        RememberBrush(b) ' 快速面板「最近」那排（見 frmEditor.QuickTools.vb）
         ' 混色、塗抹、仿製要讀取畫布，只能直接繪製在點陣圖層上。
         If DrawLayer.SamplesCanvas(b) AndAlso _drawStrip.SelectedTool <> CInt(DrawShape.Raster) AndAlso Not IsFillTool() Then
             _drawStrip.SelectedTool = CInt(DrawShape.Raster)
@@ -412,6 +415,8 @@ Partial Friend Class frmEditor
             UpdateShapeBar()
             UpdatePropBar()
             UpdatePathTextBar()
+            UpdateParagraphBar()
+            UpdateMeshBar()
             UpdateFxBar()
             FitDrawBar()
             Dim st = If(StyleTarget(_recipe), _drawStyle)
@@ -1242,6 +1247,7 @@ Partial Friend Class frmEditor
             FinishPolygon()
             Return
         End If
+        If FillToolDoubleClick(e) Then Return ' 漸層線上按兩下加色標
         If PathDoubleClick(e) Then Return
         ' 雙擊群組裡的物件：進入群組，選到裡面那一層的物件（再雙擊可以再往裡面）
         If PickingNow() AndAlso Not ModifierKeys.HasFlag(Keys.Control) Then
@@ -1322,7 +1328,14 @@ Partial Friend Class frmEditor
                     ' 文字：預設沒有框（勾外框、填色就是文字方塊）；點一下時給一個寬一點的框
                     d.Filled = False
                     d.Stroked = False
-                    If dragPx < 6 Then d.W = 0.42 : d.H = 0.12
+                    If dragPx < 6 Then
+                        d.W = 0.42 : d.H = 0.12
+                    Else
+                        ' 拖一個框＝段落文字（同 CorelDRAW）：字級固定、自動換行，從左上開始排
+                        d.Paragraph = True
+                        d.TextAlign = TextAlignKind.Left
+                        If d.TextSize > 0.05 Then d.TextSize = 0.035
+                    End If
                 End If
         End Select
         Return d
@@ -1405,6 +1418,7 @@ Partial Friend Class frmEditor
         If Batch5Key(keyData) Then Return True ' 修飾筆刷的 [ ]
         If Batch6Key(keyData) Then Return True ' 尺規、格線 ' Ctrl+J 再製、屬性吸管的 Esc
         If CombineKey(keyData) Then Return True ' Ctrl+L 結合、Ctrl+K 打散（見 frmEditor.DrawCombine.vb）
+        If FillToolKey(keyData) Then Return True ' Del 刪色標
         Select Case keyData
             Case Keys.E, Keys.B
                 ' 像 Photoshop：B 畫筆、E 橡皮擦（都是直接繪製）。
@@ -1613,7 +1627,9 @@ Partial Friend Class frmEditor
         PaintGuides(g) ' 移動時的智慧參考線
         PaintTools(g) ' 刀線、縮放框
         PaintFx(g) ' 陰影方向、透明度起訖、封套
+        PaintFillTools(g) ' 互動式填色的控制點、網格
         PaintRulers(g) ' 尺規（最上面）
+        PaintParagraphOverflow(g) ' 段落文字放不下的 ▼
         PaintMirrorBadge(g) ' 左右翻轉檢視中
     End Sub
 

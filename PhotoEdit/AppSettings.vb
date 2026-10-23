@@ -25,6 +25,8 @@ Friend Class AppSettings
     Public Property TraceOpacity As Integer = 35
     ''' <summary>參考圖「畫筆取色」：每一筆落筆時自動取參考圖同一位置的顏色。</summary>
     Public Property ReferenceColorPick As Boolean
+    ''' <summary>參考圖吸色的取樣範圍（像素邊長 3／7／15）：範圍內去掉最暗、最亮的一部分再平均，吸不到裂紋、反光、雜點。</summary>
+    Public Property ReferencePickSize As Integer = 7
     ''' <summary>參考圖「墨色」：吸到的顏色換成同樣深淺的墨色。</summary>
     Public Property ReferenceInkTone As Boolean
     ''' <summary>浮動選色視窗的位置（螢幕座標）；沒有記錄時放在側邊面板左邊。</summary>
@@ -53,6 +55,8 @@ Friend Class AppSettings
     Public Property GridSpacing As Integer = 50
     ''' <summary>快速面板的常用筆刷（BrushKind，4 個；右鍵可換）。</summary>
     Public Property QuickBrushes As List(Of Integer)
+    ''' <summary>最近用過的筆刷（BrushKind，最近的在前，最多 12 個）：快速面板「最近」那排用。</summary>
+    Public Property RecentBrushes As List(Of Integer)
     ''' <summary>輪盤第 2～8 格的工具（QuickTool 的值；第 1 格固定是筆刷）。Nothing＝預設。</summary>
     Public Property RadialTools As List(Of Integer)
     ''' <summary>我的妝容（美顏手動調整「存成我的妝容」）：名稱＋整組設定，出現在一鍵美顏小圖的最後面。</summary>

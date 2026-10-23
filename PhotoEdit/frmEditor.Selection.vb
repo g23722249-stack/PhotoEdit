@@ -505,7 +505,7 @@ Partial Friend Class frmEditor
     ''' <summary>全尺寸輸出（不含邊框）的大小。</summary>
     Private Function FullOutputSize() As Size
         Dim s = PhotoPixelSize()
-        Dim scale = If(_previewBase Is Nothing, 1.0, _photo.Image.Width / CDbl(_previewBase.Width))
+        Dim scale = If(_previewBase Is Nothing, 1.0, _photo.Width / CDbl(_previewBase.Width))
         Return New Size(Math.Max(1, CInt(Math.Round(s.Width * scale))), Math.Max(1, CInt(Math.Round(s.Height * scale))))
     End Function
 
@@ -787,7 +787,7 @@ Partial Friend Class frmEditor
     ''' <summary>換算到原圖座標（去背在原圖上算）。</summary>
     Private Function SourceRegion(spec As SelectionSpec) As SelectionSpec
         Dim out = PhotoPixelSize()
-        Return SelectionMask.ToSource(spec, _recipe, _photo.Image.Width, _photo.Image.Height, out.Width, out.Height, MaskStore.MaxSide)
+        Return SelectionMask.ToSource(spec, _recipe, _photo.Width, _photo.Height, out.Width, out.Height, MaskStore.MaxSide)
     End Function
 
     Private Sub AddCutoutRegion(region As SelectionSpec)

@@ -87,7 +87,7 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>表面紋理選「只有繪圖」：圖層的影像先壓印紙紋再合成（region 為圖層在照片上的位置）。</summary>
     Private Shared Function SurfaceOnDrawing(src As Bitmap, region As Rectangle, w As Integer, h As Integer) As Bitmap
-        If _paper Is Nothing OrElse _paper.SurfaceStrength <= 0 OrElse _paper.SurfaceTarget <> SurfaceTarget.Drawings Then Return Nothing
+        If _paper Is Nothing OrElse _paper.SurfaceStrength <= 0 OrElse _paper.SurfaceTarget <> SurfaceTarget.Drawings Then Return Nothing ' 「紙張」在合成後才壓（ImagePipeline）
         Dim map = Papers.HeightMap(_paper, w, h)
         Dim shaded = src.Clone(New Rectangle(0, 0, src.Width, src.Height), PixelFormat.Format32bppArgb)
         Papers.ApplySurface(shaded, map, w, h, region.X, region.Y, _paper.SurfaceStrength, _paper.LightAngle)

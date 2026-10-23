@@ -15,6 +15,9 @@ Friend Class frmReference
     Private ReadOnly _trace As New CheckBox With {.Text = Lang.T("描圖"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
     Private ReadOnly _inkTone As New CheckBox With {.Text = Lang.T("墨色"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
     Private ReadOnly _pick As New CheckBox With {.Text = Lang.T("畫筆取色"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter, .UseVisualStyleBackColor = True}
+    Private ReadOnly _pickSize As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
+    Private Shared ReadOnly PickSizes As Integer() = {3, 7, 15}
+    Private ReadOnly _tips As New ToolTip()
     Private ReadOnly _opacity As New Aqua.Slider With {.Minimum = 10, .Maximum = 80, .ShowTicks = False}
     Private ReadOnly _opacityLabel As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleRight, .BackColor = Color.Transparent}
     Private ReadOnly _status As New Label With {.AutoSize = False, .TextAlign = ContentAlignment.MiddleLeft, .BackColor = Color.Transparent,
@@ -38,7 +41,7 @@ Friend Class frmReference
         StartPosition = FormStartPosition.Manual
         ShowInTaskbar = False
         ClientSize = New Size(560, 420)
-        MinimumSize = New Size(480, 260)
+        MinimumSize = New Size(560, 260)
 
         AddHandler _open.Click, Sub() OpenWithDialog()
         AddHandler _trace.CheckedChanged, Sub()
@@ -66,6 +69,18 @@ Friend Class frmReference
                                              _status.Text = If(_pick.Checked, Lang.T("畫筆取色：每一筆自動用參考圖同一位置的顏色。"),
                                                                Lang.T("左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。"))
                                          End Sub
+        ' 吸色的取樣範圍：老畫的龜裂紋、照片的雜點只有幾個像素寬，範圍大一點、去掉最暗最亮的再平均，就吸不到它們
+        _pickSize.Items.AddRange(PickSizes.Select(Function(v) CObj($"{v}×{v}")).ToArray())
+        Dim sizeIndex = Array.IndexOf(PickSizes, _settings.ReferencePickSize)
+        _pickSize.SelectedIndex = If(sizeIndex < 0, 1, sizeIndex)
+        _view.SampleSize = PickSizes(_pickSize.SelectedIndex)
+        _tips.SetToolTip(_pickSize, Lang.T("吸色範圍（像素）：範圍內去掉最暗、最亮的一部分再平均，老畫的裂紋、照片的雜點吸不到。要吸很細的線或小點時選 3×3。"))
+        AddHandler _pickSize.SelectedIndexChanged, Sub()
+                                                       _view.SampleSize = PickSizes(_pickSize.SelectedIndex)
+                                                       _settings.ReferencePickSize = _view.SampleSize
+                                                       _settings.Save()
+                                                       _status.Text = Lang.F("吸色範圍 {0}×{0}：去掉最暗、最亮的再平均，吸不到裂紋與雜點（3×3 吸細節）。", _view.SampleSize)
+                                                   End Sub
         _opacity.Value = Math.Max(10, Math.Min(80, _settings.TraceOpacity))
         _opacityLabel.Text = _opacity.Value & "%"
         AddHandler _opacity.ValueChanged, Sub()
@@ -90,7 +105,7 @@ Friend Class frmReference
                                        Dim files = TryCast(e.Data.GetData(DataFormats.FileDrop), String())
                                        If files IsNot Nothing AndAlso files.Length > 0 Then LoadImage(files(0))
                                    End Sub
-        Controls.AddRange({_open, _trace, _pick, _inkTone, _opacity, _opacityLabel, _view, _status})
+        Controls.AddRange({_open, _trace, _pick, _pickSize, _inkTone, _opacity, _opacityLabel, _view, _status})
         _status.Text = Lang.T("左鍵吸線條色、右鍵吸填色；滾輪縮放、拖曳移動、按兩下看全圖。")
         LayoutBody()
         ThemeManager.Attach(Me)
@@ -123,7 +138,7 @@ Friend Class frmReference
         End Get
     End Property
 
-    ''' <summary>參考圖上 (nx, ny)（0..1）附近 3×3 的平均色；超出範圍時 Nothing。</summary>
+    ''' <summary>參考圖上 (nx, ny)（0..1）附近的顏色（取樣範圍見「取樣」下拉，去掉最暗、最亮的再平均）；超出範圍時 Nothing。</summary>
     Public Function ColorAt(nx As Single, ny As Single) As Color?
         Dim img = _view.Image
         If img Is Nothing OrElse nx < 0 OrElse ny < 0 OrElse nx >= 1 OrElse ny >= 1 Then Return Nothing
@@ -155,8 +170,9 @@ Friend Class frmReference
         _open.SetBounds(10, top, 104, 28)
         _trace.SetBounds(120, top, 64, 28)
         _pick.SetBounds(190, top, 84, 28)
-        _inkTone.SetBounds(280, top, 56, 28)
-        _opacity.SetBounds(342, top + 2, Math.Max(60, w - 342 - 58), 24)
+        _pickSize.SetBounds(278, top + 3, 72, 24)
+        _inkTone.SetBounds(356, top, 56, 28)
+        _opacity.SetBounds(418, top + 2, Math.Max(40, w - 418 - 58), 24)
         _opacityLabel.SetBounds(w - 56, top, 46, 28)
         _view.SetBounds(10, top + 34, w - 20, Math.Max(40, h - top - 34 - 30))
         _status.SetBounds(10, h - 28, w - 20, 24)
@@ -306,7 +322,7 @@ Friend Class frmReference
                 ' 右鍵：吸成填色（同工具列色盤：左鍵線條、右鍵填色）
                 Dim ir = ImageRect()
                 Dim px = CInt(Math.Floor((e.X - ir.X) / ir.Width * _image.Width)), py = CInt(Math.Floor((e.Y - ir.Y) / ir.Height * _image.Height))
-                If px >= 0 AndAlso py >= 0 AndAlso px < _image.Width AndAlso py < _image.Height Then RaiseEvent PickedFill(AverageAt(px, py))
+                If px >= 0 AndAlso py >= 0 AndAlso px < _image.Width AndAlso py < _image.Height Then RaiseEvent PickedFill(SampleAt(px, py))
                 Return
             End If
             If _image Is Nothing OrElse e.Button <> MouseButtons.Left Then Return
@@ -338,21 +354,38 @@ Friend Class frmReference
             Dim b = ImageRect()
             Dim x = CInt(Math.Floor((e.X - b.X) / b.Width * _image.Width)), y = CInt(Math.Floor((e.Y - b.Y) / b.Height * _image.Height))
             If x < 0 OrElse y < 0 OrElse x >= _image.Width OrElse y >= _image.Height Then Return
-            RaiseEvent Picked(AverageAt(x, y))
+            RaiseEvent Picked(SampleAt(x, y))
         End Sub
 
         ''' <summary>3×3 平均：避開單一雜點（油畫的筆觸、JPG 的雜訊）。</summary>
+        ''' <summary>吸色的取樣範圍（邊長，像素）。</summary>
+        Public Property SampleSize As Integer = 7
+
         Public Function SampleAt(x As Integer, y As Integer) As Color
-            Return AverageAt(x, y)
+            Return TrimmedMean(_image, x, y, SampleSize)
         End Function
 
-        Private Function AverageAt(x As Integer, y As Integer) As Color
-            Dim r = 0, g = 0, b = 0, n = 0
-            For yy = Math.Max(0, y - 1) To Math.Min(_image.Height - 1, y + 1)
-                For xx = Math.Max(0, x - 1) To Math.Min(_image.Width - 1, x + 1)
-                    Dim c = _image.GetPixel(xx, yy)
-                    r += c.R : g += c.G : b += c.B : n += 1
+        ''' <summary>
+        ''' (x, y) 附近 size × size 的顏色：依亮度排序，去掉最暗的 30%、最亮的 10% 再平均（3×3 照舊直接平均，吸很小的細節用）。
+        ''' 細的暗線（老畫的龜裂紋、髮絲）、反光、雜點落在範圍裡也不會把顏色拉走。
+        ''' </summary>
+        Public Shared Function TrimmedMean(img As Bitmap, x As Integer, y As Integer, size As Integer) As Color
+            Dim h = Math.Max(0, size \ 2)
+            Dim px As New List(Of Color)()
+            For yy = Math.Max(0, y - h) To Math.Min(img.Height - 1, y + h)
+                For xx = Math.Max(0, x - h) To Math.Min(img.Width - 1, x + h)
+                    px.Add(img.GetPixel(xx, yy))
                 Next
+            Next
+            If px.Count = 0 Then Return Color.Black
+            Dim skipDark = 0, skipBright = 0
+            If size > 3 AndAlso px.Count >= 9 Then
+                px.Sort(Function(p, q) (0.3 * p.R + 0.59 * p.G + 0.11 * p.B).CompareTo(0.3 * q.R + 0.59 * q.G + 0.11 * q.B))
+                skipDark = CInt(Math.Floor(px.Count * 0.3)) : skipBright = CInt(Math.Floor(px.Count * 0.1))
+            End If
+            Dim r = 0, g = 0, b = 0, n = 0
+            For i = skipDark To px.Count - 1 - skipBright
+                r += px(i).R : g += px(i).G : b += px(i).B : n += 1
             Next
             Return Color.FromArgb(r \ n, g \ n, b \ n)
         End Function

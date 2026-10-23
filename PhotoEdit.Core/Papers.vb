@@ -31,6 +31,11 @@ Public Enum SurfaceTarget
     Photo = 0
     ''' <summary>只有繪圖圖層（照片本身不變）。</summary>
     Drawings = 1
+    ''' <summary>
+    ''' 紙張本身（照片／新增影像的底）：畫上去的顏料越不透明，紋理越淡（厚塗蓋住畫布、薄塗透出紋理），
+    ''' 顏料上只留 SurfaceOnPaint % 的紋理。紋理在全部圖層合成後才壓，塗抹、模糊筆讀到的畫布沒有紋理，不會把紋理推進顏料裡。
+    ''' </summary>
+    Base = 2
 End Enum
 
 ''' <summary>
@@ -54,6 +59,8 @@ Public Class PaperSettings
     ''' <summary>表面紋理強度 0..100；0 為不壓印。</summary>
     Public Property SurfaceStrength As Integer
     Public Property SurfaceTarget As SurfaceTarget
+    ''' <summary>表面紋理作用在「紙張」時，完全不透明的顏料上留下的紋理（%）：顏料會順著畫布的起伏，一點點紋理讓畫看起來真的畫在上面。</summary>
+    Public Property SurfaceOnPaint As Integer = 20
     ''' <summary>光源方向（度，0 = 從右、90 = 從上；預設 135 = 左上）。</summary>
     Public Property LightAngle As Integer = 135
 
@@ -347,7 +354,7 @@ Public NotInheritable Class Papers
     ''' bmp 的 (0,0) 對應高度圖的 (ox, oy)；高度圖大小 mapW × mapH。只改顏色，透明度不變。
     ''' </summary>
     Public Shared Sub ApplySurface(bmp As Bitmap, map As Single(), mapW As Integer, mapH As Integer, ox As Integer, oy As Integer,
-                                   strength As Integer, lightAngle As Integer)
+                                   strength As Integer, lightAngle As Integer, Optional coverage As Single() = Nothing, Optional onPaint As Integer = 100)
         If strength <= 0 Then Return
         Dim px = Perspective.ReadPixels(bmp)
         Dim w = bmp.Width, h = bmp.Height
@@ -358,6 +365,8 @@ Public NotInheritable Class Papers
                                                    Dim i = (y * w + x) * 4
                                                    If px(i + 3) = 0 Then Continue For
                                                    Dim s = shade(y * w + x)
+                                                   ' 顏料蓋住的地方紋理變淡（coverage：顏料的不透明度 0..1）
+                                                   If coverage IsNot Nothing Then s = 1 + (s - 1) * (1 - coverage(y * w + x) * (1 - onPaint / 100.0F))
                                                    For c = 0 To 2
                                                        Dim v = px(i + c) * s
                                                        px(i + c) = CByte(Math.Max(0, Math.Min(255, Math.Round(v))))

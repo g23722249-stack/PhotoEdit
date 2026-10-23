@@ -153,10 +153,20 @@ Public NotInheritable Class GradientFill
     Public Property Corner2 As Integer = Color.FromArgb(250, 205, 60).ToArgb()
     Public Property Corner3 As Integer = Color.FromArgb(60, 120, 230).ToArgb()
     Public Property Corner4 As Integer = Color.FromArgb(70, 190, 110).ToArgb()
+    ''' <summary>中間的色標（互動式填色在漸層線上加的顏色）；位置 0..1，起點、終點的顏色仍是填色與第二色。Nothing／空＝兩色漸層。</summary>
+    Public Property Stops As List(Of GradientStop)
 
     Public Function Clone() As GradientFill
-        Return DirectCast(MemberwiseClone(), GradientFill)
+        Dim c = DirectCast(MemberwiseClone(), GradientFill)
+        c.Stops = Stops?.Select(Function(s) New GradientStop With {.Position = s.Position, .Argb = s.Argb}).ToList()
+        Return c
     End Function
+End Class
+
+''' <summary>漸層中間的一個色標。</summary>
+Public NotInheritable Class GradientStop
+    Public Property Position As Double
+    Public Property Argb As Integer
 End Class
 
 ''' <summary>油漆桶判斷「相近顏色」時看的畫面。</summary>
@@ -372,6 +382,14 @@ Public Class DrawLayer
     Public Property TextSize As Double = 0.045
     Public Property TextBold As Boolean = True
     Public Property TextItalic As Boolean
+    ''' <summary>段落文字框：字級固定、自動換行、可以分欄（False＝圖說式，置中且字太多時縮小）。</summary>
+    Public Property Paragraph As Boolean
+    ''' <summary>段落文字的對齊。</summary>
+    Public Property TextAlign As TextAlignKind
+    ''' <summary>段落文字的行距（%，100＝字型的標準行距）。</summary>
+    Public Property LineSpacing As Integer = 100
+    ''' <summary>段落文字的欄數（1..6）。</summary>
+    Public Property TextColumns As Integer = 1
 
     ''' <summary>字型樣式（粗體、斜體）。</summary>
     <System.Text.Json.Serialization.JsonIgnore>
@@ -389,6 +407,8 @@ Public Class DrawLayer
     Public Property FillColorArgb As Integer = Color.White.ToArgb()
     ''' <summary>向量圖形的漸層填色：Nothing＝單色。起點、終點是圖形外接矩形裡的比例（0..1），圖形移動、縮放時跟著走；顏色 填色 → 第二色。</summary>
     Public Property FillGradient As GradientFill
+    ''' <summary>網格填色（MeshFill.vb）：有的時候優先於單色、漸層、圖樣。</summary>
+    Public Property FillMesh As MeshFill
     ''' <summary>漸層填色的第二個顏色。</summary>
     Public Property FillColor2Argb As Integer = Color.FromArgb(55, 138, 221).ToArgb()
     ''' <summary>路徑文字：文字沿著 Contours 排（Shape = Text 且有 Contours 時）；位置往後移路徑長度的百分比（−50..50）。</summary>
@@ -425,8 +445,20 @@ Public Class DrawLayer
     Public Property ShadowColorArgb As Integer = Color.Black.ToArgb()
     ''' <summary>透明度漸層（互動式透明度工具）：起點不透明、終點透明；座標同 FillGradient（圖形方框的比例）。Nothing＝沒有。</summary>
     Public Property FadeGradient As GradientFill
-    ''' <summary>紋理與特效的亂數種子：同一個圖層每次畫出來都一樣。</summary>
-    Public Property Seed As Integer = 1
+    ''' <summary>
+    ''' 紋理與特效的亂數種子：同一個圖層每次畫出來都一樣。存入時換算到 0..999999（程式產生的都在 10 萬以內，不受影響）：
+    ''' 筆刷用種子乘加算亂數，編輯檔被改成很大的數字時會溢位、整張畫不出來。
+    ''' </summary>
+    Public Property Seed As Integer
+        Get
+            Return _seed
+        End Get
+        Set(value As Integer)
+            _seed = CInt(((CLng(value) Mod MaxSeed) + MaxSeed) Mod MaxSeed)
+        End Set
+    End Property
+    Private _seed As Integer = 1
+    Private Const MaxSeed As Long = 1_000_000
 
     ' ---- 進階筆刷參數（0 = 不使用；見 BrushEngine 的 Stamp、Bristles） ----
     ''' <summary>筆印間距（筆寬的 %）；0 = 筆刷預設。</summary>
@@ -531,6 +563,7 @@ Public Class DrawLayer
         c.Bucket = Bucket?.Clone()
         c.Gradient = Gradient?.Clone()
         c.FillGradient = FillGradient?.Clone()
+        c.FillMesh = FillMesh?.Clone()
         c.FadeGradient = FadeGradient?.Clone()
         Return c
     End Function

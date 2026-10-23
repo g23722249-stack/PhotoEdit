@@ -18,6 +18,9 @@ Public Class PhotoFile
     Public ReadOnly Property Path As String
     ''' <summary>已轉正的 32bppArgb 原圖。</summary>
     Public ReadOnly Property Image As Bitmap
+    ''' <summary>原圖的寬、高（開檔時記下；背景算圖正在用 Image 時，讀 Image.Width 會丟「物件正在其他地方使用」）。</summary>
+    Public ReadOnly Property Width As Integer
+    Public ReadOnly Property Height As Integer
     ''' <summary>原檔記錄的解析度（像素／英吋）；匯出時沿用，列印尺寸才會一致。</summary>
     Public ReadOnly Property Resolution As Single
     ''' <summary>原檔的位元組（原封不動，含 EXIF），存專案檔時直接放進去。</summary>
@@ -46,6 +49,8 @@ Public Class PhotoFile
     Private Sub New(path As String, image As Bitmap, properties As PropertyItem(), resolution As Single, originalBytes As Byte())
         Me.Path = path
         Me.Image = image
+        Me.Width = image.Width
+        Me.Height = image.Height
         Me.OriginalBytes = originalBytes
         _properties = properties
         Me.Resolution = If(resolution > 0, resolution, 96.0F)

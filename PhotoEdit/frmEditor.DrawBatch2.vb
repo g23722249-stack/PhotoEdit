@@ -14,7 +14,7 @@ Partial Friend Class frmEditor
     Private Const TargetFill2 As Integer = 3
     ''' <summary>拖曳中的漸層控制點：1＝起點、2＝終點。</summary>
     Private _gradDrag As Integer
-    Private Shared ReadOnly FillModeNames As String() = {Lang.T("單色"), Lang.T("線性漸層"), Lang.T("放射漸層"), Lang.T("圖樣")}
+    Private Shared ReadOnly FillModeNames As String() = {Lang.T("單色"), Lang.T("線性漸層"), Lang.T("放射漸層"), Lang.T("圖樣"), Lang.T("網格")}
     ' ---- 路徑文字 ----
     Private ReadOnly _pathTextBar As New FlowLayoutPanel With {.Dock = DockStyle.Left, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink,
                                                                .WrapContents = False, .BackColor = Color.Transparent, .Padding = New Padding(6, 0, 0, 0)}
@@ -81,7 +81,9 @@ Partial Friend Class frmEditor
         AddHandler _fillMode.SelectedIndexChanged, Sub()
                                                        If _syncing OrElse _fillMode.SelectedIndex < 0 Then Return
                                                        Dim mode = _fillMode.SelectedIndex
+                                                       If mode = 4 Then UseMeshFill() : Return ' 網格（見 frmEditor.DrawFillTools.vb）
                                                        SetDrawProp(Sub(d)
+                                                                       d.FillMesh = Nothing
                                                                        If mode = 0 Then
                                                                            d.FillGradient = Nothing : d.FillPattern = Nothing
                                                                        ElseIf mode = 3 Then
@@ -111,7 +113,7 @@ Partial Friend Class frmEditor
     End Sub
 
     Private Sub SyncFillStyle(st As DrawLayer)
-        Dim mode = If(st.FillPattern IsNot Nothing, 3, If(st.FillGradient Is Nothing, 0, If(st.FillGradient.Kind = GradientKind.Radial, 2, 1)))
+        Dim mode = If(st.FillMesh IsNot Nothing, 4, If(st.FillPattern IsNot Nothing, 3, If(st.FillGradient Is Nothing, 0, If(st.FillGradient.Kind = GradientKind.Radial, 2, 1))))
         _fillMode.SelectedIndex = mode
         SetSwatch(_drawFill2Color, st.FillColor2Argb)
         _drawFill2Color.Enabled = mode <> 0

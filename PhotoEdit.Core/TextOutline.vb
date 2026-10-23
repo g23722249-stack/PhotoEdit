@@ -23,7 +23,7 @@ Partial Public NotInheritable Class DrawGeometry
             If bubble IsNot Nothing Then result.Add(bubble)
         End If
         If String.IsNullOrWhiteSpace(layer.Text) Then Return result
-        If IsPathText(layer) Then Return PathTextOutlines(layer)
+        If IsPathText(layer) OrElse (layer.Paragraph AndAlso layer.Shape = DrawShape.Text) Then Return PathTextOutlines(layer) ' 段落文字用 ParagraphLayout
         Dim box = TextBox(layer)
         Dim rect = New RectangleF(box.X * OutlineScale, box.Y * OutlineScale, box.Width * OutlineScale, box.Height * OutlineScale)
         If rect.Width < 2 OrElse rect.Height < 2 Then Return result
@@ -191,7 +191,8 @@ Partial Public NotInheritable Class DrawGeometry
     Private Shared Function PathTextOutlines(layer As DrawLayer) As List(Of DrawLayer)
         Dim result As New List(Of DrawLayer)()
         Dim size As Single, family As FontFamily = Nothing
-        Dim places = PathTextLayout(layer, OutlineScale, size, family)
+        Dim overflow As Boolean
+        Dim places = If(layer.Paragraph AndAlso Not IsPathText(layer), ParagraphLayout(layer, OutlineScale, size, family, overflow), PathTextLayout(layer, OutlineScale, size, family))
         Dim style = layer.TextFontStyle
         For Each gp In places
             Using path = GlyphPath(gp, family, style, size)

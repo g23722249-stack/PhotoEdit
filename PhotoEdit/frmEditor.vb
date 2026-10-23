@@ -167,6 +167,7 @@ Partial Friend Class frmEditor
         fileMenu.AddItem(Item("saveas", Lang.T("另存新檔… (Ctrl+Shift+S)")))
         fileMenu.AddItem(Item("export", Lang.T("匯出… (Ctrl+E)")))
         fileMenu.AddItem(Item("exportsvg", Lang.T("匯出 SVG（向量圖形）…")))
+        fileMenu.AddItem(Item("importsvg", Lang.T("匯入 SVG…")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("collage", Lang.T("拼貼…")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
@@ -299,6 +300,7 @@ Partial Friend Class frmEditor
             Case "saveas" : SaveAsWithDialog()
             Case "export" : ExportWithDialog()
             Case "exportsvg" : ExportSvgWithDialog()
+            Case "importsvg" : ImportSvgWithDialog()
             Case "copy" : CopyMergedImage()
             Case "revert"
                 ExitCropMode(apply:=False)
@@ -595,7 +597,7 @@ Partial Friend Class frmEditor
     ''' <summary>畫布顯示：原圖對照 &gt; 全尺寸預覽（若與目前配方相符）&gt; 一般預覽。</summary>
     Private Sub ShowCurrentImage()
         If _previewBase Is Nothing Then Return
-        Dim previewScale = _photo.Image.Width / CDbl(_previewBase.Width)
+        Dim previewScale = _photo.Width / CDbl(_previewBase.Width)
         If _showingOriginal Then
             _canvas.ImageScale = previewScale
             _canvas.Image = _previewBase
@@ -643,14 +645,14 @@ Partial Friend Class frmEditor
             _statusLabel.Text = Lang.T("載入照片或專案：Ctrl+O 或拖曳檔案到視窗；新增空白影像：Ctrl+N")
             Return
         End If
-        Dim scale = _photo.Image.Width / CDbl(_previewBase.Width)
+        Dim scale = _photo.Width / CDbl(_previewBase.Width)
         Dim outW = CInt(Math.Round(_rendered.Width * scale))
         Dim outH = CInt(Math.Round(_rendered.Height * scale))
         Dim zoom = If(_canvas.IsFit, Lang.F("符合視窗 {0:P0}", _canvas.EffectiveZoom()), $"{_canvas.EffectiveZoom():P0}")
         If _hiResBusy Then zoom &= Lang.T("（產生高解析度中…）")
         Dim state = If(_recipe.IsIdentity, Lang.T("未編輯"), Lang.T("已編輯"))
         Dim faces = If(_faceState = "", "", Lang.T("　｜　") & _faceState)
-        _statusLabel.Text = Lang.F("{0} × {1}  →  輸出 {2} × {3}　｜　顯示 {4}　｜　{5}{6}", _photo.Image.Width, _photo.Image.Height, outW, outH, zoom, state, faces)
+        _statusLabel.Text = Lang.F("{0} × {1}  →  輸出 {2} × {3}　｜　顯示 {4}　｜　{5}{6}", _photo.Width, _photo.Height, outW, outH, zoom, state, faces)
     End Sub
 
     Private Sub SetStatusMessage(message As String)
@@ -792,7 +794,7 @@ Partial Friend Class frmEditor
     Private Sub ScheduleHiRes()
         _hiResTimer.Stop()
         If _photo Is Nothing OrElse _cropMode OrElse _canvas.IsFit Then Return
-        Dim previewResolution = _previewBase.Width / CDbl(_photo.Image.Width)
+        Dim previewResolution = _previewBase.Width / CDbl(_photo.Width)
         If _canvas.EffectiveZoom() <= previewResolution * 1.05 Then Return
         If _hiRes IsNot Nothing AndAlso _hiResKey = CurrentKey() Then Return
         _hiResTimer.Start()

@@ -37,7 +37,20 @@ Public NotInheritable Class ImagePipeline
         ArtStyles.Apply(bmp, recipe) ' 藝術風格：在色調之後、暗角與文字貼圖之前
         ApplyEffects(bmp, recipe)
         If recipe.Sharpness > 0 Then Sharpen(bmp, recipe.Sharpness / 100.0)
-        LayerStack.Draw(bmp, recipe) ' 文字、貼圖、繪圖圖層依圖層順序疊上
+        If recipe.HasSurface AndAlso recipe.Paper.SurfaceTarget = SurfaceTarget.Base Then
+            ' 表面紋理「紙張」：合成時記下每個像素被顏料蓋住多少，合成完再壓紋理（蓋住的地方淡）
+            LayerBlend.BeginCoverage(bmp)
+            Dim cov As Single()
+            Try
+                LayerStack.Draw(bmp, recipe)
+            Finally
+                cov = LayerBlend.EndCoverage()
+            End Try
+            Papers.ApplySurface(bmp, Papers.HeightMap(recipe.Paper, bmp.Width, bmp.Height), bmp.Width, bmp.Height, 0, 0,
+                                recipe.Paper.SurfaceStrength, recipe.Paper.LightAngle, cov, recipe.Paper.SurfaceOnPaint)
+        Else
+            LayerStack.Draw(bmp, recipe) ' 文字、貼圖、繪圖圖層依圖層順序疊上
+        End If
         If recipe.HasSurface AndAlso recipe.Paper.SurfaceTarget = SurfaceTarget.Photo Then
             ' 表面紋理「整張照片」：照片、文字、貼圖、繪圖一起壓印紙紋
             Papers.ApplySurface(bmp, Papers.HeightMap(recipe.Paper, bmp.Width, bmp.Height), bmp.Width, bmp.Height, 0, 0,

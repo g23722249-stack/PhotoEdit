@@ -43,9 +43,52 @@ Public NotInheritable Class LayerBlend
     ''' 把 src 整張以 1:1 畫到 dst 的 destRect（大小與 src 相同；超出 dst 的部分略過）。
     ''' 正常模式用 GDI+ 直接畫，其他模式逐像素混合。
     ''' </summary>
+    ' ---- 表面紋理「紙張」用：合成到整張圖上的圖層，記下每個像素被蓋住多少（同一個執行緒、同一張目標圖才算） ----
+    <ThreadStatic> Private Shared _covTarget As Bitmap
+    <ThreadStatic> Private Shared _cov As Single()
+
+    ''' <summary>開始記錄合成到 dst 的圖層蓋住了多少（0..1，像不透明度一樣疊加）。</summary>
+    Public Shared Sub BeginCoverage(dst As Bitmap)
+        _covTarget = dst
+        _cov = New Single(dst.Width * dst.Height - 1) {}
+    End Sub
+
+    ''' <summary>正在記錄合成到 dst 的覆蓋率（這時不能跳過圖層，下面幾層的快取不用）。</summary>
+    Friend Shared Function CoverageActive(dst As Bitmap) As Boolean
+        Return _covTarget IsNot Nothing AndAlso dst Is _covTarget
+    End Function
+
+    ''' <summary>結束記錄，傳回每個像素被蓋住的比例（dst.Width × dst.Height）。</summary>
+    Public Shared Function EndCoverage() As Single()
+        Dim c = _cov
+        _cov = Nothing : _covTarget = Nothing
+        Return c
+    End Function
+
+    Private Shared Sub AddCoverage(dst As Bitmap, src As Bitmap, destRect As Rectangle, opacity As Single)
+        Dim cov = _cov
+        If cov Is Nothing OrElse src.Width <= 0 OrElse src.Height <= 0 OrElse destRect.Width <= 0 OrElse destRect.Height <= 0 Then Return
+        Dim clip = Rectangle.Intersect(destRect, New Rectangle(0, 0, dst.Width, dst.Height))
+        If clip.Width <= 0 OrElse clip.Height <= 0 Then Return
+        Dim px = Perspective.ReadPixels(src)
+        Dim sw = src.Width, sh = src.Height, dw = dst.Width
+        Dim fx = sw / CDbl(destRect.Width), fy = sh / CDbl(destRect.Height)
+        Threading.Tasks.Parallel.For(clip.Top, clip.Bottom, Sub(y)
+                                                                Dim syy = Math.Min(sh - 1, CInt(Math.Floor((y - destRect.Y) * fy)))
+                                                                For x = clip.Left To clip.Right - 1
+                                                                    Dim sxx = Math.Min(sw - 1, CInt(Math.Floor((x - destRect.X) * fx)))
+                                                                    Dim a = px((syy * sw + sxx) * 4 + 3) / 255.0F * opacity
+                                                                    If a <= 0 Then Continue For
+                                                                    Dim k = y * dw + x
+                                                                    cov(k) = cov(k) + a * (1 - cov(k))
+                                                                Next
+                                                            End Sub)
+    End Sub
+
     Public Shared Sub Composite(dst As Bitmap, src As Bitmap, destRect As Rectangle, opacity As Single, mode As BlendMode)
         opacity = Math.Max(0, Math.Min(1, opacity))
         If opacity <= 0 Then Return
+        If _covTarget IsNot Nothing AndAlso dst Is _covTarget Then AddCoverage(dst, src, destRect, opacity)
         If mode = BlendMode.Normal Then
             Using g = Graphics.FromImage(dst)
                 If opacity >= 0.999F Then

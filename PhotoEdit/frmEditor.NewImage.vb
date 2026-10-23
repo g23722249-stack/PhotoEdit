@@ -28,7 +28,7 @@ Partial Friend Class frmEditor
         Dim currentSize As Size? = Nothing
         Dim currentPicture As Func(Of Bitmap) = Nothing
         If _photo IsNot Nothing AndAlso _rendered IsNot Nothing Then
-            Dim scale = _photo.Image.Width / CDbl(_previewBase.Width)
+            Dim scale = _photo.Width / CDbl(_previewBase.Width)
             currentSize = New Size(CInt(Math.Round(_rendered.Width * scale)), CInt(Math.Round(_rendered.Height * scale)))
             Dim recipe = _recipe.Clone()
             currentPicture = Function()
@@ -80,7 +80,7 @@ Partial Friend Class frmEditor
                 Dim kind = paperChoice.Value
                 ApplyChange(Sub(r) r.Paper = New PaperSettings With {.Kind = kind, .SurfaceStrength = 40, .SurfaceTarget = SurfaceTarget.Photo})
             End If
-            SetStatusMessage(Lang.F("已新增 {0} × {1} 的影像，存成 {2}", _photo.Image.Width, _photo.Image.Height, file) &
+            SetStatusMessage(Lang.F("已新增 {0} × {1} 的影像，存成 {2}", _photo.Width, _photo.Height, file) &
                              If(paperChoice.HasValue, Lang.F("（紙張：{0}）", Papers.Names(CInt(paperChoice.Value))), ""))
         End If
     End Sub

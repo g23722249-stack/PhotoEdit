@@ -215,7 +215,7 @@ Partial Friend Class frmEditor
     ''' <summary>未裁切（已轉向）照片的原圖像素尺寸。</summary>
     Private Function FullCropSize() As Size
         If _photo Is Nothing Then Return Size.Empty
-        Dim w = _photo.Image.Width, h = _photo.Image.Height
+        Dim w = _photo.Width, h = _photo.Height
         Return If(_recipe.Rotation Mod 180 <> 0, New Size(h, w), New Size(w, h))
     End Function
 

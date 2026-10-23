@@ -66,6 +66,7 @@ Partial Class frmEditor
         links.LinkTargets.Add(BuildInkTutorial(s))
         links.LinkTargets.Add(BuildVectorTutorial(s))
         links.LinkTargets.Add(BuildCharcoalTutorial(s))
+        links.LinkTargets.Add(BuildOilTutorial(s))
         s.Add(links)
         Return s
     End Function
@@ -365,8 +366,9 @@ Partial Class frmEditor
             Case "open" : Return Lang.T("開啟照片或 PhotoEdit 專案（.pedx）。照片上次的編輯會自動載回來。")
             Case "save" : Return Lang.T("存成 PhotoEdit 專案（.pedx）：照片、調整與所有圖層都保留，下次載入可以繼續修改。原始照片不會被修改。")
             Case "saveas" : Return Lang.T("另存一份：存成 .pedx 專案，或存成 PNG／JPG／BMP（合併後的圖檔）。")
-            Case "export" : Return Lang.T("把目前的結果合併成一張圖檔（PNG、JPG、BMP），可以選尺寸與品質。")
+            Case "export" : Return Lang.T("把目前的結果合併成一張圖檔（PNG、JPG、BMP），或一頁 PDF（頁面大小依影像解析度，透明的地方保留）。")
             Case "exportsvg" : Return Lang.T("把向量圖形（鋼筆、形狀、文字）匯出成 SVG，可以在 Illustrator、Inkscape 或瀏覽器裡開啟。")
+            Case "importsvg" : Return Lang.T("把 SVG 檔（Illustrator、Inkscape、網路圖示）的路徑、矩形、圓形等匯入成繪圖頁的鋼筆路徑，可以用節點工具修改。文字、圖片、濾鏡不會匯入。")
             Case "collage" : Return Lang.T("把多張照片排成一張拼貼：選版型、間距與底色。")
             Case "revert" : Return Lang.T("清除這張照片的所有編輯，回到原始照片的樣子。")
             Case "settings" : Return Lang.T("偏好設定：介面語言、外觀、快捷鍵、繪圖、筆印預覽，以及「模型」頁籤（AI 模型的用途、狀態與下載：人臉、去背、AI 重繪的模型不附在程式裡，需要時在這裡下載）。沒開圖片也能設定。")
