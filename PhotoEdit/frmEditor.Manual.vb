@@ -32,7 +32,7 @@ Partial Class frmEditor
     '=====================================================================
 
     Friend Function BuildManual() As List(Of ManualSection)
-        Dim result As New List(Of ManualSection) From {BuildStartSection(), BuildTutorialSection(), BuildMenuSection(), BuildTabsSection(), BuildKeysSection()}
+        Dim result As New List(Of ManualSection) From {BuildStartSection(), BuildTutorialSection(), BuildConceptSection(), BuildMenuSection(), BuildTabsSection(), BuildKeysSection()}
         Return result
     End Function
 
