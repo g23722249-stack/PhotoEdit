@@ -492,8 +492,25 @@ Partial Class frmEditor
 
     Private Shared Function BuildCombineConcept(parent As ManualSection) As ManualSection
         Dim t = parent.AddChild(Lang.T("向量物件的結合與打散"))
-        t.Add(ManualBlock.Para(Lang.T("幾個向量圖形可以「結合」在一起：暫時綁在一起（群組），或真的合成一個新的外形（焊接、修剪、相交、排除、形狀建立）。反過來，也可以把它們「打散」：解散群組、用刀具切開、在節點斷開，或把文字轉成一個個字的外框。")))
-        t.Add(ManualBlock.Note(Lang.T("先記得一個差別：群組只是綁在一起，裡面每個圖形都還在、隨時可以拆開；焊接這類合併會產生一個新的鋼筆路徑，原本的圖形就不見了（可以按復原，或合併前先複製一份）。")))
+        t.Add(ManualBlock.Para(Lang.T("和 CorelDRAW 一樣，PhotoEdit 有「結合」（Ctrl+L）與「打散」（Ctrl+K）：把幾個向量圖形放進同一個圖形、重疊的地方變成洞，之後隨時可以再拆開。另外還有群組、焊接、修剪、形狀建立、刀具等組合與切開的方法，各有用途。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("結合與打散（Ctrl+L／Ctrl+K）")))
+        Dim cb As New ManualBlock With {.Kind = ManualBlockKind.Gallery, .TileImageSize = New Size(150, 100)}
+        cb.Tiles.Add(New ManualTile With {.Image = ShapeOpSwatch(Nothing), .Title = Lang.T("原本"), .Text = Lang.T("正方形在下、圓形在上，兩個都選取。")})
+        cb.Tiles.Add(New ManualTile With {.Image = CombineSwatch(False), .Title = Lang.T("結合"), .Text = Lang.T("變成一個圖形（樣式用最下面的），重疊的地方是洞。")})
+        cb.Tiles.Add(New ManualTile With {.Image = CombineSwatch(True), .Title = Lang.T("打散"), .Text = Lang.T("每條路徑變回一個圖形；洞那塊變成實心的。")})
+        t.Add(cb)
+        t.Add(ManualBlock.Steps(
+            Lang.T("用選取工具選好兩個以上的向量圖形。"),
+            Lang.T("按 Ctrl+L，或畫布上方工具列的「結合」：變成一個圖形，樣式（顏色、外框）用最下面那個，重疊的地方挖空。"),
+            Lang.T("要拆開：選結合過的圖形按 Ctrl+K，或「打散」，每條路徑變回一個圖形，樣式不變。")))
+        t.Add(ManualBlock.Bullets(
+            Lang.T("做有洞的形狀：大圓上放小圓，結合 → 甜甜圈；方塊上放轉成曲線的字，結合 → 鏤空字。"),
+            Lang.T("和焊接不同：結合時每條路徑的節點原封不動，只是放進同一個圖形；焊接會把外形合成一條新的外框，打散也拆不回原本的圖形。"),
+            Lang.T("文字先「轉成曲線」才能結合；圖說、點陣圖層、填滿圖層不能結合，鎖住的圖形也不行。"),
+            Lang.T("轉成曲線的字、焊接或排除後有洞的圖形，都可以打散成一塊一塊。"),
+            Lang.T("沒有選到可以結合或打散的圖形時，Ctrl+L 和 Ctrl+K 照舊是「向左旋轉」與「裁切」。")))
+        t.Add(ManualBlock.Note(Lang.T("先記得一個差別：群組只是綁在一起，裡面每個圖形都還在；結合是放進同一個圖形，打散可以拆回來；焊接這類合併會產生一個新的鋼筆路徑，原本的圖形就不見了（可以按復原，或合併前先複製一份）。")))
 
         t.Add(ManualBlock.Heading(Lang.T("群組與解散群組")))
         t.Add(ManualBlock.Steps(
@@ -540,6 +557,39 @@ Partial Class frmEditor
             Lang.T("做 Logo、剪影：先用基本圖形拼出來，再焊接成一個外形，最後用節點工具修細節。"),
             Lang.T("在照片上挖出形狀：畫好形狀後用「照片放進形狀」，照片只留形狀裡面。")))
         Return t
+    End Function
+
+    ''' <summary>結合與打散的示意：同 ShapeOpSwatch 的正方形與圓形，broken＝結合後再打散。</summary>
+    Private Shared Function CombineSwatch(broken As Boolean) As Bitmap
+        Const W As Integer = 150, H As Integer = 100
+        Dim bmp As New Bitmap(W, H)
+        Using g = Graphics.FromImage(bmp)
+            g.Clear(Color.FromArgb(252, 251, 248))
+        End Using
+        Dim edge = Color.FromArgb(50, 60, 80).ToArgb()
+        Dim square As New DrawLayer With {.Shape = DrawShape.Rectangle, .X = 0.6, .Y = 0.5, .W = 0.62, .H = 0.62, .Filled = True, .Stroked = True,
+                                          .FillColorArgb = Color.FromArgb(90, 140, 210).ToArgb(), .StrokeColorArgb = edge, .StrokeWidth = 0.012, .Seed = 1}
+        Dim circle As New DrawLayer With {.Shape = DrawShape.Ellipse, .X = 0.9, .Y = 0.5, .W = 0.62, .H = 0.62, .Filled = True, .Stroked = True,
+                                          .FillColorArgb = Color.FromArgb(245, 160, 70).ToArgb(), .StrokeColorArgb = edge, .StrokeWidth = 0.012, .Seed = 2}
+        Dim combined = CombineBreak.Combine(New List(Of DrawLayer) From {square, circle})
+        Dim layers As New List(Of DrawLayer)()
+        If combined IsNot Nothing Then
+            If broken Then
+                Dim parts = CombineBreak.BreakApart(combined)
+                If parts IsNot Nothing Then
+                    ' 拆開的兩塊稍微錯開，看得出是兩個圖形
+                    DrawGeometry.Offset(parts(parts.Count - 1), 0.08, 0)
+                    layers.AddRange(parts)
+                End If
+            Else
+                layers.Add(combined)
+            End If
+        End If
+        DrawingRenderer.DrawLayers(bmp, New EditRecipe With {.Drawings = layers})
+        Using g = Graphics.FromImage(bmp), p As New Pen(Color.FromArgb(214, 218, 226))
+            g.DrawRectangle(p, 0, 0, W - 1, H - 1)
+        End Using
+        Return bmp
     End Function
 
     ''' <summary>焊接／修剪／相交／排除的示意：藍色正方形在下、橘色圓形在上；op 為 Nothing 時畫原本的兩個圖形。</summary>

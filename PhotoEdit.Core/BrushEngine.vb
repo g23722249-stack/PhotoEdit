@@ -271,7 +271,7 @@ Partial Public NotInheritable Class DrawingRenderer
 
         ' 1. 填色
         If layer.Filled AndAlso closedFigs.Count > 0 Then
-            Dim mask = FillMask(closedFigs, region)
+            Dim mask = FillMask(closedFigs, region, layer.EvenOdd)
             If layer.FillPattern IsNot Nothing Then
                 ShadePattern(cv, mask, layer, h) ' 圖樣填色（見 LayoutTools.vb）
             ElseIf layer.FillGradient IsNot Nothing Then
@@ -457,9 +457,9 @@ Partial Public NotInheritable Class DrawingRenderer
         Next
     End Sub
 
-    Private Shared Function FillMask(figs As List(Of DrawGeometry.Figure), region As Rectangle) As Single()
+    Private Shared Function FillMask(figs As List(Of DrawGeometry.Figure), region As Rectangle, Optional evenOdd As Boolean = False) As Single()
         Using bmp As New Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb)
-            Using g = Graphics.FromImage(bmp), path As New GraphicsPath(FillMode.Winding)
+            Using g = Graphics.FromImage(bmp), path As New GraphicsPath(If(evenOdd, FillMode.Alternate, FillMode.Winding))
                 g.SmoothingMode = SmoothingMode.AntiAlias
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality
                 g.TranslateTransform(-region.X, -region.Y)

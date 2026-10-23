@@ -112,7 +112,7 @@ Public NotInheritable Class SvgExport
                 fill = $"fill=""url(#{gid})"""
             End If
             Dim pathD = If(d.Shape = DrawShape.Path AndAlso d.Contours IsNot Nothing, ContourPath(d.Contours.Where(Function(c) c.Closed), scale), FigurePath(closed))
-            sb.Append($"<path d=""{pathD}"" {fill} stroke=""none""/>")
+            sb.Append($"<path d=""{pathD}"" {fill}{If(d.EvenOdd, " fill-rule=""evenodd""", "")} stroke=""none""/>")
         End If
         ' 線條
         Dim stroked = d.Stroked OrElse Not DrawGeometry.IsClosedLayer(d)

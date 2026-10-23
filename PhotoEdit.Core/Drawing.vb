@@ -361,6 +361,8 @@ Public Class DrawLayer
     Public Property Strokes As List(Of DrawStroke)
     ''' <summary>鋼筆路徑（Shape = Path）的各條路徑。</summary>
     Public Property Contours As List(Of PathContour)
+    ''' <summary>填色用奇偶規則（CorelDRAW「結合」的結果）：重疊的地方變成洞。False＝非零環繞數（一般）。</summary>
+    Public Property EvenOdd As Boolean
 
     ' ---- 圖說文字 ----
     Public Property Text As String = ""

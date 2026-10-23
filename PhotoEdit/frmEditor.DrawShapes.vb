@@ -57,7 +57,7 @@ Partial Friend Class frmEditor
             _shapeButtons(key) = b
             _shapeBar.Controls.Add(b)
         Next
-        For Each t In {("clipin", Lang.T("放進形狀"), "draw.clip.in"), ("clipout", Lang.T("取出內容"), "draw.clip.out"), ("photoclip", Lang.T("照片放進形狀"), "draw.clip.photo"),
+        For Each t In {("combine", Lang.T("結合"), "draw.combine"), ("breakapart", Lang.T("打散"), "draw.breakapart"), ("clipin", Lang.T("放進形狀"), "draw.clip.in"), ("clipout", Lang.T("取出內容"), "draw.clip.out"), ("photoclip", Lang.T("照片放進形狀"), "draw.clip.photo"),
                        ("outline", Lang.T("外框轉物件"), "draw.outline"), ("effects", Lang.T("效果 ▾"), "draw.effects")}
             Dim key = t.Item1
             Dim b = MakeButton(t.Item2, t.Item3)
@@ -130,6 +130,9 @@ Partial Friend Class frmEditor
         For Each k In OpKeys
             _shapeButtons(k).Visible = comb AndAlso Not _builderOn
         Next
+        ' 結合、打散（CorelDRAW）
+        _shapeButtons("combine").Visible = picking AndAlso Not _builderOn AndAlso CurveCombineSelection() IsNot Nothing
+        _shapeButtons("breakapart").Visible = picking AndAlso Not _builderOn AndAlso BreakApartCandidate() >= 0
         ' PowerClip、照片放進形狀
         _shapeButtons("clipin").Visible = picking AndAlso Not _builderOn AndAlso ClipCandidate().HasValue
         _shapeButtons("clipout").Visible = picking AndAlso Not _builderOn AndAlso SelectedClipGroups().Count > 0
@@ -143,7 +146,7 @@ Partial Friend Class frmEditor
         If seps.Count >= 2 Then
             seps(0).Visible = _shapeButtons("left").Visible AndAlso _shapeButtons("weld").Visible
             seps(1).Visible = (_shapeButtons("left").Visible OrElse _shapeButtons("weld").Visible) AndAlso
-                              (_shapeButtons("clipin").Visible OrElse _shapeButtons("clipout").Visible OrElse _shapeButtons("photoclip").Visible)
+                              (_shapeButtons("combine").Visible OrElse _shapeButtons("breakapart").Visible OrElse _shapeButtons("clipin").Visible OrElse _shapeButtons("clipout").Visible OrElse _shapeButtons("photoclip").Visible)
         End If
     End Sub
 
@@ -159,6 +162,8 @@ Partial Friend Class frmEditor
             Case "builder" : If _builderOn Then ExitBuilder() Else EnterBuilder()
             Case "more"
                 If _shapeButtons("more").Visible Then _alignMenu.Show(_shapeButtons("more"), New Point(0, _shapeButtons("more").Height)) Else _alignMenu.Show(Cursor.Position)
+            Case "combine" : CombineCurves()
+            Case "breakapart" : BreakApartSelected()
             Case "clipin" : ClipIntoShape()
             Case "clipout" : ClipOut()
             Case "photoclip" : TogglePhotoClip()

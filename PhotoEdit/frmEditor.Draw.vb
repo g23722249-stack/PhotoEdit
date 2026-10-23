@@ -1404,6 +1404,7 @@ Partial Friend Class frmEditor
         If Batch4Key(keyData) Then Return True
         If Batch5Key(keyData) Then Return True ' 修飾筆刷的 [ ]
         If Batch6Key(keyData) Then Return True ' 尺規、格線 ' Ctrl+J 再製、屬性吸管的 Esc
+        If CombineKey(keyData) Then Return True ' Ctrl+L 結合、Ctrl+K 打散（見 frmEditor.DrawCombine.vb）
         Select Case keyData
             Case Keys.E, Keys.B
                 ' 像 Photoshop：B 畫筆、E 橡皮擦（都是直接繪製）。

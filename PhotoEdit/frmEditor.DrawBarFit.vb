@@ -31,7 +31,7 @@ Partial Friend Class frmEditor
         addButtons(_shapeButtons, {"outline", "effects"})
         addButtons(_shapeButtons, {"exclude", "intersect", "trim", "weld"})
         addButtons(_shapeButtons, {"more", "top", "hcenter", "left"})
-        addButtons(_shapeButtons, {"photoclip", "clipout", "clipin"})
+        addButtons(_shapeButtons, {"photoclip", "clipout", "clipin", "breakapart", "combine"})
         If _btnDetachText IsNot Nothing Then
             list.Add({_btnDetachText}) : list.Add({_btnFlipText})
         End If

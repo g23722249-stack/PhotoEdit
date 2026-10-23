@@ -599,6 +599,10 @@ Friend Module HelpTexts
         A("draw.op.trim", Lang.T("修剪"), Lang.T("最下面的圖形減掉上面所有的圖形（樣式用最下面的），像用餅乾模切掉一塊。"), Lang.T("結果是鋼筆路徑；上面那些圖形會拿掉，要保留可以先複製一份。"))
         A("draw.op.intersect", Lang.T("相交"), Lang.T("只留下全部圖形都重疊的地方（樣式用最上面的）。"))
         A("draw.op.exclude", Lang.T("排除"), Lang.T("重疊的地方挖空，其餘合成一個圖形（樣式用最上面的）。"))
+        A("draw.combine", Lang.T("結合"), Lang.T("把選取的向量圖形合成一個有好幾條路徑的圖形（同 CorelDRAW 的結合，Ctrl+L）：重疊的地方變成洞，每條路徑的節點原封不動。樣式用最下面的圖形。"),
+          Lang.T("和焊接不同：焊接把外形合成一條新的外框；結合只是放進同一個圖形，隨時可以「打散」拆回來。文字先轉成曲線。"))
+        A("draw.breakapart", Lang.T("打散"), Lang.T("把有好幾條路徑的圖形拆成每條路徑一個圖形（同 CorelDRAW 的打散，Ctrl+K），樣式不變。"),
+          Lang.T("結合過的圖形、轉成曲線的字、焊接或排除後有洞的圖形都能打散；洞會變成實心的一塊。"))
         A("draw.builder", Lang.T("形狀建立"), Lang.T("重疊的圖形切成一塊一塊：在幾塊上拖曳就合成一塊，按住 Alt 點（或拖）刪掉那幾塊。"), Lang.T("像 Illustrator 的形狀建立工具；Esc、Enter 或點外面結束。結果都是鋼筆路徑。"))
         A("draw.tool.pan", Lang.T("平移"), Lang.T("放大後拖曳移動畫面。"), Lang.T("任何工具按住滑鼠中鍵拖曳也可以平移。"))
         A("draw.tool.zoom", Lang.T("縮放"), Lang.T("點一下放大、Alt＋點（或右鍵）縮小；拖一個框放大到那個範圍。"))

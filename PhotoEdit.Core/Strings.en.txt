@@ -2973,3 +2973,13 @@ AI 模型	AI Models
 還有 {0} 個模型正在下載，關閉設定會取消下載（已下載完的不受影響）。要關閉嗎？	{0} model(s) are still downloading. Closing Settings cancels them (finished ones are kept). Close anyway?
 「{0}」沒有下載位址。	"{0}" has no download address.
 「{0}」大小不對（{1:N0} 位元組，應該是 {2:N0}），可能下載不完整。	"{0}" has the wrong size ({1:N0} bytes, expected {2:N0}); the download may be incomplete.
+結合	Combine
+打散	Break Apart
+把選取的向量圖形合成一個有好幾條路徑的圖形（同 CorelDRAW 的結合，Ctrl+L）：重疊的地方變成洞，每條路徑的節點原封不動。樣式用最下面的圖形。	Combines the selected vector shapes into one shape with several paths (like CorelDRAW's Combine, Ctrl+L): overlapping areas become holes and every path keeps its nodes. Uses the bottom shape's style.
+和焊接不同：焊接把外形合成一條新的外框；結合只是放進同一個圖形，隨時可以「打散」拆回來。文字先轉成曲線。	Unlike Weld, which merges the outlines into a new one, Combine just puts the paths into one shape, so Break Apart can split them again. Convert text to curves first.
+把有好幾條路徑的圖形拆成每條路徑一個圖形（同 CorelDRAW 的打散，Ctrl+K），樣式不變。	Splits a shape with several paths into one shape per path (like CorelDRAW's Break Apart, Ctrl+K), keeping its style.
+結合過的圖形、轉成曲線的字、焊接或排除後有洞的圖形都能打散；洞會變成實心的一塊。	Works on combined shapes, text converted to curves and welded or excluded shapes with holes; holes become solid pieces.
+結合要選兩個以上的向量圖形（文字、圖說、點陣圖層、填滿圖層不行；文字先轉成曲線）。	Combine needs two or more vector shapes (not text, callouts, raster or fill layers; convert text to curves first).
+已結合 {0} 個圖形：重疊的地方變成洞；Ctrl+K 打散可以再拆開。	Combined {0} shapes: overlapping areas are holes; Ctrl+K (Break Apart) splits them again.
+打散要選一個有兩條以上路徑的圖形（例如結合過的圖形、轉成曲線的字）。	Break Apart needs one shape with two or more paths (e.g. a combined shape or text converted to curves).
+已打散成 {0} 個圖形。	Broken apart into {0} shapes.
