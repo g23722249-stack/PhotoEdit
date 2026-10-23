@@ -65,6 +65,7 @@ Partial Class frmEditor
         links.LinkTargets.Add(BuildStarryTutorial(s))
         links.LinkTargets.Add(BuildInkTutorial(s))
         links.LinkTargets.Add(BuildVectorTutorial(s))
+        links.LinkTargets.Add(BuildCharcoalTutorial(s))
         s.Add(links)
         Return s
     End Function
