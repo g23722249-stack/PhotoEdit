@@ -48,8 +48,8 @@ body { font-family: var(--f-ui); -webkit-user-select: none; user-select: none; -
     <button data-act="right" aria-label="向右">▶</button>
   </div>
   <div class="grp right">
-    <button data-act="flip" class="sm" aria-label="後空翻閃避">翻</button>
-    <button data-act="rush" class="sm" aria-label="前衝刺閃避">衝</button>
+    <button data-act="dodgeL" class="sm" aria-label="往左閃避">◀閃</button>
+    <button data-act="dodgeR" class="sm" aria-label="往右閃避">閃▶</button>
     <button data-act="attack" aria-label="斬擊">斬</button>
     <button data-act="jump" aria-label="跳躍">跳</button>
   </div>
@@ -98,7 +98,7 @@ const keys = {}, pad = {}, touch = {}, pressed = {};
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
   ArrowUp: 'jump', KeyW: 'jump', KeyK: 'jump', KeyX: 'jump', Space: 'jump',
-  KeyJ: 'attack', KeyZ: 'attack', KeyQ: 'flip', KeyU: 'flip', KeyE: 'rush', KeyL: 'rush', Enter: 'start', KeyP: 'pause', Escape: 'pause', KeyM: 'mute', KeyH: 'retro'
+  KeyJ: 'attack', KeyZ: 'attack', KeyQ: 'dodgeL', KeyU: 'dodgeL', KeyE: 'dodgeR', KeyL: 'dodgeR', Enter: 'start', KeyP: 'pause', Escape: 'pause', KeyM: 'mute', KeyH: 'retro'
 };
 addEventListener('keydown', e => {
   const a = KEYMAP[e.code]; if (!a) return;
@@ -109,9 +109,10 @@ const isDown = a => !!(keys[a] || pad[a] || touch[a]);
 const hit = a => !!pressed[a];
 const anyStart = () => hit('start') || hit('attack') || hit('jump');
 
-// Xbox 手把（瀏覽器的 standard 配置）：A 跳、B 滑行、X／RT 斬、LB 後空翻閃避、RB 前衝刺閃避、
+// Xbox 手把（瀏覽器的 standard 配置）：A 跳、B 滑行、X／RT 斬、LB 往左閃避、RB 往右閃避
+// （往面向的方向是前衝刺，往背後是後空翻）、
 // 左類比或十字鍵移動、Menu 開始／暫停、View 切換像素模式、按下左類比 靜音
-const PAD_ACTS = ['left', 'right', 'down', 'jump', 'attack', 'slide', 'flip', 'rush', 'start', 'retro', 'mute'];
+const PAD_ACTS = ['left', 'right', 'down', 'jump', 'attack', 'slide', 'dodgeL', 'dodgeR', 'start', 'retro', 'mute'];
 const padPrev = {};
 let padName = '', padToast = 0;
 function pads() {
@@ -126,7 +127,7 @@ function pollPad() {
     now.down ||= ay > 0.55 || b(13);
     now.jump ||= b(0) || b(12);
     now.slide ||= b(1);
-    now.flip ||= b(4); now.rush ||= b(5);
+    now.dodgeL ||= b(4); now.dodgeR ||= b(5);
     now.attack ||= b(2) || b(7);
     now.start ||= b(9); now.retro ||= b(8); now.mute ||= b(10);
   }
@@ -135,7 +136,7 @@ function pollPad() {
     pad[k] = padPrev[k] = !!now[k];
   }
   // 選單裡 A 等於確認；滑行和閃避鍵在選單中不做事
-  if (state !== 'play') pressed.slide = pressed.flip = pressed.rush = false;
+  if (state !== 'play') pressed.slide = pressed.dodgeL = pressed.dodgeR = false;
 }
 function rumble(strong, weak, ms) {
   for (const gp of pads()) {
@@ -362,9 +363,10 @@ function updatePlayer(dt) {
   const L = isDown('left'), Rr = isDown('right'), D = isDown('down');
   if (p.dodgeCD > 0) p.dodgeCD -= dt;
   if (p.onGround) p.airDodge = true;
-  // 閃避：LB／Q 後空翻往後躍起，RB／E 往前低身衝刺；閃避期間無敵，空中各跳只能閃一次
-  if (!p.dodge && p.hurtT <= 0 && p.dodgeCD <= 0 && (hit('flip') || hit('rush')) && (p.onGround || p.airDodge)) {
-    const type = hit('flip') ? 'flip' : 'rush';
+  // 閃避：LB／Q 往左、RB／E 往右；往面向的方向是前衝刺，往背後是後空翻。閃避期間無敵，空中每跳只能閃一次
+  const dodgeDir = hit('dodgeL') ? -1 : hit('dodgeR') ? 1 : 0;
+  if (!p.dodge && p.hurtT <= 0 && p.dodgeCD <= 0 && dodgeDir && (p.onGround || p.airDodge)) {
+    const type = dodgeDir === p.face ? 'rush' : 'flip';
     if (!p.onGround) p.airDodge = false;
     p.slideT = 0; p.atkT = 0;
     p.dodge = { type, t: 0, dur: type === 'flip' ? 0.45 : 0.26 };
@@ -968,8 +970,8 @@ function drawTitle(c) {
   txt(c, '在天亮之前，打倒影騎士。', 72, 292, `500 18px ${FS}`, '#d8d2ff');
   if (blink()) txt(c, padName ? '按 A 或 Menu 開始' : '按 Enter 或點擊畫面開始', 72, 360, `700 20px ${FS}`, '#ffc76a');
   const rows = padName
-    ? [['左類比 / 十字鍵', '移動'], ['A', '跳躍（按越久跳越高）'], ['B 或 ↓＋A', '滑行'], ['X / RT', '斬擊，同時放出劍氣'], ['LB / RB', '後空翻／前衝刺閃避（無敵）'], ['Menu', '暫停'], ['View', '切換 HD／像素模式'], ['按下左類比', '靜音']]
-    : [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['Q / E', '後空翻／前衝刺閃避（無敵）'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
+    ? [['左類比 / 十字鍵', '移動'], ['A', '跳躍（按越久跳越高）'], ['B 或 ↓＋A', '滑行'], ['X / RT', '斬擊，同時放出劍氣'], ['LB / RB', '往左／往右閃避（無敵）'], ['Menu', '暫停'], ['View', '切換 HD／像素模式'], ['按下左類比', '靜音']]
+    : [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['Q / E', '往左／往右閃避（無敵）'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
   rows.forEach(([k, v], i) => { txt(c, k, 72, 392 + i * 18, `700 13px ${FS}`, '#9fe8ff'); txt(c, v, 230, 392 + i * 18, `500 13px ${FS}`, '#b9b3e6'); });
   if (hi) { spacing(c, '2px'); txt(c, 'HI ' + String(hi).padStart(7, '0'), VW - 24, 36, `700 14px ${FL}`, '#8f88c7', 'right'); spacing(c, '0px'); }
 }
