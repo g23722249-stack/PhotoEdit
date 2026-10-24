@@ -105,21 +105,44 @@ const isDown = a => !!(keys[a] || pad[a] || touch[a]);
 const hit = a => !!pressed[a];
 const anyStart = () => hit('start') || hit('attack') || hit('jump');
 
+// Xbox 手把（瀏覽器的 standard 配置）：A 跳、B 滑行、X／RB／RT 斬、LB 跳、
+// 左類比或十字鍵移動、Menu 開始／暫停、View 切換像素模式、按下左類比 靜音
+const PAD_ACTS = ['left', 'right', 'down', 'jump', 'attack', 'slide', 'start', 'retro', 'mute'];
 const padPrev = {};
+let padName = '', padToast = 0;
+function pads() {
+  try { return navigator.getGamepads ? [...navigator.getGamepads()].filter(g => g && g.connected) : []; } catch (e) { return []; }
+}
 function pollPad() {
-  const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
-  const now = {};
-  if (gp) {
-    const b = i => gp.buttons[i] && gp.buttons[i].pressed;
-    now.left = gp.axes[0] < -0.4 || b(14); now.right = gp.axes[0] > 0.4 || b(15);
-    now.down = gp.axes[1] > 0.5 || b(13); now.jump = b(0) || b(12);
-    now.attack = b(2) || b(1); now.start = b(9); now.pause = b(8);
+  const now = {}, list = pads();
+  for (const gp of list) {
+    const b = i => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+    now.left ||= ax < -0.4 || b(14); now.right ||= ax > 0.4 || b(15);
+    now.down ||= ay > 0.55 || b(13);
+    now.jump ||= b(0) || b(4) || b(12);
+    now.slide ||= b(1);
+    now.attack ||= b(2) || b(5) || b(7);
+    now.start ||= b(9); now.retro ||= b(8); now.mute ||= b(10);
   }
-  for (const k of ['left', 'right', 'down', 'jump', 'attack', 'start', 'pause']) {
+  for (const k of PAD_ACTS) {
     if (now[k] && !padPrev[k]) { pressed[k] = true; audio.unlock(); }
     pad[k] = padPrev[k] = !!now[k];
   }
+  // 選單裡 A 等於確認；滑行鍵在選單中不做事
+  if (pressed.slide && state !== 'play') pressed.slide = false;
 }
+function rumble(strong, weak, ms) {
+  for (const gp of pads()) {
+    const a = gp.vibrationActuator;
+    if (a && a.playEffect) a.playEffect('dual-rumble', { startDelay: 0, duration: ms, strongMagnitude: strong, weakMagnitude: weak }).catch(() => { });
+  }
+}
+addEventListener('gamepadconnected', e => {
+  padName = /xbox|xinput|045e/i.test(e.gamepad.id) ? 'Xbox 手把' : '手把'; padToast = 3;
+  rumble(0.3, 0.3, 120);
+});
+addEventListener('gamepaddisconnected', () => { if (!pads().length) { padName = ''; padToast = 2.5; if (state === 'play') setState('pause'); } });
 
 const touchUI = document.getElementById('touch');
 if ('ontouchstart' in window || navigator.maxTouchPoints > 0) touchUI.hidden = false;
@@ -317,10 +340,10 @@ function hurtPlayer(n, srcX) {
   if (P.inv > 0 || state !== 'play') return;
   P.hp -= n; P.inv = 1.3; P.hurtT = 0.32; P.slideT = 0;
   P.vx = (P.x < srcX ? -1 : 1) * 280; P.vy = -380;
-  shake(8); audio.sfx('hurt'); burst(P.x, P.y - 35, 14, '#ff8fb0', 220, 3);
+  shake(8); audio.sfx('hurt'); rumble(0.7, 0.4, 220); burst(P.x, P.y - 35, 14, '#ff8fb0', 220, 3);
   if (P.hp <= 0) { P.hp = 0; killPlayer(); }
 }
-function killPlayer() { setState('dying'); P.vy = -600; P.vx = -P.face * 120; audio.stop(); audio.sfx('boom'); burst(P.x, P.y - 30, 40, '#9fe8ff', 380, 4, 1); }
+function killPlayer() { setState('dying'); P.vy = -600; P.vx = -P.face * 120; audio.stop(); audio.sfx('boom'); rumble(1, 0.8, 500); burst(P.x, P.y - 30, 40, '#9fe8ff', 380, 4, 1); }
 function fireWave() {
   const lv = P.power, y = P.y - (P.slideT > 0 ? 18 : 38);
   const base = { x: P.x + P.face * 26, y, vx: P.face * 780, vy: 0, life: lv >= 2 ? 0.62 : 0.42, r: lv >= 2 ? 15 : 10, lv, dmg: 1 };
@@ -340,6 +363,7 @@ function updatePlayer(dt) {
     const ax = (Rr ? 1 : 0) - (L ? 1 : 0); if (ax) p.face = ax;
     p.vx += (ax * 300 - p.vx) * Math.min(1, dt * (p.onGround ? 18 : 9));
   }
+  if (hit('slide') && p.onGround && p.slideT <= 0 && p.hurtT <= 0) { p.slideT = 0.38; audio.sfx('slide'); }
   if (hit('jump')) p.jumpBuf = 0.12;
   p.coyote = p.onGround ? 0.1 : p.coyote - dt;
   if (p.jumpBuf > 0) {
@@ -433,7 +457,7 @@ function updBoss(dt) {
   switch (b.st) {
     case 'enter':
       if (b.onGround) {
-        if (!b.landed) { b.landed = true; shake(16); audio.sfx('boom'); burst(b.x, b.y, 30, '#b48cff', 360, 4); banner = 2.4; b.stT = 0; }
+        if (!b.landed) { b.landed = true; shake(16); audio.sfx('boom'); rumble(0.9, 0.5, 400); burst(b.x, b.y, 30, '#b48cff', 360, 4); banner = 2.4; b.stT = 0; }
         if (b.stT > 1.6) bst('idle');
       }
       break;
@@ -469,7 +493,7 @@ function updBoss(dt) {
       break;
     case 'leap':
       if (b.onGround && b.stT > 0.1) {
-        b.vx = 0; shake(13); audio.sfx('boom'); burst(b.x, b.y, 24, '#b48cff', 320, 4);
+        b.vx = 0; shake(13); audio.sfx('boom'); rumble(0.8, 0.4, 300); burst(b.x, b.y, 24, '#b48cff', 320, 4);
         const v = ph2 ? 480 : 400;
         shots.push({ kind: 'shock', x: b.x - 30, y: b.y, vx: -v, vy: 0, life: 1.8, w: 26, h: 42 }, { kind: 'shock', x: b.x + 30, y: b.y, vx: v, vy: 0, life: 1.8, w: 26, h: 42 });
         bst('land');
@@ -481,7 +505,7 @@ function updBoss(dt) {
       if (b.boomT <= 0) { b.boomT = 0.11; burst(b.x + (Math.random() - 0.5) * 70, b.y - Math.random() * 110, 14, Math.random() < 0.5 ? '#ffc76a' : '#c08bff', 300, 4); audio.sfx('kill'); shake(5); }
       if (b.stT > 2.8) {
         b.defeated = true; b.active = false; gate.off = true;
-        burst(b.x, b.y - 60, 80, '#ffe2a0', 520, 5, 1.4); audio.sfx('boom');
+        burst(b.x, b.y - 60, 80, '#ffe2a0', 520, 5, 1.4); audio.sfx('boom'); rumble(1, 1, 700);
         const bonus = P.hp * 100 + lives * 1000; score += bonus;
         if (score > hi) { hi = score; store.set('ab.hi', hi); }
         audio.play('title'); setState('clear');
@@ -548,6 +572,7 @@ function update(dt) {
   time += dt; stateT += dt;
   if (shakeT > 0) { shakeT -= dt; if (shakeT <= 0) shakeMag = 0; }
   if (banner > 0) banner -= dt;
+  if (padToast > 0) padToast -= dt;
   if (hit('mute')) audio.toggleMute();
   if (hit('retro')) { retro = !retro; store.set('ab.retro', retro); }
   switch (state) {
@@ -912,8 +937,10 @@ function drawTitle(c) {
   const tg = c.createLinearGradient(0, 150, 0, 250); tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, '#ffc76a');
   c.save(); c.shadowColor = 'rgba(255,199,106,0.6)'; c.shadowBlur = 24; c.font = `900 104px ${FT}`; c.textAlign = 'left'; c.fillStyle = tg; c.fillText('曙光劍姬', 64, 248); c.restore();
   txt(c, '在天亮之前，打倒影騎士。', 72, 292, `500 18px ${FS}`, '#d8d2ff');
-  if (blink()) txt(c, '按 Enter 或點擊畫面開始', 72, 360, `700 20px ${FS}`, '#ffc76a');
-  const rows = [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
+  if (blink()) txt(c, padName ? '按 A 或 Menu 開始' : '按 Enter 或點擊畫面開始', 72, 360, `700 20px ${FS}`, '#ffc76a');
+  const rows = padName
+    ? [['左類比 / 十字鍵', '移動'], ['A / LB', '跳躍（按越久跳越高）'], ['B 或 ↓＋A', '滑行'], ['X / RB / RT', '斬擊，同時放出劍氣'], ['Menu', '暫停'], ['View', '切換 HD／像素模式'], ['按下左類比', '靜音']]
+    : [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
   rows.forEach(([k, v], i) => { txt(c, k, 72, 410 + i * 20, `700 13px ${FS}`, '#9fe8ff'); txt(c, v, 230, 410 + i * 20, `500 13px ${FS}`, '#b9b3e6'); });
   if (hi) { spacing(c, '2px'); txt(c, 'HI ' + String(hi).padStart(7, '0'), VW - 24, 36, `700 14px ${FL}`, '#8f88c7', 'right'); spacing(c, '0px'); }
 }
@@ -948,7 +975,7 @@ function drawClear(c) {
     txt(c, '影騎士倒下，夜之國的黑夜退去。澪回到了早晨的天台。', VW / 2, 252, `500 18px ${FS}`, '#3a1d2a', 'center');
     spacing(c, '3px'); txt(c, 'SCORE ' + String(score).padStart(7, '0'), VW / 2, 310, `700 26px ${FL}`, '#2b1530', 'center'); spacing(c, '0px');
     if (score >= hi) txt(c, '新紀錄', VW / 2, 340, `700 16px ${FS}`, '#a3283f', 'center');
-    if (stateT > 2 && blink()) txt(c, '按 Enter 回到標題', VW / 2, 400, `700 18px ${FS}`, '#2b1530', 'center');
+    if (stateT > 2 && blink()) txt(c, padName ? '按 A 回到標題' : '按 Enter 回到標題', VW / 2, 400, `700 18px ${FS}`, '#2b1530', 'center');
   }
 }
 
@@ -980,9 +1007,17 @@ function render(c) {
     case 'title': drawTitle(c); break;
     case 'intro': drawIntro(c); break;
     case 'play': case 'dying': drawHUD(c); break;
-    case 'pause': drawHUD(c); drawCenterCard(c, '暫停', 'H 切換像素模式　M 靜音', '按 P 或 Enter 繼續', '#9fe8ff'); break;
-    case 'gameover': drawCenterCard(c, 'GAME OVER', `分數 ${score}`, '按 Enter 從檢查點繼續（分數減半）', '#ff3b5c'); break;
+    case 'pause': drawHUD(c); drawCenterCard(c, '暫停', padName ? 'View 切換像素模式　按下左類比 靜音' : 'H 切換像素模式　M 靜音', padName ? '按 Menu 繼續' : '按 P 或 Enter 繼續', '#9fe8ff'); break;
+    case 'gameover': drawCenterCard(c, 'GAME OVER', `分數 ${score}`, (padName ? '按 A' : '按 Enter') + ' 從檢查點繼續（分數減半）', '#ff3b5c'); break;
     case 'clear': drawHUD(c); drawClear(c); break;
+  }
+  if (padToast > 0) {
+    c.globalAlpha = clamp(padToast * 2, 0, 1);
+    const msg = padName ? `已連接 ${padName}` : '手把已中斷連線';
+    c.font = `700 15px ${FS}`; const w = c.measureText(msg).width + 36;
+    c.fillStyle = 'rgba(8,6,24,0.8)'; c.beginPath(); c.roundRect ? c.roundRect((VW - w) / 2, 96, w, 34, 17) : c.rect((VW - w) / 2, 96, w, 34); c.fill();
+    txt(c, msg, VW / 2, 119, `700 15px ${FS}`, padName ? '#9fe8ff' : '#ffb0c8', 'center');
+    c.globalAlpha = 1;
   }
 }
 function frame() {
