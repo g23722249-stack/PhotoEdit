@@ -29,6 +29,8 @@ body { font-family: var(--f-ui); -webkit-user-select: none; user-select: none; -
   font: 700 20px var(--f-ui); touch-action: none; -webkit-tap-highlight-color: transparent;
 }
 #touch .right button { width: 76px; height: 76px; font-size: 22px; }
+#touch .right { align-items: flex-end; }
+#touch .right button.sm { width: 54px; height: 54px; font-size: 17px; }
 #touch .top button { width: 44px; height: 44px; font-size: 13px; border-radius: 10px; }
 #touch button.on { background: rgba(159, 232, 255, 0.35); border-color: var(--blade); }
 #touch button:focus-visible { outline: 2px solid var(--dawn); outline-offset: 2px; }
@@ -46,6 +48,8 @@ body { font-family: var(--f-ui); -webkit-user-select: none; user-select: none; -
     <button data-act="right" aria-label="向右">▶</button>
   </div>
   <div class="grp right">
+    <button data-act="flip" class="sm" aria-label="後空翻閃避">翻</button>
+    <button data-act="rush" class="sm" aria-label="前衝刺閃避">衝</button>
     <button data-act="attack" aria-label="斬擊">斬</button>
     <button data-act="jump" aria-label="跳躍">跳</button>
   </div>
@@ -94,7 +98,7 @@ const keys = {}, pad = {}, touch = {}, pressed = {};
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
   ArrowUp: 'jump', KeyW: 'jump', KeyK: 'jump', KeyX: 'jump', Space: 'jump',
-  KeyJ: 'attack', KeyZ: 'attack', Enter: 'start', KeyP: 'pause', Escape: 'pause', KeyM: 'mute', KeyH: 'retro'
+  KeyJ: 'attack', KeyZ: 'attack', KeyQ: 'flip', KeyU: 'flip', KeyE: 'rush', KeyL: 'rush', Enter: 'start', KeyP: 'pause', Escape: 'pause', KeyM: 'mute', KeyH: 'retro'
 };
 addEventListener('keydown', e => {
   const a = KEYMAP[e.code]; if (!a) return;
@@ -105,9 +109,9 @@ const isDown = a => !!(keys[a] || pad[a] || touch[a]);
 const hit = a => !!pressed[a];
 const anyStart = () => hit('start') || hit('attack') || hit('jump');
 
-// Xbox 手把（瀏覽器的 standard 配置）：A 跳、B 滑行、X／RB／RT 斬、LB 跳、
+// Xbox 手把（瀏覽器的 standard 配置）：A 跳、B 滑行、X／RT 斬、LB 後空翻閃避、RB 前衝刺閃避、
 // 左類比或十字鍵移動、Menu 開始／暫停、View 切換像素模式、按下左類比 靜音
-const PAD_ACTS = ['left', 'right', 'down', 'jump', 'attack', 'slide', 'start', 'retro', 'mute'];
+const PAD_ACTS = ['left', 'right', 'down', 'jump', 'attack', 'slide', 'flip', 'rush', 'start', 'retro', 'mute'];
 const padPrev = {};
 let padName = '', padToast = 0;
 function pads() {
@@ -120,17 +124,18 @@ function pollPad() {
     const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
     now.left ||= ax < -0.4 || b(14); now.right ||= ax > 0.4 || b(15);
     now.down ||= ay > 0.55 || b(13);
-    now.jump ||= b(0) || b(4) || b(12);
+    now.jump ||= b(0) || b(12);
     now.slide ||= b(1);
-    now.attack ||= b(2) || b(5) || b(7);
+    now.flip ||= b(4); now.rush ||= b(5);
+    now.attack ||= b(2) || b(7);
     now.start ||= b(9); now.retro ||= b(8); now.mute ||= b(10);
   }
   for (const k of PAD_ACTS) {
     if (now[k] && !padPrev[k]) { pressed[k] = true; audio.unlock(); }
     pad[k] = padPrev[k] = !!now[k];
   }
-  // 選單裡 A 等於確認；滑行鍵在選單中不做事
-  if (pressed.slide && state !== 'play') pressed.slide = false;
+  // 選單裡 A 等於確認；滑行和閃避鍵在選單中不做事
+  if (state !== 'play') pressed.slide = pressed.flip = pressed.rush = false;
 }
 function rumble(strong, weak, ms) {
   for (const gp of pads()) {
@@ -217,6 +222,7 @@ const audio = {
     if (!this.ac) return; const t = this.ac.currentTime;
     switch (name) {
       case 'jump': this.tone('square', 300, 640, t, 0.11, 0.12); break;
+      case 'flip': this.tone('triangle', 500, 1300, t, 0.2, 0.2); this.burst(t, 0.2, 0.2, 'highpass', 2500); break;
       case 'slide': this.burst(t, 0.18, 0.3, 'lowpass', 900); break;
       case 'slash': this.burst(t, 0.12, 0.35, 'highpass', 3000); this.tone('sawtooth', 1100, 320, t, 0.12, 0.08); break;
       case 'hit': this.tone('square', 220, 90, t, 0.08, 0.15); break;
@@ -262,7 +268,7 @@ let state = 'title', stateT = 0, last = performance.now(), time = 0;
 let camX = 0, shakeT = 0, shakeMag = 0, score = 0, lives = 2, checkpoint = 0, banner = 0;
 let hi = store.get('ab.hi', 0);
 let enemies = [], items = [], waves = [], shots = [], parts = [], popups = [];
-const P = { x: 90, y: 460, vx: 0, vy: 0, w: 24, h: 60, face: 1, onGround: false, hp: 10, maxHp: 10, power: 1, inv: 0, hurtT: 0, atkT: 0, atkCD: 0, swing: 0, slideT: 0, coyote: 0, jumpBuf: 0, anim: 0 };
+const P = { x: 90, y: 460, vx: 0, vy: 0, w: 24, h: 60, face: 1, onGround: false, hp: 10, maxHp: 10, power: 1, inv: 0, hurtT: 0, atkT: 0, atkCD: 0, swing: 0, slideT: 0, coyote: 0, jumpBuf: 0, anim: 0, dodge: null, dodgeCD: 0, airDodge: true, trail: [] };
 const boss = { x: 7250, y: -200, vx: 0, vy: 0, w: 56, h: 116, face: -1, hp: 50, maxHp: 50, st: 'sleep', stT: 0, t: 0, flash: 0, onGround: false, hitWall: false, last: '', fired: false, active: false, defeated: false, boomT: 0 };
 const INTRO = ['放學後的黃昏，星見澪在學校天台撿到一把發光的劍。',
   '那是「曙光之劍」。它選中了澪：夜之國的影騎士葛雷蒙，正要把人間拖進永遠的黑夜。',
@@ -283,7 +289,7 @@ function resetBoss() {
 }
 function respawn() {
   const cp = CHECKPOINTS[checkpoint];
-  Object.assign(P, { x: cp.x, y: cp.y, vx: 0, vy: 0, face: 1, hp: P.maxHp, inv: 1.6, hurtT: 0, atkT: 0, atkCD: 0, slideT: 0, h: 60 });
+  Object.assign(P, { x: cp.x, y: cp.y, vx: 0, vy: 0, face: 1, hp: P.maxHp, inv: 1.6, hurtT: 0, atkT: 0, atkCD: 0, slideT: 0, h: 60, dodge: null, dodgeCD: 0, airDodge: true, trail: [] });
   waves = []; shots = [];
   if (boss.active && !boss.defeated) { resetBoss(); audio.play('stage'); }
   camX = clamp(P.x - VW * 0.35, 0, LEVEL_W - VW);
@@ -337,13 +343,13 @@ function popup(x, y, text, color = '#ffe9a8') { popups.push({ x, y, text, life: 
 
 // ───────── 主角 ─────────
 function hurtPlayer(n, srcX) {
-  if (P.inv > 0 || state !== 'play') return;
+  if (P.inv > 0 || P.dodge || state !== 'play') return;
   P.hp -= n; P.inv = 1.3; P.hurtT = 0.32; P.slideT = 0;
   P.vx = (P.x < srcX ? -1 : 1) * 280; P.vy = -380;
   shake(8); audio.sfx('hurt'); rumble(0.7, 0.4, 220); burst(P.x, P.y - 35, 14, '#ff8fb0', 220, 3);
   if (P.hp <= 0) { P.hp = 0; killPlayer(); }
 }
-function killPlayer() { setState('dying'); P.vy = -600; P.vx = -P.face * 120; audio.stop(); audio.sfx('boom'); rumble(1, 0.8, 500); burst(P.x, P.y - 30, 40, '#9fe8ff', 380, 4, 1); }
+function killPlayer() { P.dodge = null; P.trail = []; setState('dying'); P.vy = -600; P.vx = -P.face * 120; audio.stop(); audio.sfx('boom'); rumble(1, 0.8, 500); burst(P.x, P.y - 30, 40, '#9fe8ff', 380, 4, 1); }
 function fireWave() {
   const lv = P.power, y = P.y - (P.slideT > 0 ? 18 : 38);
   const base = { x: P.x + P.face * 26, y, vx: P.face * 780, vy: 0, life: lv >= 2 ? 0.62 : 0.42, r: lv >= 2 ? 15 : 10, lv, dmg: 1 };
@@ -354,7 +360,28 @@ function updatePlayer(dt) {
   const p = P;
   if (p.inv > 0) p.inv -= dt; if (p.atkCD > 0) p.atkCD -= dt; if (p.atkT > 0) p.atkT -= dt;
   const L = isDown('left'), Rr = isDown('right'), D = isDown('down');
-  if (p.hurtT > 0) { p.hurtT -= dt; p.vx *= 0.96; }
+  if (p.dodgeCD > 0) p.dodgeCD -= dt;
+  if (p.onGround) p.airDodge = true;
+  // 閃避：LB／Q 後空翻往後躍起，RB／E 往前低身衝刺；閃避期間無敵，空中各跳只能閃一次
+  if (!p.dodge && p.hurtT <= 0 && p.dodgeCD <= 0 && (hit('flip') || hit('rush')) && (p.onGround || p.airDodge)) {
+    const type = hit('flip') ? 'flip' : 'rush';
+    if (!p.onGround) p.airDodge = false;
+    p.slideT = 0; p.atkT = 0;
+    p.dodge = { type, t: 0, dur: type === 'flip' ? 0.45 : 0.26 };
+    if (type === 'flip') { p.vy = -560; p.onGround = false; audio.sfx('flip'); }
+    else { p.vy = 0; audio.sfx('dash'); }
+    rumble(0.15, 0.35, 90); ring(p.x, p.y - 30, '#9fe8ff', 34);
+  }
+  for (const g of p.trail) g.life -= dt * 3.5;
+  p.trail = p.trail.filter(g => g.life > 0);
+  if (p.dodge) {
+    const d = p.dodge; d.t += dt; const k = d.t / d.dur;
+    if (d.type === 'flip') p.vx = -p.face * 400 * (1 - k * 0.4);
+    else { p.vx = p.face * 780 * (k < 0.7 ? 1 : 1 - (k - 0.7) * 2.5); p.vy = 0; }
+    if (d.t - (d.lastTrail ?? -1) >= 0.035) d.lastTrail = d.t, p.trail.push({ x: p.x, y: p.y, face: p.face, rot: d.type === 'flip' ? -6.283 * Math.min(1, k) : 0, rush: d.type === 'rush', life: 1 });
+    if (k >= 1 || (d.type === 'flip' && d.t > 0.15 && p.onGround)) { p.dodge = null; p.dodgeCD = 0.3; }
+  }
+  else if (p.hurtT > 0) { p.hurtT -= dt; p.vx *= 0.96; }
   else if (p.slideT > 0) {
     p.slideT -= dt; p.vx = p.face * 560;
     if (Math.random() < 0.6) parts.push({ x: p.x - p.face * 10, y: p.y - 2, vx: -p.face * 60, vy: -40 - Math.random() * 40, life: 0.35, max: 0.35, color: '#b9a8ff', size: 3, g: 0 });
@@ -363,21 +390,21 @@ function updatePlayer(dt) {
     const ax = (Rr ? 1 : 0) - (L ? 1 : 0); if (ax) p.face = ax;
     p.vx += (ax * 300 - p.vx) * Math.min(1, dt * (p.onGround ? 18 : 9));
   }
-  if (hit('slide') && p.onGround && p.slideT <= 0 && p.hurtT <= 0) { p.slideT = 0.38; audio.sfx('slide'); }
+  if (hit('slide') && p.onGround && p.slideT <= 0 && p.hurtT <= 0 && !p.dodge) { p.slideT = 0.38; audio.sfx('slide'); }
   if (hit('jump')) p.jumpBuf = 0.12;
   p.coyote = p.onGround ? 0.1 : p.coyote - dt;
   if (p.jumpBuf > 0) {
     p.jumpBuf -= dt;
-    if (p.coyote > 0 && p.hurtT <= 0) {
+    if (p.coyote > 0 && p.hurtT <= 0 && !p.dodge) {
       if (D && p.onGround && p.slideT <= 0) { p.slideT = 0.38; audio.sfx('slide'); }
       else { p.vy = -830; p.onGround = false; p.slideT = 0; audio.sfx('jump'); }
       p.coyote = 0; p.jumpBuf = 0;
     }
   }
-  if (!isDown('jump') && p.vy < 0 && p.hurtT <= 0) p.vy += G * 1.3 * dt;
-  p.vy = Math.min(p.vy + G * dt, 1100);
-  if (hit('attack') && p.atkCD <= 0 && p.hurtT <= 0) { p.atkT = 0.24; p.atkCD = 0.3; p.swing++; fireWave(); audio.sfx('slash'); }
-  p.h = p.slideT > 0 ? 30 : 60;
+  if (!isDown('jump') && p.vy < 0 && p.hurtT <= 0 && !p.dodge) p.vy += G * 1.3 * dt;
+  if (!(p.dodge && p.dodge.type === 'rush')) p.vy = Math.min(p.vy + G * dt, 1100);
+  if (hit('attack') && p.atkCD <= 0 && p.hurtT <= 0 && !p.dodge) { p.atkT = 0.24; p.atkCD = 0.3; p.swing++; fireWave(); audio.sfx('slash'); }
+  p.h = p.slideT > 0 ? 30 : p.dodge && p.dodge.type === 'rush' ? 44 : 60;
   moveEntity(p, dt);
   if (p.y > 720) { p.hp = 0; killPlayer(); return; }
   p.anim += Math.abs(p.vx) * dt * 0.045;
@@ -699,6 +726,8 @@ function drawHeroine(c, x, y, o) {
   c.save(); c.translate(x, y); c.scale(o.face * o.s, o.s);
   let lift = 0, lean = 0, th = [0.08, -0.08], sh = [0.08, -0.08], hipY = -30;
   if (o.slide) { hipY = -13; lean = -0.55; th = [1.45, 0.7]; sh = [1.55, -0.2]; }
+  else if (o.rush) { hipY = -24; lean = 0.45; th = [1.0, -0.8]; sh = [0.35, -1.2]; }
+  else if (o.flip) { th = [1.3, 1.1]; sh = [-0.4, -0.6]; }
   else if (o.air) { if (o.vy < 0) { th = [0.95, -0.3]; sh = [0.1, -0.95]; } else { th = [0.45, -0.15]; sh = [0.25, -0.55]; } }
   else if (o.run) {
     const a = Math.sin(o.phase), b = Math.sin(o.phase + Math.PI);
@@ -939,9 +968,9 @@ function drawTitle(c) {
   txt(c, '在天亮之前，打倒影騎士。', 72, 292, `500 18px ${FS}`, '#d8d2ff');
   if (blink()) txt(c, padName ? '按 A 或 Menu 開始' : '按 Enter 或點擊畫面開始', 72, 360, `700 20px ${FS}`, '#ffc76a');
   const rows = padName
-    ? [['左類比 / 十字鍵', '移動'], ['A / LB', '跳躍（按越久跳越高）'], ['B 或 ↓＋A', '滑行'], ['X / RB / RT', '斬擊，同時放出劍氣'], ['Menu', '暫停'], ['View', '切換 HD／像素模式'], ['按下左類比', '靜音']]
-    : [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
-  rows.forEach(([k, v], i) => { txt(c, k, 72, 410 + i * 20, `700 13px ${FS}`, '#9fe8ff'); txt(c, v, 230, 410 + i * 20, `500 13px ${FS}`, '#b9b3e6'); });
+    ? [['左類比 / 十字鍵', '移動'], ['A', '跳躍（按越久跳越高）'], ['B 或 ↓＋A', '滑行'], ['X / RT', '斬擊，同時放出劍氣'], ['LB / RB', '後空翻／前衝刺閃避（無敵）'], ['Menu', '暫停'], ['View', '切換 HD／像素模式'], ['按下左類比', '靜音']]
+    : [['← →', '移動'], ['K / X / 空白 / ↑', '跳躍（按越久跳越高）'], ['↓ ＋ 跳躍', '滑行'], ['J / Z', '斬擊，同時放出劍氣'], ['Q / E', '後空翻／前衝刺閃避（無敵）'], ['P', '暫停'], ['H', '切換 HD／像素模式'], ['M', '靜音']];
+  rows.forEach(([k, v], i) => { txt(c, k, 72, 392 + i * 18, `700 13px ${FS}`, '#9fe8ff'); txt(c, v, 230, 392 + i * 18, `500 13px ${FS}`, '#b9b3e6'); });
   if (hi) { spacing(c, '2px'); txt(c, 'HI ' + String(hi).padStart(7, '0'), VW - 24, 36, `700 14px ${FL}`, '#8f88c7', 'right'); spacing(c, '0px'); }
 }
 function drawIntro(c) {
@@ -996,9 +1025,25 @@ function render(c) {
     }
     if (boss.active || boss.st === 'dying') if (!(boss.st === 'dying' && Math.floor(time * 20) % 2)) drawBoss(c, cx);
     const flick = P.inv > 0 && state === 'play' && Math.floor(time * 20) % 2;
+    // 閃避殘影
+    for (const g of P.trail) {
+      c.save(); c.globalAlpha = 0.28 * g.life;
+      c.translate(g.x - cx, g.y - 30); c.rotate(g.rot * g.face); c.translate(-(g.x - cx), -(g.y - 30));
+      drawHeroine(c, g.x - cx, g.y, { face: g.face, s: 1.15, t: time, air: !g.rush, rush: g.rush, flip: !g.rush, vy: -1, swing: -1, vx: 300 });
+      c.restore();
+    }
     if (!flick && state !== 'clear') {
-      const run = P.onGround && Math.abs(P.vx) > 30 && P.slideT <= 0;
-      drawHeroine(c, P.x - cx, P.y, { face: P.face, s: 1.15, t: time, run, phase: P.anim, air: !P.onGround || state === 'dying', vy: P.vy, slide: P.slideT > 0, swing: P.atkT > 0 ? 1 - P.atkT / 0.24 : -1, vx: P.vx });
+      const run = P.onGround && Math.abs(P.vx) > 30 && P.slideT <= 0 && !P.dodge;
+      const d = P.dodge;
+      c.save();
+      if (d) {
+        const gx = P.x - cx, gy = P.y - 30, gl = c.createRadialGradient(gx, gy, 4, gx, gy, 54);
+        gl.addColorStop(0, 'rgba(159,232,255,0.4)'); gl.addColorStop(1, 'rgba(159,232,255,0)');
+        c.fillStyle = gl; c.fillRect(gx - 54, gy - 54, 108, 108);
+        if (d.type === 'flip') { c.translate(gx, gy); c.rotate(-6.283 * Math.min(1, d.t / d.dur) * P.face); c.translate(-gx, -gy); }
+      }
+      drawHeroine(c, P.x - cx, P.y, { face: P.face, s: 1.15, t: time, run, phase: P.anim, air: !P.onGround || state === 'dying', vy: P.vy, slide: P.slideT > 0, rush: d && d.type === 'rush', flip: d && d.type === 'flip', swing: P.atkT > 0 ? 1 - P.atkT / 0.24 : -1, vx: P.vx });
+      c.restore();
     }
     drawFx(c, cx);
   }
@@ -1038,6 +1083,6 @@ function loop(now) {
   for (const k in pressed) pressed[k] = false;
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') setState('pause'); });
-window.__game = { get state() { return state; }, P, boss, newGame, get score() { return score; } };
+window.__game = { get state() { return state; }, P, boss, newGame, hurt: hurtPlayer, get score() { return score; } };
 requestAnimationFrame(t => { last = t; loop(t); });
 </script>
