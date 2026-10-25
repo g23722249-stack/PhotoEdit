@@ -1,0 +1,54 @@
+{
+  // 通用去背（備援）：一般照片、真人。onnx-community 的檔案放在 onnx/ 資料夾。
+  "id": "birefnet-general",
+  "name": "BiRefNet（通用去背）",
+  "purpose": "segmentation",
+  "description": "一般照片與真人素材用的 BiRefNet，輸入 1024×1024。預設下載 FP32 版以求最廣相容性；FP16 版較小，但不保證所有 DirectML 顯卡都能正確執行。",
+  "repo": "onnx-community/BiRefNet-ONNX",
+  "revision": "main",
+  "sourceUrl": "https://huggingface.co/onnx-community/BiRefNet-ONNX",
+  "variants": [
+    {
+      "id": "fp32",
+      "label": "FP32（相容性最好）",
+      "estimatedBytes": 930000000,
+      "files": [
+        { "pattern": "onnx/model.onnx", "role": "model" },
+        { "pattern": "*.onnx", "role": "model" },
+        { "pattern": "config.json", "role": "config", "required": false },
+        { "pattern": "preprocessor_config.json", "role": "config", "required": false }
+      ]
+    },
+    {
+      "id": "fp16",
+      "label": "FP16（較小，需實測）",
+      "estimatedBytes": 470000000,
+      "files": [
+        { "pattern": "onnx/model_fp16.onnx", "role": "model" },
+        { "pattern": "config.json", "role": "config", "required": false },
+        { "pattern": "preprocessor_config.json", "role": "config", "required": false }
+      ]
+    }
+  ],
+  "license": {
+    "expected": "mit",
+    "url": "https://huggingface.co/onnx-community/BiRefNet-ONNX",
+    "commercialUse": "unknown",
+    "notes": "原始 BiRefNet 以 MIT 授權釋出；ONNX 轉換版請以模型卡為準。"
+  },
+  "io": {
+    "inputShape": [1, 3, 1024, 1024],
+    "inputType": "",
+    "outputShape": [],
+    "outputType": ""
+  },
+  "preprocess": {
+    "size": 1024,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "resize": "letterbox",
+    "outputActivation": "auto",
+    "minMaxNormalize": false
+  },
+  "providers": { "directml": "untested", "cpu": "supported" }
+}

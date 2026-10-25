@@ -21,3 +21,6 @@ PhotoEdit.Vision/Models/GhibliDiffusion/
 PhotoEdit.Vision/Models/AnimeAnything/
 # OpenH264 binary must be obtained from Cisco (license), not redistributed here
 PhotoEdit.Vision/Native/
+
+# AutoComposite：測試用的極小 ONNX 模型（幾百位元組，由 tools/make_test_models.py 產生）要進版本控制
+!AutoComposite/AutoComposite.Tests/TestAssets/*.onnx

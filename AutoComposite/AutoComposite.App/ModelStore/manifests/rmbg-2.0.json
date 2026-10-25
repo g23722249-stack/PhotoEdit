@@ -1,0 +1,22 @@
+{
+  // 參考：BRIA RMBG 2.0 的公開權重是 CC BY-NC 4.0（非商業），商用需另向 BRIA 取得授權。
+  // 列在這裡是為了在模型管理顯示授權限制；未整合、不提供安裝。
+  "id": "rmbg-2.0",
+  "name": "BRIA RMBG 2.0（非商業授權，僅供參考）",
+  "purpose": "segmentation",
+  "description": "去背品質不錯，但公開權重為 CC BY-NC 4.0 非商業授權，不能因為可以免費下載就隨軟體商用。",
+  "repo": "briaai/RMBG-2.0",
+  "revision": "main",
+  "sourceUrl": "https://huggingface.co/briaai/RMBG-2.0",
+  "installable": false,
+  "variants": [
+    { "id": "default", "label": "ONNX", "files": [ { "pattern": "onnx/model.onnx", "role": "model" } ] }
+  ],
+  "license": {
+    "expected": "cc-by-nc-4.0",
+    "url": "https://huggingface.co/briaai/RMBG-2.0",
+    "commercialUse": "forbidden",
+    "notes": "商業用途需向 BRIA AI 取得授權。"
+  },
+  "providers": { "directml": "untested", "cpu": "untested" }
+}

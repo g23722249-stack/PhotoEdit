@@ -1,0 +1,43 @@
+{
+  // 動漫人物去背（首選）。檔名不寫死：安裝時從 Hub 檔案清單挑第一個符合的 .onnx，外部權重一併下載。
+  "id": "birefnet-toonout",
+  "name": "BiRefNet ToonOut（動漫人物去背）",
+  "purpose": "segmentation",
+  "description": "針對動漫角色微調的 BiRefNet，保留頭髮、武器、飾品輪廓。FP16 權重、FP32 輸入輸出，輸入 1024×1024。",
+  "repo": "sprited/birefnet-toonout-onnx",
+  "revision": "main",
+  "sourceUrl": "https://huggingface.co/sprited/birefnet-toonout-onnx",
+  "variants": [
+    {
+      "id": "default",
+      "label": "ONNX（FP16 權重、FP32 輸入輸出）",
+      "estimatedBytes": 500000000,
+      "files": [
+        { "pattern": "*.onnx", "role": "model" },
+        { "pattern": "*.onnx_data", "role": "external-weights", "required": false },
+        { "pattern": "config.json", "role": "config", "required": false }
+      ]
+    }
+  ],
+  "license": {
+    "expected": "mit",
+    "url": "https://huggingface.co/sprited/birefnet-toonout-onnx",
+    "commercialUse": "unknown",
+    "notes": "撰寫清單時無法連線核對模型卡；安裝時會讀取 Hub 上實際的授權欄位，與預期不同或未標示時要求使用者確認。"
+  },
+  "io": {
+    "inputShape": [1, 3, 1024, 1024],
+    "inputType": "float32",
+    "outputShape": [1, 1, 1024, 1024],
+    "outputType": "float32"
+  },
+  "preprocess": {
+    "size": 1024,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "resize": "letterbox",
+    "outputActivation": "auto",
+    "minMaxNormalize": false
+  },
+  "providers": { "directml": "untested", "cpu": "supported" }
+}
