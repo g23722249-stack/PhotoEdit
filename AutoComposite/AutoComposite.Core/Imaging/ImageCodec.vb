@@ -21,11 +21,22 @@ Public NotInheritable Class ImageInfo
     Public Property HasTransparency As Boolean
     ''' <summary>原始 EXIF Orientation（1..8，沒有時為 1）。</summary>
     Public Property ExifOrientation As Integer = 1
+    ''' <summary>原始檔案的寬高（轉正後）。超大圖縮小載入時與 Width／Height 不同。</summary>
+    Public Property OriginalWidth As Integer
+    Public Property OriginalHeight As Integer
+
+    ''' <summary>載入時是否因超過像素上限而縮小。</summary>
+    Public ReadOnly Property WasDownscaled As Boolean
+        Get
+            Return OriginalWidth > 0 AndAlso (OriginalWidth <> Width OrElse OriginalHeight <> Height)
+        End Get
+    End Property
 
     Public Function Describe() As String
         Dim alpha = If(HasTransparency, "有透明區域", If(HasAlphaChannel, "有 Alpha（全不透明）", "無 Alpha"))
         Dim orient = If(ExifOrientation <> 1, $"，EXIF 方向 {ExifOrientation} 已轉正", "")
-        Return $"{Width}×{Height}，{Format} {ColorMode} {BitsPerChannel}-bit，{alpha}{orient}"
+        Dim scaled = If(WasDownscaled, $"（原圖 {OriginalWidth}×{OriginalHeight} 超過載入上限，已等比縮小）", "")
+        Return $"{Width}×{Height}{scaled}，{Format} {ColorMode} {BitsPerChannel}-bit，{alpha}{orient}"
     End Function
 End Class
 

@@ -124,4 +124,22 @@ Public Class ImagingTests
         Assert.True(m(20, 20) < 0.1F)
         Assert.True(m(20, 20) > m(25, 20))
     End Sub
+    <Fact>
+    Public Sub FitPixels_DownscalesMuseumScanBelowLimit()
+        ' 《星夜》Google Art Project 版：30000×23756（約 7.1 億像素）。
+        Dim r = ImageLimits.FitPixels(30000, 23756, ImageLimits.DefaultMaxLoadPixels)
+        Assert.True(CLng(r.Width) * r.Height <= ImageLimits.DefaultMaxLoadPixels)
+        Assert.InRange(r.Width / CDbl(r.Height), 30000 / 23756.0 - 0.001, 30000 / 23756.0 + 0.001)
+        Assert.InRange(r.Width, 8900, 8991)
+        ImageLimits.CheckSize(r.Width, r.Height, 4)
+        ' 沒超過上限時維持原尺寸。
+        Assert.Equal((4000, 3000), ImageLimits.FitPixels(4000, 3000, ImageLimits.DefaultMaxLoadPixels))
+    End Sub
+
+    <Fact>
+    Public Sub ImageInfo_DescribesDownscaledLoad()
+        Dim info As New ImageInfo With {.Width = 8990, .Height = 7119, .OriginalWidth = 30000, .OriginalHeight = 23756, .Format = "JPEG", .ColorMode = "RGB"}
+        Assert.True(info.WasDownscaled)
+        Assert.Contains("30000×23756", info.Describe())
+    End Sub
 End Class

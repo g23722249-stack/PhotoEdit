@@ -32,6 +32,9 @@ Public NotInheritable Class CompositeLayer
     Public Property OcclusionMaskPath As String = ""
     Public Property Locked As Boolean
     Public Property Visible As Boolean = True
+    ''' <summary>存檔時人物圖的載入尺寸（超大圖會縮小載入；重開時尺寸不同就換算錨點與縮放）。</summary>
+    Public Property SourceWidth As Integer
+    Public Property SourceHeight As Integer
 
     ' ---- 執行期資料 ----
 
@@ -130,6 +133,9 @@ End Class
 ''' </summary>
 Public NotInheritable Class CompositeScene
     Public Property BackgroundPath As String = ""
+    ''' <summary>存檔時背景的載入尺寸（重開時尺寸不同就等比換算所有座標）。</summary>
+    Public Property BackgroundWidth As Integer
+    Public Property BackgroundHeight As Integer
     Public Property Layers As New List(Of CompositeLayer)()
     ''' <summary>前景物件遮罩檔（背景中應該擋在所有人物前面的部分）。</summary>
     Public Property ForegroundMaskPath As String = ""

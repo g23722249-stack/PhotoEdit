@@ -47,6 +47,7 @@ Public NotInheritable Class CompositeWorkflow
         Scene.BackgroundPath = path
         Scene.Background = d.Image
         Scene.BackgroundInfo = d.Info
+        Scene.BackgroundWidth = d.Image.Width : Scene.BackgroundHeight = d.Image.Height
         ' 背景換了：與舊背景尺寸相關的遮罩全部清掉。
         Scene.ForegroundMask = Nothing : Scene.ProtectMask = Nothing : Scene.ShadowReceiverMask = Nothing
         For Each l In Scene.Layers
@@ -71,7 +72,7 @@ Public NotInheritable Class CompositeWorkflow
     ''' <summary>加入人物圖層。原圖有透明區域時直接用其 Alpha（不需要再去背）。</summary>
     Public Function AddFigure(path As String) As CompositeLayer
         Dim d = Performance.Measure("載入人物", Function() _svc.Images.Load(path))
-        Dim layer As New CompositeLayer With {.Name = IO.Path.GetFileNameWithoutExtension(path), .SourcePath = path, .Source = d.Image, .SourceInfo = d.Info}
+        Dim layer As New CompositeLayer With {.Name = IO.Path.GetFileNameWithoutExtension(path), .SourcePath = path, .Source = d.Image, .SourceInfo = d.Info, .SourceWidth = d.Image.Width, .SourceHeight = d.Image.Height}
         If SourceAlphaSegmentation.HasUsableAlpha(d.Image) Then
             layer.AiAlpha = d.Image.ExtractAlpha()
             layer.Alpha = layer.AiAlpha.Clone()

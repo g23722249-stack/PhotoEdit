@@ -162,4 +162,32 @@ Public Class ProjectTests
         Assert.Equal(ColorMode.Original, wf.Scene.Layers(0).Color.Mode)
         Assert.Contains("背景分析", wf.Performance.ToText())
     End Sub
+    <Fact>
+    Public Sub Load_BackgroundSizeChanged_RescalesCoordinates()
+        Dim dir = TestHelpers.TempDir()
+        Dim codec As New PngCodec()
+        Dim bgPath = Path.Combine(dir, "bg.png"), figPath = Path.Combine(dir, "fig.png")
+        codec.Encode(TestHelpers.NoisyBackground(200, 100), bgPath, ExportFormat.Png, 0)
+        Dim fig = TestHelpers.StickFigure(30, 60)
+        codec.Encode(fig, figPath, ExportFormat.Png, 0)
+        Dim scene As New CompositeScene With {.BackgroundPath = bgPath, .Background = TestHelpers.NoisyBackground(200, 100)}
+        Dim layer = TestHelpers.NewLayer(fig, TestHelpers.StickMask(fig))
+        layer.SourcePath = figPath
+        layer.Transform = New LayerTransform With {.X = 100, .Y = 80, .Scale = 0.5}
+        scene.Layers.Add(layer)
+        scene.Target = New PlacementTarget With {.HasAnchor = True, .AnchorX = 100, .AnchorY = 80}
+        Dim proj = Path.Combine(dir, "p" & ProjectSerializer.Extension)
+        Call New ProjectSerializer().Save(scene, proj)
+        ' 背景換成兩倍大的同一張圖（例如載入上限改變）。
+        codec.Encode(TestHelpers.NoisyBackground(400, 200), bgPath, ExportFormat.Png, 0)
+        Dim missing As List(Of MissingFile) = Nothing
+        Dim loaded = New ProjectSerializer().Load(proj, missing)
+        Dim warnings As New List(Of String)()
+        ProjectSerializer.LoadImages(loaded, New ImageLoader(), warnings)
+        Assert.Equal(200.0, loaded.Layers(0).Transform.X, 6)
+        Assert.Equal(160.0, loaded.Layers(0).Transform.Y, 6)
+        Assert.Equal(1.0, loaded.Layers(0).Transform.Scale, 6)
+        Assert.Equal(200.0, loaded.Target.AnchorX, 6)
+        Assert.Contains(warnings, Function(w) w.Contains("換算"))
+    End Sub
 End Class

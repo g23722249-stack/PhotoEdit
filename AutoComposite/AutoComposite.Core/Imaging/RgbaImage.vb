@@ -161,6 +161,19 @@ Public NotInheritable Class ImageLimits
     Public Const MaxElements As Long = 2_000_000_000L
     ''' <summary>單邊上限。</summary>
     Public Const MaxSide As Integer = 32768
+    ''' <summary>
+    ''' 預設的載入像素上限（6400 萬像素，RGBA 約 256 MB）。超過時解碼器應等比縮小載入，
+    ''' 否則合成所需的多張全尺寸緩衝區會耗盡記憶體（例如 30000×23756 的博物館掃描檔光 RGBA 就要 2.85 GB）。
+    ''' </summary>
+    Public Const DefaultMaxLoadPixels As Long = 64_000_000L
+
+    ''' <summary>超過 maxPixels 時的等比縮小尺寸（不超過時回傳原尺寸）。</summary>
+    Public Shared Function FitPixels(width As Integer, height As Integer, maxPixels As Long) As (Width As Integer, Height As Integer)
+        Dim n = CLng(width) * height
+        If n <= maxPixels OrElse maxPixels <= 0 Then Return (width, height)
+        Dim k = Math.Sqrt(maxPixels / CDbl(n))
+        Return (Math.Max(1, CInt(Math.Floor(width * k))), Math.Max(1, CInt(Math.Floor(height * k))))
+    End Function
 
     Public Shared Sub CheckSize(width As Integer, height As Integer, channels As Integer)
         If width <= 0 OrElse height <= 0 Then Throw New ArgumentOutOfRangeException(NameOf(width), $"影像尺寸無效：{width}×{height}。")

@@ -23,42 +23,82 @@ Public NotInheritable Class WicImageCodec
         Return Extensions.Contains(IO.Path.GetExtension(path).ToLowerInvariant())
     End Function
 
+    ''' <summary>
+    ''' 載入像素上限：超過時在解碼階段就等比縮小（JPEG 由 WIC 以 DCT 縮放，不需要先解出整張原圖）。
+    ''' 合成要同時保留背景、輸出與多張遮罩的全尺寸緩衝區，所以不能無上限地載入博物館等級的超大掃描檔。
+    ''' </summary>
+    Public Property MaxPixels As Long = AutoComposite.ImageLimits.DefaultMaxLoadPixels
+
     Public Function Decode(path As String) As AutoComposite.DecodedImage Implements AutoComposite.IImageCodec.Decode
-        Dim decoder As BitmapDecoder
+        Try
+            Return DecodeCore(path)
+        Catch ex As Exception When TypeOf ex Is OverflowException OrElse TypeOf ex Is OutOfMemoryException OrElse TypeOf ex Is InsufficientMemoryException
+            Throw New AutoComposite.ImageTooLargeException($"圖片太大，記憶體不足以解碼（{ex.Message}）。請先用其他軟體縮小，或關閉其他程式後再試。")
+        End Try
+    End Function
+
+    Private Function DecodeCore(path As String) As AutoComposite.DecodedImage
         Using fs As New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
+            ' 先以延遲模式開啟，只讀尺寸與中繼資料（OnLoad 會立刻解碼整張圖，超大圖會在 WPF 內部溢位）。
+            Dim decoder As BitmapDecoder
             Try
-                decoder = BitmapDecoder.Create(fs, BitmapCreateOptions.PreservePixelFormat Or BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad)
+                decoder = BitmapDecoder.Create(fs, BitmapCreateOptions.PreservePixelFormat Or BitmapCreateOptions.IgnoreColorProfile Or BitmapCreateOptions.DelayCreation, BitmapCacheOption.None)
             Catch ex As Exception When TypeOf ex Is NotSupportedException OrElse TypeOf ex Is FileFormatException OrElse TypeOf ex Is Runtime.InteropServices.COMException
                 Dim ext = IO.Path.GetExtension(path).ToLowerInvariant()
                 Dim hint = If(ext = ".webp" OrElse ext = ".heic" OrElse ext = ".heif" OrElse ext = ".avif",
                               "，請從 Microsoft Store 安裝對應的影像擴充功能（例如「WebP 影像擴充功能」、「HEIF 影像擴充功能」）", "")
                 Throw New NotSupportedException($"Windows 無法解碼此圖片（{ex.Message}）{hint}。", ex)
             End Try
+            Dim frame = decoder.Frames(0)
+            Dim origW = frame.PixelWidth, origH = frame.PixelHeight
+            Dim fmt = frame.Format
+            Dim orientation = ReadOrientation(frame)
+            Dim hasAlpha = FormatHasAlpha(fmt, frame.Palette)
+            Dim formatName = If(decoder.CodecInfo?.FriendlyName, IO.Path.GetExtension(path).TrimStart("."c).ToUpperInvariant()).Replace(" Decoder", "").Replace(" decoder", "")
+            Dim target = AutoComposite.ImageLimits.FitPixels(origW, origH, MaxPixels)
+
+            Dim source As BitmapSource
+            If target.Width = origW AndAlso target.Height = origH Then
+                source = frame
+            Else
+                ' 解碼時縮小：BitmapImage 的 DecodePixelWidth 會用 WIC 的 IWICBitmapSourceTransform（JPEG 為 DCT 縮放），
+                ' 不支援的格式則由 WIC 縮放器逐列處理。尺寸以檔案儲存方向計算，EXIF 轉正在後面做。
+                fs.Position = 0
+                Dim bi As New BitmapImage()
+                bi.BeginInit()
+                bi.StreamSource = fs
+                bi.CacheOption = BitmapCacheOption.OnLoad
+                bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile
+                bi.DecodePixelWidth = target.Width
+                bi.DecodePixelHeight = target.Height
+                bi.EndInit()
+                source = bi
+                AutoComposite.AppLog.Info($"{IO.Path.GetFileName(path)} 原圖 {origW}×{origH} 超過 {MaxPixels / 1000000.0:0} MP 上限，縮小載入為 {bi.PixelWidth}×{bi.PixelHeight}。")
+            End If
+
+            Dim w = source.PixelWidth, h = source.PixelHeight
+            AutoComposite.ImageLimits.CheckSize(w, h, 4)
+            Dim conv As New FormatConvertedBitmap(source, PixelFormats.Bgra32, Nothing, 0)
+            Dim stride = w * 4
+            Dim px(CInt(CLng(stride) * h) - 1) As Byte
+            conv.CopyPixels(px, stride, 0)
+            ' BGRA → RGBA
+            For i = 0 To px.Length - 1 Step 4
+                Dim b = px(i)
+                px(i) = px(i + 2)
+                px(i + 2) = b
+            Next
+            Dim img As New AutoComposite.RgbaImage(w, h, px)
+            img = AutoComposite.ExifOrientation.Apply(img, orientation)
+            Dim swap = orientation >= 5
+            Return New AutoComposite.DecodedImage With {
+                .Image = img,
+                .Info = New AutoComposite.ImageInfo With {
+                    .SourcePath = path, .Format = formatName,
+                    .Width = img.Width, .Height = img.Height, .OriginalWidth = If(swap, origH, origW), .OriginalHeight = If(swap, origW, origH),
+                    .ColorMode = DescribeFormat(fmt, hasAlpha), .BitsPerChannel = BitsPerChannel(fmt),
+                    .HasAlphaChannel = hasAlpha, .HasTransparency = hasAlpha AndAlso img.HasTransparency(), .ExifOrientation = orientation}}
         End Using
-        Dim frame = decoder.Frames(0)
-        Dim w = frame.PixelWidth, h = frame.PixelHeight
-        AutoComposite.ImageLimits.CheckSize(w, h, 4)
-        Dim fmt = frame.Format
-        Dim conv As New FormatConvertedBitmap(frame, PixelFormats.Bgra32, Nothing, 0)
-        Dim stride = w * 4
-        Dim px(stride * h - 1) As Byte
-        conv.CopyPixels(px, stride, 0)
-        ' BGRA → RGBA
-        For i = 0 To px.Length - 1 Step 4
-            Dim b = px(i)
-            px(i) = px(i + 2)
-            px(i + 2) = b
-        Next
-        Dim img As New AutoComposite.RgbaImage(w, h, px)
-        Dim orientation = ReadOrientation(frame)
-        img = AutoComposite.ExifOrientation.Apply(img, orientation)
-        Dim hasAlpha = FormatHasAlpha(fmt, frame.Palette)
-        Return New AutoComposite.DecodedImage With {
-            .Image = img,
-            .Info = New AutoComposite.ImageInfo With {
-                .SourcePath = path, .Format = If(decoder.CodecInfo?.FriendlyName, IO.Path.GetExtension(path).TrimStart("."c).ToUpperInvariant()).Replace(" Decoder", "").Replace(" decoder", ""),
-                .Width = img.Width, .Height = img.Height, .ColorMode = DescribeFormat(fmt, hasAlpha), .BitsPerChannel = BitsPerChannel(fmt),
-                .HasAlphaChannel = hasAlpha, .HasTransparency = hasAlpha AndAlso img.HasTransparency(), .ExifOrientation = orientation}}
     End Function
 
     Public Sub Encode(image As AutoComposite.RgbaImage, path As String, format As AutoComposite.ExportFormat, jpegQuality As Integer) Implements AutoComposite.IImageCodec.Encode

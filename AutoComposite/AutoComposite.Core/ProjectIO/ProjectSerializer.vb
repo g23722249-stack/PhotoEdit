@@ -51,6 +51,10 @@ Public NotInheritable Class ProjectSerializer
                            Return Path.Combine(filesDirName, name)
                        End Function
 
+        scene.BackgroundWidth = scene.Width : scene.BackgroundHeight = scene.Height
+        For Each l In scene.Layers
+            If l.Source IsNot Nothing Then l.SourceWidth = l.Source.Width : l.SourceHeight = l.Source.Height
+        Next
         Dim copy = CloneForSave(scene)
         copy.BackgroundPath = MakeRelative(scene.BackgroundPath, dir)
         copy.ForegroundMaskPath = saveMask(scene.ForegroundMask, "foreground-mask.png")
@@ -156,6 +160,13 @@ Public NotInheritable Class ProjectSerializer
         Dim bg = loader.Load(s.BackgroundPath)
         s.Background = bg.Image
         s.BackgroundInfo = bg.Info
+        ' 背景載入尺寸和存檔時不同（例如超大圖的載入上限改變、換了解析度不同的同一張圖）：等比換算所有背景座標。
+        If s.BackgroundWidth > 0 AndAlso s.BackgroundWidth <> s.Width Then
+            Dim k = s.Width / CDbl(s.BackgroundWidth)
+            RescaleBackgroundCoordinates(s, k)
+            warnings.Add($"背景載入尺寸 {s.Width}×{s.Height} 與存檔時 {s.BackgroundWidth}×{s.BackgroundHeight} 不同，已等比換算人物位置、目標與參考線。")
+        End If
+        s.BackgroundWidth = s.Width : s.BackgroundHeight = s.Height
         s.ForegroundMask = LoadMaskSized(s.ForegroundMaskPath, s.Width, s.Height, warnings)
         s.ProtectMask = LoadMaskSized(s.ProtectMaskPath, s.Width, s.Height, warnings)
         s.ShadowReceiverMask = LoadMaskSized(s.ShadowReceiverMaskPath, s.Width, s.Height, warnings)
@@ -163,6 +174,17 @@ Public NotInheritable Class ProjectSerializer
             Dim src = loader.Load(l.SourcePath)
             l.Source = src.Image
             l.SourceInfo = src.Info
+            If l.SourceWidth > 0 AndAlso l.SourceWidth <> l.Source.Width Then
+                ' 人物圖載入尺寸不同：錨點跟著縮放，變換倍率反向補償，讓人物在背景上的大小不變。
+                Dim k = l.Source.Width / CDbl(l.SourceWidth)
+                l.AnchorX *= k : l.AnchorY *= k
+                l.Transform.Scale /= k
+                If l.Transform.Perspective?.CornerOffsets IsNot Nothing Then
+                    l.Transform.Perspective.CornerOffsets = l.Transform.Perspective.CornerOffsets.Select(Function(p) p * k).ToArray()
+                End If
+                warnings.Add($"「{l.Name}」載入尺寸與存檔時不同，已換算錨點與縮放。")
+            End If
+            l.SourceWidth = l.Source.Width : l.SourceHeight = l.Source.Height
             l.Alpha = LoadMaskSized(l.MaskPath, l.Source.Width, l.Source.Height, warnings)
             l.AiAlpha = LoadMaskSized(l.AiMaskPath, l.Source.Width, l.Source.Height, warnings)
             If l.Alpha Is Nothing Then
@@ -173,6 +195,21 @@ Public NotInheritable Class ProjectSerializer
             l.Touch()
         Next
         s.TouchMasks()
+    End Sub
+
+    ''' <summary>所有背景像素座標乘上 k（人物位置與大小、陰影偏移、目標、站立面、參考線、遮擋羽化）。</summary>
+    Public Shared Sub RescaleBackgroundCoordinates(s As CompositeScene, k As Double)
+        For Each l In s.Layers
+            l.Transform.X *= k : l.Transform.Y *= k : l.Transform.Scale *= k
+            l.Shadow.OffsetX *= k : l.Shadow.OffsetY *= k : l.Shadow.BlurRadius *= k
+            l.Color.DepthBlur *= k
+        Next
+        Dim t = s.Target
+        t.AnchorX *= k : t.AnchorY *= k : t.SurfaceLeftX *= k : t.SurfaceRightX *= k : t.SurfaceY *= k : t.TargetHeight *= k
+        For Each g In s.Guides
+            g.X1 *= k : g.Y1 *= k : g.X2 *= k : g.Y2 *= k
+        Next
+        s.OcclusionFeather *= k
     End Sub
 
     Private Shared Function LoadMaskSized(path As String, w As Integer, h As Integer, warnings As List(Of String)) As FloatMask
