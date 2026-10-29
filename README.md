@@ -153,3 +153,7 @@ PhotoEdit/bin/Debug/net8.0-windows/PhotoEdit.exe "D:\照片\IMG_0001.jpg"
 - 與 iPhoto.Net 整合：相簿裡的「編輯」按鈕、縮圖套用編輯配方。
 - 批次套用調整、批次縮圖、浮水印。
 - 色調曲線、HSL 分色調整、紅眼修正。
+
+## AI 人物合成（AutoComposite）
+
+`AutoComposite/` 是獨立的 AI 自動人物合成程式（去背、自動定位、透視、色彩與陰影融合），有自己的方案檔 `AutoComposite/AutoComposite.sln`，不依賴 Aqua.Net。說明見 [AutoComposite/README.md](AutoComposite/README.md)。

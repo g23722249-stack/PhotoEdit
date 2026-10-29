@@ -144,7 +144,8 @@ Public NotInheritable Class RgbaImage
         Return dst
     End Function
 
-    Friend Shared Function ClampByte(v As Double) As Byte
+    ''' <summary>0..255 的數值四捨五入並夾限成位元組。</summary>
+    Public Shared Function ClampByte(v As Double) As Byte
         If Not (v > 0) Then Return 0
         If v >= 255 Then Return 255
         Return CByte(Math.Round(v))

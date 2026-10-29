@@ -158,6 +158,18 @@ Public NotInheritable Class CompositeScene
         MaskVersion += 1
     End Sub
 
+    ''' <summary>
+    ''' 給背景執行緒算圖用的快照：參數複製一份，影像與遮罩共用參考（修改遮罩一律「先複製再改」，所以共用是安全的）。
+    ''' UI 執行緒可以繼續修改原場景，不會和算圖互相干擾。
+    ''' </summary>
+    Public Function CloneForRender() As CompositeScene
+        Dim c = DirectCast(MemberwiseClone(), CompositeScene)
+        c.Layers = Layers.Select(Function(l) l.CloneParameters()).ToList()
+        c.Target = Target.Clone()
+        c.Guides = Guides.ToList()
+        Return c
+    End Function
+
     <JsonIgnore>
     Public ReadOnly Property Width As Integer
         Get

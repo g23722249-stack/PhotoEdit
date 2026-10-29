@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AI Auto Composite Studio 主程式（WinForms、Windows x64）。
+    - 影像載入：Windows Imaging Component（WPF 的 System.Windows.Media.Imaging，只用到解碼／編碼，不用 WPF 介面），
+      支援 JPEG、PNG、BMP、TIFF、GIF，以及系統已安裝 WebP／HEIF 擴充時的 WebP／HEIC，並讀取 EXIF Orientation。
+    - AI 推論：ONNX Runtime DirectML 版（內含 CPU 執行提供者，DirectML 不可用時自動改用 CPU）。
+    - 模型清單在 ModelStore\manifests（複製到輸出的 ModelManifests\）；模型本身下載到程式資料夾的 Models\，不放進 git。
+    在 Linux／macOS 上也能編譯（EnableWindowsTargeting），但只能在 Windows 執行。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>AutoComposite.App</RootNamespace>
+    <AssemblyName>AutoCompositeStudio</AssemblyName>
+    <MyType>WindowsFormsWithCustomSubMain</MyType>
+    <StartupObject>AutoComposite.App.Program</StartupObject>
+    <OptionStrict>On</OptionStrict>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <OptionCompare>Binary</OptionCompare>
+    <Nullable>disable</Nullable>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Product>AI Auto Composite Studio</Product>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 只要 WIC 編解碼，不要 WPF 介面型別的預設匯入（會和 WinForms 的 Button、Label 等同名衝突）。 -->
+    <Import Remove="System.Windows" />
+    <Import Remove="System.Windows.Controls" />
+    <Import Remove="System.Windows.Data" />
+    <Import Remove="System.Windows.Documents" />
+    <Import Remove="System.Windows.Input" />
+    <Import Remove="System.Windows.Media" />
+    <Import Remove="System.Windows.Media.Imaging" />
+    <Import Remove="System.Windows.Navigation" />
+    <Import Remove="System.Windows.Shapes" />
+    <Import Remove="System.Windows.Threading" />
+    <Import Include="System.Drawing" />
+    <Import Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutoComposite.Core\AutoComposite.Core.vbproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="ModelStore\manifests\*.json" Link="ModelManifests\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
