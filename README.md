@@ -154,6 +154,6 @@ PhotoEdit/bin/Debug/net8.0-windows/PhotoEdit.exe "D:\照片\IMG_0001.jpg"
 - 批次套用調整、批次縮圖、浮水印。
 - 色調曲線、HSL 分色調整、紅眼修正。
 
-## AI 人物合成（AutoComposite）
+## 相關專案：AI 人物合成
 
-`AutoComposite/` 是獨立的 AI 自動人物合成程式（去背、自動定位、透視、色彩與陰影融合），有自己的方案檔 `AutoComposite/AutoComposite.sln`，不依賴 Aqua.Net。說明見 [AutoComposite/README.md](AutoComposite/README.md)。
+AI 自動人物合成程式（去背、自動定位、透視、色彩與陰影融合）已獨立成 [g23722249-stack/AutoComposite](https://github.com/g23722249-stack/AutoComposite)，VB.NET、.NET 8、WinForms，不依賴 PhotoEdit。
