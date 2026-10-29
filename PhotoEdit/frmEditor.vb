@@ -213,6 +213,7 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(Item("airedraw", Lang.T("宮崎風 AI 重繪…")))
         imageMenu.AddItem(Item("morph", Lang.T("變形動畫…")))
         imageMenu.AddItem(Item("trace", Lang.T("描圖（轉成向量）…")))
+        imageMenu.AddItem(Item("pixelscale", Lang.T("像素圖放大（xBR／HQx）…")))
         imageMenu.AddItem(Item("facechange", Lang.T("川劇變臉…")))
 
         Dim selectMenu = root.AddItem(New Aqua.MenuItem(Lang.T("選取")))
@@ -227,6 +228,10 @@ Partial Friend Class frmEditor
         selectMenu.AddItem(Item("selstroke", Lang.T("描邊…")))
         selectMenu.AddItem(Item("selcrop", Lang.T("裁切到選取區")))
         selectMenu.AddItem(Item("selcutout", Lang.T("當作去背範圍")))
+        selectMenu.AddItem(New Aqua.MenuItem("-"))
+        selectMenu.AddItem(Item("mosaic", Lang.T("打馬賽克…")))
+        selectMenu.AddItem(Item("demosaic", Lang.T("平滑馬賽克（反馬賽克）…")))
+        selectMenu.AddItem(Item("redact", Lang.T("安全遮蔽（實心色塊）")))
 
         Dim viewMenu = root.AddItem(New Aqua.MenuItem(Lang.T("檢視")))
         viewMenu.AddItem(Item("fit", Lang.T("符合視窗 (Ctrl+0)")))
@@ -272,6 +277,7 @@ Partial Friend Class frmEditor
             Case "airedraw" : ShowAnimeRedraw()
             Case "morph" : ShowMorph()
             Case "trace" : ShowTrace()
+            Case "pixelscale" : ShowPixelScale() ' 見 frmEditor.PixelScale.vb
             Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
             Case "settings" : OpenSettings() ' 沒開圖片也能設定
@@ -283,11 +289,9 @@ Partial Friend Class frmEditor
                 _showHelpItem.Checked = _appSettings.ShowHelp
                 SetStatusMessage(If(_appSettings.ShowHelp, Lang.T("已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。"), Lang.T("已關閉使用說明。")))
             Case "about"
-                MessageBox.Show(Me, Lang.T("PhotoEdit 0.2 — 非破壞性照片編輯器") & vbCrLf & vbCrLf &
-                                Lang.T("「存檔」存成 PhotoEdit 專案（.pedx），保留所有圖層，下次載入可繼續修改；原始照片不會被修改。") & vbCrLf &
-                                Lang.T("要得到合併後的圖檔，請用「另存新檔」或「匯出」存成 PNG／JPG／BMP。") & vbCrLf & vbCrLf &
-                                Lang.T("人臉偵測：YuNet（OpenCV Zoo，Apache-2.0）"),
-                                AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Using dlg As New frmAbout("0.2")
+                    dlg.ShowDialog(Me)
+                End Using
         End Select
         If _photo Is Nothing Then Return
         If RunSelectCommand(name) Then Return
@@ -701,7 +705,7 @@ Partial Friend Class frmEditor
         Dim key As String = Nothing
         Dim display = DisplayRecipe()
         If display.HasSourceFix Then
-            key = String.Join("|", System.Text.Json.JsonSerializer.Serialize(display.Spots), display.Denoise, display.ColorNoise,
+            key = String.Join("|", System.Text.Json.JsonSerializer.Serialize(display.Spots), display.Denoise, display.ColorNoise, display.Deblock, display.DeblockGridX, display.DeblockGridY,
                               display.SkinSmoothing, display.FaceBrighten, display.EyeBrighten, If(_faces?.Count, -1),
                               System.Text.Json.JsonSerializer.Serialize(display.Beauty), System.Text.Json.JsonSerializer.Serialize(display.FaceBeauty),
                               System.Text.Json.JsonSerializer.Serialize(display.Liquify),
@@ -710,7 +714,7 @@ Partial Friend Class frmEditor
         If key <> _retouchKey Then
             _retouched?.Dispose()
             _retouched = If(key Is Nothing, Nothing,
-                            SourceFix.Apply(_previewBase, If(_faces, Array.Empty(Of FaceRegion)()), display, CurrentAiMask(display)))
+                            SourceFix.Apply(_previewBase, If(_faces, Array.Empty(Of FaceRegion)()), display, CurrentAiMask(display), _previewBase.Width / CDbl(_photo.Width)))
             _retouchKey = key
         End If
         Return If(_retouched, _previewBase)
@@ -747,10 +751,7 @@ Partial Friend Class frmEditor
                              UpdatePortraitControls()
                              If _recipe.HasPortrait OrElse _cropMode Then RequestRender()
                              ' 有人臉的照片，去背預設用人像模型（一般模型容易把旁邊顯眼的物體也當主體）。
-                             If _recipe.Cutout Is Nothing Then
-                                 _modelHuman.Checked = _faces.Count > 0
-                                 _modelGeneral.Checked = _faces.Count = 0
-                             End If
+                             If _recipe.Cutout Is Nothing Then SelectedCutoutModel = CutoutModels.Preferred(_faces.Count > 0, AddressOf BackgroundRemover.ModelAvailable)
                              UpdateStatus()
                          End Sub)
             End Sub)

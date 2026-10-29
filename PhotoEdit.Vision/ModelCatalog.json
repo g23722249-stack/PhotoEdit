@@ -36,10 +36,43 @@
       ]
     },
     {
+      "id": "birefnet-lite",
+      "group": "去背",
+      "name": "AI 去背：一般（BiRefNet）",
+      "use": "去背頁籤的「一般（BiRefNet）」：人像、動物、物品都適用，邊緣與細節（髮絲、鏤空）比舊的 IS-Net 準。建議下載。",
+      "license": "MIT",
+      "source": "https://huggingface.co/onnx-community/BiRefNet_lite-ONNX",
+      "files": [
+        { "path": "birefnet-lite.onnx", "size": 224005088, "url": "https://huggingface.co/onnx-community/BiRefNet_lite-ONNX/resolve/main/onnx/model.onnx" }
+      ]
+    },
+    {
+      "id": "modnet",
+      "group": "去背",
+      "name": "AI 去背：人像（MODNet）",
+      "use": "去背頁籤的「人像（MODNet）」：專門找人，直接算出頭髮的半透明，檔案小、速度快。有人臉的照片預設用它。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/Xenova/modnet",
+      "files": [
+        { "path": "modnet.onnx", "size": 25888640, "url": "https://huggingface.co/Xenova/modnet/resolve/main/onnx/model.onnx" }
+      ]
+    },
+    {
+      "id": "birefnet-hr",
+      "group": "去背",
+      "name": "AI 去背：精細（BiRefNet HR Matting）",
+      "use": "去背頁籤的「精細」：用 2048 的解析度算，大照片的髮絲、毛邊最細，但比較慢、要比較多記憶體。選用。",
+      "license": "MIT",
+      "source": "https://huggingface.co/PinkPixel/birefnet-hr-matting-onnx",
+      "files": [
+        { "path": "birefnet-hr-matting-fp16.onnx", "size": 471320622, "url": "https://huggingface.co/PinkPixel/birefnet-hr-matting-onnx/resolve/main/model_fp16.onnx" }
+      ]
+    },
+    {
       "id": "isnet",
       "group": "去背",
-      "name": "AI 去背：一般（IS-Net）",
-      "use": "去背頁籤選「一般」時用：人像、動物、物品都適用，自動找出主體換背景、存成貼圖。",
+      "name": "AI 去背：一般（舊：IS-Net）",
+      "use": "去背頁籤的「一般（舊：IS-Net）」：舊的一般模型，用它去背過的文件重新計算時要用。新照片建議用 BiRefNet。",
       "license": "Apache-2.0",
       "source": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
       "files": [
@@ -49,8 +82,8 @@
     {
       "id": "u2human",
       "group": "去背",
-      "name": "AI 去背：人像（U²-Net）",
-      "use": "去背頁籤選「人像」時用：專門找人物，頭髮與身體輪廓比一般模型準。",
+      "name": "AI 去背：人像（舊：U²-Net）",
+      "use": "去背頁籤的「人像（舊：U²-Net）」：舊的人像模型；一鍵美顏找頭髮範圍也用它。",
       "license": "Apache-2.0",
       "source": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
       "files": [

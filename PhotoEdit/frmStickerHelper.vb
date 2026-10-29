@@ -388,9 +388,7 @@ Friend Class frmStickerHelper
         Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇貼圖圖片"), .Filter = Lang.T("圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|所有檔案|*.*")}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
-                Using fs As New FileStream(dlg.FileName, FileMode.Open, FileAccess.Read), img = Image.FromStream(fs)
-                    LoadSource(New Bitmap(img), Path.GetFileNameWithoutExtension(dlg.FileName))
-                End Using
+                LoadSource(LoadImageFile(dlg.FileName), Path.GetFileNameWithoutExtension(dlg.FileName))
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException
                 MessageBox.Show(Me, Lang.T("無法開啟圖片：") & ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
@@ -404,9 +402,7 @@ Friend Class frmStickerHelper
             If data IsNot Nothing Then
                 Dim file = frmEditor.ImageFile(data)
                 If file IsNot Nothing Then
-                    Using fs As New FileStream(file, FileMode.Open, FileAccess.Read), img = Image.FromStream(fs)
-                        bmp = New Bitmap(img)
-                    End Using
+                    bmp = LoadImageFile(file)
                 Else
                     bmp = frmEditor.ImageBitmap(data)
                 End If
@@ -420,6 +416,24 @@ Friend Class frmStickerHelper
         End If
         LoadSource(bmp, Lang.T("貼上的貼圖"))
     End Sub
+
+    ''' <summary>
+    ''' 讀圖檔（不鎖檔）。GDI+ 讀不了的格式（WebP——網路上、AI 產生的貼圖常是這種）改用 OpenCV 解碼，透明保留。
+    ''' 兩種都讀不了時丟 ArgumentException。
+    ''' </summary>
+    Friend Shared Function LoadImageFile(file As String) As Bitmap
+        Dim bytes = IO.File.ReadAllBytes(file)
+        Try
+            Using ms As New MemoryStream(bytes), img = Image.FromStream(ms)
+                Return New Bitmap(img)
+            End Using
+        Catch ex As Exception When TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException
+            Using m = OpenCvSharp.Cv2.ImDecode(bytes, OpenCvSharp.ImreadModes.Unchanged)
+                If m.Empty() Then Throw New ArgumentException(ex.Message, ex)
+                Return OpenCvSharp.Extensions.BitmapConverter.ToBitmap(m)
+            End Using
+        End Try
+    End Function
 
     ''' <summary>換一張原圖（bmp 由本視窗保管）。</summary>
     Friend Sub LoadSource(bmp As Bitmap, name As String)
@@ -478,7 +492,7 @@ Friend Class frmStickerHelper
         it.Rect = r
         it.DisposeImages()
         Recompose(it)
-        If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then ComputeAi(it, If(it.Mode = CutMode.AiHuman, CutoutModel.Human, CutoutModel.General))
+        If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then ComputeAi(it, AiModel(it.Mode))
         SelectItem(index)
         RefreshTiles()
     End Sub
@@ -610,9 +624,13 @@ Friend Class frmStickerHelper
         s.Background = background
         s.EdgeFill = it.Mode = CutMode.EdgeFill
         Dim ai As Bitmap = Nothing
-        If it.Mode = CutMode.AiGeneral Then it.AiMasks.TryGetValue(CutoutModel.General, ai)
-        If it.Mode = CutMode.AiHuman Then it.AiMasks.TryGetValue(CutoutModel.Human, ai)
+        If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then it.AiMasks.TryGetValue(AiModel(it.Mode), ai)
         Return CutoutCompositor.Compose(it.Crop, ai, s)
+    End Function
+
+    ''' <summary>AI 一般／人像用哪個模型：有下載的裡面最好的（見 CutoutModels.Preferred）。</summary>
+    Private Shared Function AiModel(mode As CutMode) As CutoutModel
+        Return CutoutModels.Preferred(mode = CutMode.AiHuman, AddressOf BackgroundRemover.ModelAvailable)
     End Function
 
     Private Sub SetMode(mode As CutMode)
@@ -620,7 +638,7 @@ Friend Class frmStickerHelper
         If it Is Nothing OrElse it.Mode = mode Then Return
         it.History.Push((it.Mode, it.Settings.Clone()))
         it.Mode = mode
-        Dim model = If(mode = CutMode.AiHuman, CutoutModel.Human, CutoutModel.General)
+        Dim model = AiModel(mode)
         If (mode = CutMode.AiGeneral OrElse mode = CutMode.AiHuman) AndAlso Not it.AiMasks.ContainsKey(model) Then
             ComputeAi(it, model)
             Return
@@ -633,7 +651,8 @@ Friend Class frmStickerHelper
     ''' <summary>AI 去背在背景執行，算好後套用（這張貼圖還是 AI 模式時）。</summary>
     Private Sub ComputeAi(it As StickerItem, model As CutoutModel)
         If Not BackgroundRemover.ModelAvailable(model) Then
-            MessageBox.Show(Me, Lang.T("找不到去背模型：") & BackgroundRemover.ModelPath(model), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.F("「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。", CutoutModels.DisplayName(model)) & vbCrLf & BackgroundRemover.ModelPath(model),
+                            Text, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
         _status.Text = Lang.T("AI 去背計算中…（第一次載入模型會久一點）")

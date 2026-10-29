@@ -7,6 +7,12 @@ Public Enum CutoutModel
     General = 0
     ''' <summary>U²-Net 人像：人物輪廓與頭髮較準。</summary>
     Human = 1
+    ''' <summary>BiRefNet lite（MIT）：新的一般模型，邊緣與細節比 IS-Net 準。</summary>
+    BiRefNetLite = 2
+    ''' <summary>MODNet（Apache-2.0）：新的人像模型，直接算出頭髮的半透明。</summary>
+    ModNet = 3
+    ''' <summary>BiRefNet HR Matting（MIT，fp16）：精細，2048 輸入，最慢。</summary>
+    BiRefNetHR = 4
 End Enum
 
 Public Enum CutoutBackground
@@ -47,9 +53,68 @@ Public Class WandClick
     End Function
 End Class
 
+''' <summary>去背模型的資訊：檔名、輸入大小、選單上的名稱與順序。</summary>
+Public NotInheritable Class CutoutModels
+    Private Sub New()
+    End Sub
+
+    ''' <summary>選單上的順序：新的在前（精細最慢放第三），舊模型留著給已經用它去背的文件。</summary>
+    Public Shared ReadOnly Order As CutoutModel() = {CutoutModel.BiRefNetLite, CutoutModel.ModNet, CutoutModel.BiRefNetHR, CutoutModel.General, CutoutModel.Human}
+
+    ''' <summary>Models\ 下的檔名（和 ModelCatalog.json 的 path 一致）。</summary>
+    Public Shared Function FileName(model As CutoutModel) As String
+        Select Case model
+            Case CutoutModel.Human : Return "u2net_human_seg.onnx"
+            Case CutoutModel.BiRefNetLite : Return "birefnet-lite.onnx"
+            Case CutoutModel.ModNet : Return "modnet.onnx"
+            Case CutoutModel.BiRefNetHR : Return "birefnet-hr-matting-fp16.onnx"
+            Case Else : Return "isnet-general-use.onnx"
+        End Select
+    End Function
+
+    Public Shared Function DisplayName(model As CutoutModel) As String
+        Select Case model
+            Case CutoutModel.BiRefNetLite : Return Lang.T("一般（BiRefNet）")
+            Case CutoutModel.ModNet : Return Lang.T("人像（MODNet）")
+            Case CutoutModel.BiRefNetHR : Return Lang.T("精細（BiRefNet HR，較慢）")
+            Case CutoutModel.Human : Return Lang.T("人像（舊：U²-Net）")
+            Case Else : Return Lang.T("一般（舊：IS-Net）")
+        End Select
+    End Function
+
+    ''' <summary>人像模型（只找人）。</summary>
+    Public Shared Function IsPortrait(model As CutoutModel) As Boolean
+        Return model = CutoutModel.Human OrElse model = CutoutModel.ModNet
+    End Function
+
+    ''' <summary>
+    ''' 模型輸入的邊長（像素）：遮罩放大回原尺寸時，一個模型像素蓋住「長邊 ÷ 這個數」個像素——邊緣精修的半徑以這個為準。
+    ''' MODNet 依照片比例（短邊 512），這裡用長邊大約的值。
+    ''' </summary>
+    Public Shared Function InputSize(model As CutoutModel) As Integer
+        Select Case model
+            Case CutoutModel.Human : Return 320
+            Case CutoutModel.ModNet : Return 768
+            Case CutoutModel.BiRefNetHR : Return 2048
+            Case Else : Return 1024
+        End Select
+    End Function
+
+    ''' <summary>有下載的模型裡，人像／一般各自最好的一個（都沒有時給新的那個，按下去會提示去下載）。</summary>
+    Public Shared Function Preferred(portrait As Boolean, available As Func(Of CutoutModel, Boolean)) As CutoutModel
+        Dim choices = If(portrait, {CutoutModel.ModNet, CutoutModel.Human, CutoutModel.BiRefNetLite, CutoutModel.General},
+                                   {CutoutModel.BiRefNetLite, CutoutModel.General})
+        For Each m In choices
+            If available(m) Then Return m
+        Next
+        Return choices(0)
+    End Function
+End Class
+
 ''' <summary>
 ''' 去背設定。AI 算出的遮罩存在照片旁的附屬檔（MaskStore），配方只記模型、修正筆觸、邊緣與背景。
 ''' </summary>
+
 Public Class CutoutSettings
     Public Property Model As CutoutModel
     Public Property Strokes As List(Of CutoutStroke) = New List(Of CutoutStroke)()
@@ -71,6 +136,10 @@ Public Class CutoutSettings
     Public Property Feather As Integer = 15
     ''' <summary>內縮（負）／外擴（正），-50..50。</summary>
     Public Property Shift As Integer
+    ''' <summary>邊緣精修 0..100：用照片當導引把 AI 遮罩的邊緣貼齊真正的輪廓（髮絲、毛邊）。舊文件沒有這個值＝0（不變）。</summary>
+    Public Property EdgeRefine As Integer
+    ''' <summary>去除邊緣殘色：半透明的邊緣扣掉附近的背景色，換背景時不會留下一圈原背景色。</summary>
+    Public Property EdgeDecontaminate As Boolean
     Public Property Background As CutoutBackground = CutoutBackground.Transparent
     Public Property BackgroundColorArgb As Integer = Drawing.Color.White.ToArgb()
     ''' <summary>背景模糊程度，0..100。</summary>
@@ -102,7 +171,13 @@ Public NotInheritable Class MaskStore
     Public Const MaxSide As Integer = 2048
 
     Public Shared Function MaskPath(photoPath As String, model As CutoutModel) As String
-        Return photoPath & ".pedit.mask-" & If(model = CutoutModel.Human, "human", "general") & ".png"
+        Dim name As String
+        Select Case model
+            Case CutoutModel.General : name = "general"
+            Case CutoutModel.Human : name = "human"
+            Case Else : name = model.ToString().ToLowerInvariant()
+        End Select
+        Return photoPath & ".pedit.mask-" & name & ".png"
     End Function
 
     ''' <summary>讀取遮罩（不鎖檔）；沒有或壞掉時回傳 Nothing。</summary>
@@ -127,7 +202,7 @@ Public NotInheritable Class MaskStore
     End Sub
 
     Public Shared Sub DeleteAll(photoPath As String)
-        For Each m In {CutoutModel.General, CutoutModel.Human}
+        For Each m In [Enum].GetValues(Of CutoutModel)()
             Dim p = MaskPath(photoPath, m)
             If File.Exists(p) Then File.Delete(p)
         Next

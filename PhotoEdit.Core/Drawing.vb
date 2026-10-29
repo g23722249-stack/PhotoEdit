@@ -114,6 +114,12 @@ Public Enum FillContent
     Material = 1
     ''' <summary>內容感知：從附近找紋理相近的區域補滿（移除雜物）。</summary>
     ContentAware = 2
+    ''' <summary>打馬賽克：下面的畫面切成方格、每格平均（MosaicSize、MosaicX／Y）。</summary>
+    Mosaic = 3
+    ''' <summary>平滑馬賽克：把下面已經是馬賽克的方塊變平滑（MosaicSize、MosaicX／Y 是偵測到的格子，MosaicMethod 是放大方法）。</summary>
+    Demosaic = 4
+    ''' <summary>安全遮蔽：實心色塊，邊緣不羽化（選取區有羽化也一樣完全蓋住），遮敏感資訊用。</summary>
+    Redact = 5
 End Enum
 
 Public Enum GradientKind
@@ -522,6 +528,11 @@ Public Class DrawLayer
     Public Property Gradient As GradientFill
     ''' <summary>選取區填色（Region）的內容：單色、材質（FillColorArgb＋Material）、內容感知（用附近的照片補滿）。</summary>
     Public Property FillContent As FillContent
+    ''' <summary>馬賽克格子的大小與格線起點（照片高度的比例，預覽縮小時跟著縮）；平滑馬賽克的放大方法（MosaicSmoothMethod）。</summary>
+    Public Property MosaicSize As Double
+    Public Property MosaicX As Double
+    Public Property MosaicY As Double
+    Public Property MosaicMethod As Integer
     ''' <summary>保留透明度（同 Photoshop）：這一筆只改有內容的像素的顏色，透明度不變（透明的地方不會被畫上）。</summary>
     Public Property KeepAlpha As Boolean
 

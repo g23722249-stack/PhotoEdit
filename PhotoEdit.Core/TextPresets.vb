@@ -65,6 +65,32 @@ Public Class PhotoInfo
     Public Property Camera As String
     ''' <summary>例如「25.0340°N 121.5645°E」；沒有 GPS 時為 Nothing。</summary>
     Public Property Gps As String
+    ''' <summary>鏡頭型號；焦距（mm）、光圈（f 值）、快門（秒）、ISO：沒有記錄時 Nothing。</summary>
+    Public Property Lens As String
+    Public Property FocalLength As Double?
+    Public Property FNumber As Double?
+    Public Property ExposureTime As Double?
+    Public Property Iso As Integer?
+
+    ''' <summary>拍攝參數一行，例如「50mm  f/1.8  1/250s  ISO 100」；全部沒有時空字串。</summary>
+    Public Function SettingsText() As String
+        Dim parts As New List(Of String)()
+        If FocalLength.HasValue AndAlso FocalLength.Value > 0 Then parts.Add($"{FocalLength.Value:0.#}mm")
+        If FNumber.HasValue AndAlso FNumber.Value > 0 Then parts.Add($"f/{FNumber.Value:0.#}")
+        If ExposureTime.HasValue AndAlso ExposureTime.Value > 0 Then
+            parts.Add(If(ExposureTime.Value >= 0.3, $"{ExposureTime.Value:0.#}s", $"1/{Math.Round(1 / ExposureTime.Value):0}s"))
+        End If
+        If Iso.HasValue AndAlso Iso.Value > 0 Then parts.Add($"ISO {Iso.Value}")
+        Return String.Join("  ", parts)
+    End Function
+
+    ''' <summary>EXIF 的 rational（分子、分母各 4 位元組）；沒有或分母 0 時 Nothing。</summary>
+    Public Shared Function ParseRational(raw As Byte()) As Double?
+        If raw Is Nothing OrElse raw.Length < 8 Then Return Nothing
+        Dim num = BitConverter.ToUInt32(raw, 0), den = BitConverter.ToUInt32(raw, 4)
+        If den = 0 Then Return Nothing
+        Return num / CDbl(den)
+    End Function
 
     ''' <summary>傳統日期戳記格式：'05 7 12（年取兩位，月日不補零）。</summary>
     Public Shared Function DateStampText(d As DateTime) As String

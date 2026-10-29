@@ -116,7 +116,7 @@ Partial Friend Class frmEditor
         Dim restore = _wandRestoreMode.Checked Xor alt
         Dim click As New WandClick With {.X = Math.Round(src.X, 5), .Y = Math.Round(src.Y, 5), .Tolerance = _wandTolerance,
                                          .Contiguous = _wandContiguous.Checked, .Restore = restore}
-        Dim model = If(_modelHuman.Checked, CutoutModel.Human, CutoutModel.General)
+        Dim model = SelectedCutoutModel
         ApplyChange(Sub(r)
                         If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.Model = model, .Background = CutoutBackground.Transparent}
                         r.Cutout.Wand.Add(click)

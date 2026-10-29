@@ -189,6 +189,24 @@ Public Enum PhotoFrameStyle
     Polaroid = 3
     Rounded = 4
     Film = 5
+    ' 以下見 PhotoFrames.vb（數值存進編輯檔，只能往後加）
+    CameraInfo = 6
+    BlurExtend = 7
+    GalleryMat = 8
+    GoldFrame = 9
+    WoodFrame = 10
+    Scroll = 11
+    Deckle = 12
+    TornPaper = 13
+    Stamp = 14
+    Tape = 15
+    PhotoCorners = 16
+    SlideMount = 17
+    MediumFormat = 18
+    Watercolor = 19
+    InkBrush = 20
+    Pencil = 21
+    SoftFade = 22
 End Enum
 
 ''' <summary>創意特效的算圖：局部調整、背景模糊、移軸、文字貼圖、邊框。</summary>
@@ -201,7 +219,10 @@ Public NotInheritable Class Creative
         {("heart", Lang.T("愛心")), ("star", Lang.T("星星")), ("sparkle", Lang.T("閃亮")), ("bubble", Lang.T("對話框")), ("arrow", Lang.T("箭頭")), ("ring", Lang.T("圓圈"))}.
         Concat(BuiltInStickers.Items.Select(Function(i) (i.Key, i.Name))).ToList()
 
-    Public Shared ReadOnly FrameNames As IReadOnlyList(Of String) = {Lang.T("無"), Lang.T("白邊"), Lang.T("黑邊"), Lang.T("拍立得"), Lang.T("圓角"), Lang.T("底片")}
+    Public Shared ReadOnly FrameNames As IReadOnlyList(Of String) = {Lang.T("無"), Lang.T("白邊"), Lang.T("黑邊"), Lang.T("拍立得"), Lang.T("圓角"), Lang.T("底片"),
+        Lang.T("相機資訊"), Lang.T("模糊延伸背景"), Lang.T("畫廊襯紙"), Lang.T("古典金框"), Lang.T("木框"), Lang.T("卷軸裱褙"),
+        Lang.T("老照片花邊"), Lang.T("撕紙邊"), Lang.T("郵票"), Lang.T("紙膠帶"), Lang.T("相簿相角"), Lang.T("幻燈片框"), Lang.T("中片幅底片"),
+        Lang.T("水彩暈邊"), Lang.T("毛筆墨刷"), Lang.T("鉛筆手繪"), Lang.T("柔邊漸淡")}
 
     '=====================================================================
     ' 局部調整
@@ -735,61 +756,14 @@ Public NotInheritable Class Creative
 
     ''' <summary>加上邊框後的新圖；沒有邊框時回傳 Nothing。</summary>
     ''' <summary>邊框四邊的寬度（像素）；沒有邊框時全部為 0。畫布用來換算照片與畫面座標。</summary>
+    ''' <summary>邊框在照片四周加的寬度（像素）；照片本身放在 (Left, Top)、不縮放。見 PhotoFrames.vb。</summary>
     Public Shared Function FrameMargins(recipe As EditRecipe, w As Integer, h As Integer) As (Left As Integer, Top As Integer, Right As Integer, Bottom As Integer)
-        If recipe.Frame = PhotoFrameStyle.None Then Return (0, 0, 0, 0)
-        Dim b = Math.Max(2, CInt(Math.Min(w, h) * (0.01 + recipe.FrameSize / 100.0 * 0.07)))
-        Select Case recipe.Frame
-            Case PhotoFrameStyle.Polaroid : Return (b, b, b, b * 4)
-            Case PhotoFrameStyle.Rounded : Return (b \ 2, b \ 2, b \ 2, b \ 2)
-            Case PhotoFrameStyle.Film
-                Dim side = Math.Max(2, b \ 3), tb = CInt(b * 1.8)
-                Return (side, tb, side, tb)
-            Case Else : Return (b, b, b, b)
-        End Select
+        Return PhotoFrames.Margins(recipe, w, h)
     End Function
 
+    ''' <summary>加上邊框後的整張圖；沒有邊框時 Nothing。見 PhotoFrames.vb。</summary>
     Public Shared Function ApplyFrame(bmp As Bitmap, recipe As EditRecipe) As Bitmap
-        If recipe.Frame = PhotoFrameStyle.None Then Return Nothing
-        Dim w = bmp.Width, h = bmp.Height
-        Dim m = FrameMargins(recipe, w, h)
-        Dim l = m.Left, t = m.Top, r = m.Right, btm = m.Bottom
-        Dim bg = Color.White
-        Select Case recipe.Frame
-            Case PhotoFrameStyle.Black : bg = Color.Black
-            Case PhotoFrameStyle.Polaroid : bg = Color.FromArgb(250, 249, 245)
-            Case PhotoFrameStyle.Film : bg = Color.FromArgb(18, 18, 18)
-        End Select
-
-        Dim result As New Bitmap(w + l + r, h + t + btm, PixelFormat.Format32bppArgb)
-        Using g = Graphics.FromImage(result)
-            g.Clear(bg)
-            g.SmoothingMode = SmoothingMode.AntiAlias
-            If recipe.Frame = PhotoFrameStyle.Rounded Then
-                Dim rad = Math.Max(4, CInt(Math.Min(w, h) * (0.02 + recipe.FrameSize / 100.0 * 0.06)))
-                Using path = RoundedRect(New RectangleF(l, t, w, h), rad), tb As New TextureBrush(bmp)
-                    tb.TranslateTransform(l, t)
-                    g.FillPath(tb, path)
-                End Using
-            Else
-                g.DrawImageUnscaled(bmp, l, t)
-            End If
-            If recipe.Frame = PhotoFrameStyle.Film Then
-                ' 底片齒孔。
-                Dim holeH = t * 0.42F, holeW = holeH * 1.35F, gap = holeW * 0.9F
-                Using br As New SolidBrush(Color.FromArgb(225, 225, 220))
-                    Dim x = gap / 2
-                    While x + holeW < result.Width
-                        For Each y In {(t - holeH) / 2, h + t + (btm - holeH) / 2}
-                            Using hole = RoundedRect(New RectangleF(x, y, holeW, holeH), holeH * 0.25F)
-                                g.FillPath(br, hole)
-                            End Using
-                        Next
-                        x += holeW + gap
-                    End While
-                End Using
-            End If
-        End Using
-        Return result
+        Return PhotoFrames.Apply(bmp, recipe)
     End Function
 
     Private Shared Function RoundedRect(r As RectangleF, radius As Single) As GraphicsPath

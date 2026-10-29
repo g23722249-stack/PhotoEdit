@@ -31,7 +31,7 @@ Partial Public NotInheritable Class DrawingRenderer
         ' 混色、塗抹、仿製筆要讀取下面已經合成好的照片與圖層。
         Dim below As Byte() = Nothing
         If layer.Ops.Any(Function(o) (Global.PhotoEdit.DrawLayer.SamplesCanvas(o.Brush) AndAlso o.Shape <> DrawShape.Bucket AndAlso o.Shape <> DrawShape.Gradient AndAlso o.Region Is Nothing) OrElse
-                                     BucketNeedsBelow(o) OrElse (o.Region IsNot Nothing AndAlso o.FillContent = FillContent.ContentAware)) AndAlso
+                                     BucketNeedsBelow(o) OrElse RegionReadsBelow(o)) AndAlso
            dst.Width = w AndAlso dst.Height = h Then
             below = Perspective.ReadPixels(dst)
         End If
@@ -146,6 +146,8 @@ Partial Public NotInheritable Class DrawingRenderer
                 ApplyGradientOp(bmp, w, h, op)
             ElseIf op.Shape = DrawShape.Bucket Then
                 ApplyBucketOp(bmp, below, above, w, h, ox, oy, op)
+            ElseIf op.Region IsNot Nothing AndAlso (op.FillContent = FillContent.Mosaic OrElse op.FillContent = FillContent.Demosaic) Then
+                ApplyMosaicOp(bmp, below, w, h, ox, oy, op)
             ElseIf op.Region IsNot Nothing AndAlso op.FillContent = FillContent.ContentAware Then
                 ApplyContentFillOp(bmp, below, w, h, ox, oy, op)
             ElseIf op.Region IsNot Nothing AndAlso op.FillContent = FillContent.Material AndAlso op.Filled Then
@@ -296,8 +298,25 @@ Partial Public NotInheritable Class DrawingRenderer
     End Sub
 
     ''' <summary>選取區填色／描邊畫成 w × h 的圖層。</summary>
+    ''' <summary>安全遮蔽的範圍：有蓋到一點點的就全蓋（羽化、反鋸齒的邊不會半透明露出底下），再往外多 1 像素。</summary>
+    Private Shared Function HardMask(mask As Byte(), w As Integer, h As Integer) As Byte()
+        Dim result(mask.Length - 1) As Byte
+        For y = 0 To h - 1
+            For x = 0 To w - 1
+                If mask(y * w + x) = 0 Then Continue For
+                For yy = Math.Max(0, y - 1) To Math.Min(h - 1, y + 1)
+                    For xx = Math.Max(0, x - 1) To Math.Min(w - 1, x + 1)
+                        result(yy * w + xx) = 255
+                    Next
+                Next
+            Next
+        Next
+        Return result
+    End Function
+
     Private Shared Function RegionBitmap(op As DrawLayer, w As Integer, h As Integer) As Bitmap
         Dim mask = SelectionMask.Render(op.Region, w, h)
+        If op.FillContent = FillContent.Redact Then mask = HardMask(mask, w, h)
         Dim px(w * h * 4 - 1) As Byte
         If op.Filled Then
             Dim c = Color.FromArgb(op.FillColorArgb)
@@ -328,6 +347,11 @@ Partial Public NotInheritable Class DrawingRenderer
 
     ''' <summary>接續前一個雜湊值（SHA1 取前 8 位元組），算出「前 k 筆」的快取鍵。</summary>
     ''' <summary>下面照片的指紋：均勻取約 16000 個像素算 SHA1（照片有改，抹過的地方才重算）。</summary>
+    ''' <summary>選取區填滿時會讀下面畫面的：內容感知、打馬賽克、平滑馬賽克。</summary>
+    Friend Shared Function RegionReadsBelow(op As Global.PhotoEdit.DrawLayer) As Boolean
+        Return op.Region IsNot Nothing AndAlso (op.FillContent = FillContent.ContentAware OrElse op.FillContent = FillContent.Mosaic OrElse op.FillContent = FillContent.Demosaic)
+    End Function
+
     Private Enum BelowUse
         None
         ''' <summary>只讀筆畫附近（塗抹、混色、模糊…）。</summary>
@@ -340,7 +364,7 @@ Partial Public NotInheritable Class DrawingRenderer
     Private Shared Function BelowDependency(op As Global.PhotoEdit.DrawLayer) As BelowUse
         If op.Shape = DrawShape.Gradient Then Return BelowUse.None
         If op.Shape = DrawShape.Bucket Then Return If(BucketNeedsBelow(op), BelowUse.Whole, BelowUse.None)
-        If op.Region IsNot Nothing Then Return If(op.FillContent = FillContent.ContentAware, BelowUse.Whole, BelowUse.None)
+        If op.Region IsNot Nothing Then Return If(RegionReadsBelow(op), BelowUse.Whole, BelowUse.None)
         If Global.PhotoEdit.DrawLayer.SamplesCanvas(op.Brush) AndAlso op.Shape <> DrawShape.Raster AndAlso op.Item Is Nothing Then Return BelowUse.Around
         Return BelowUse.None
     End Function

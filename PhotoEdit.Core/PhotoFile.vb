@@ -39,6 +39,13 @@ Public Class PhotoFile
         If Not String.IsNullOrEmpty(model) Then
             result.Camera = If(Not String.IsNullOrEmpty(make) AndAlso Not model.StartsWith(make, StringComparison.OrdinalIgnoreCase), make & " " & model, model)
         End If
+        ' 拍攝參數（相機資訊邊框用）：鏡頭、焦距、光圈、快門、ISO
+        result.Lens = asText(&HA434)
+        result.FocalLength = PhotoInfo.ParseRational(raw(&H920A))
+        result.FNumber = PhotoInfo.ParseRational(raw(&H829D))
+        result.ExposureTime = PhotoInfo.ParseRational(raw(&H829A))
+        Dim iso = raw(&H8827)
+        If iso IsNot Nothing AndAlso iso.Length >= 2 Then result.Iso = BitConverter.ToUInt16(iso, 0)
         Dim lat = PhotoInfo.ParseGpsCoordinate(raw(&H2)), lon = PhotoInfo.ParseGpsCoordinate(raw(&H4))
         If lat.HasValue AndAlso lon.HasValue Then
             result.Gps = $"{lat.Value:0.0000}°{If(asText(&H1) = "S", "S", "N")} {lon.Value:0.0000}°{If(asText(&H3) = "W", "W", "E")}"

@@ -213,6 +213,9 @@ Partial Friend Class frmEditor
             Case "seladjust" : If RequireSelection() Then AdjustSelection()
             Case "seldelete" : If RequireSelection() Then DeleteSelection(fromCut:=False)
             Case "selfill" : If RequireSelection() Then FillSelection()
+            Case "mosaic" : ShowMosaic(smooth:=False) ' 見 frmEditor.Mosaic.vb（沒有選取時整張）
+            Case "demosaic" : ShowMosaic(smooth:=True)
+            Case "redact" : Redact()
             Case "selstroke" : If RequireSelection() Then StrokeSelection()
             Case "selcrop" : If RequireSelection() Then CropToSelection()
             Case "selcutout" : If RequireSelection() Then SelectionAsCutout()
@@ -791,7 +794,7 @@ Partial Friend Class frmEditor
     End Function
 
     Private Sub AddCutoutRegion(region As SelectionSpec)
-        Dim model = If(_modelHuman.Checked, CutoutModel.Human, CutoutModel.General)
+        Dim model = SelectedCutoutModel
         ApplyChange(Sub(r)
                         If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.Model = model, .Background = CutoutBackground.Transparent}
                         If r.Cutout.Background = CutoutBackground.Original Then r.Cutout.Background = CutoutBackground.Transparent

@@ -111,13 +111,13 @@ Partial Friend Class frmEditor
         _frameCombo.SetBounds(8 + CaptionWidth, L.Y + 2, L.Width - CaptionWidth - 8, 24)
         AddHandler _frameCombo.SelectedIndexChanged, Sub()
                                                           If _syncing OrElse _photo Is Nothing Then Return
-                                                          Dim style = CType(_frameCombo.SelectedIndex, PhotoFrameStyle)
-                                                          ApplyChange(Sub(r) r.Frame = style)
+                                                          OnFrameStyleChosen(CType(_frameCombo.SelectedIndex, PhotoFrameStyle)) ' 見 frmEditor.Frames.vb
                                                       End Sub
         L.Add(_frameCombo)
         L.Y += RowHeight + 4
         AddRow(L, MakeRow("framesize", Lang.T("寬度"), 0, 100, AddressOf Plain, Function(r) r.FrameSize, Sub(r, v) r.FrameSize = v))
-        AddHint(L, Lang.T("文字請到「文字」分頁，貼圖請到「貼圖」分頁；選取後的大小、旋轉、透明度也在各自的分頁調整。"))
+        BuildFrameControls(L) ' 顏色、下方加寬、陰影、內框線、圓角、比例、文字（見 frmEditor.Frames.vb）
+        AddHint(L, Lang.T("撕紙邊、郵票、花邊、卷軸的外圍是透明的：存成 PNG 會保留透明，存 JPG 時是白色。") & vbCrLf & Lang.T("文字請到「文字」分頁，貼圖請到「貼圖」分頁；選取後的大小、旋轉、透明度也在各自的分頁調整。"))
     End Sub
 
     ''' <summary>綁定到「選取中的文字／貼圖」某個整數屬性的滑桿列。</summary>
@@ -294,6 +294,7 @@ Partial Friend Class frmEditor
             Next
 
             _frameCombo.SelectedIndex = CInt(_recipe.Frame)
+            SyncFrameControls()
             Dim ov = SelOverlay(_recipe)
             _overlayShadow.Enabled = ov IsNot Nothing
             _overlayShadow.Checked = ov IsNot Nothing AndAlso ov.Shadow

@@ -24,8 +24,8 @@ Module LangTests
             Lang.Init(UiLanguage.English)
             Check("英文：翻譯表已內嵌並載入", Lang.T("調整") = "Adjust", Lang.T("調整"))
             Check("英文：有參數的句子", Lang.F("找到 {0} 張臉", 3) = "3 faces found", Lang.F("找到 {0} 張臉", 3))
-            Check("英文：格式化參數 {0:0.0}", Lang.F("完成（{0:0.0} 秒，{1}模型）", 1.25, "AI") = "Done (1.3 s, AI model)",
-                  Lang.F("完成（{0:0.0} 秒，{1}模型）", 1.25, "AI"))
+            Check("英文：格式化參數 {0:0.0}", Lang.F("完成（{0:0.0} 秒，{1}）", 1.25, "AI") = "Done (1.3 s, AI)",
+                  Lang.F("完成（{0:0.0} 秒，{1}）", 1.25, "AI"))
             Check("英文：查不到的句子顯示原文", Lang.T("這句不在翻譯表裡") = "這句不在翻譯表裡")
             Check("英文：反斜線路徑不被當成跳脫字元", Lang.T("貼圖放在程式資料夾的 stick\主題\ 裡。").Contains("stick\theme\"),
                   Lang.T("貼圖放在程式資料夾的 stick\主題\ 裡。"))

@@ -7,49 +7,70 @@ Imports OpenCvSharp
 Imports OpenCvSharp.Extensions
 
 ''' <summary>
-''' AI 去背：IS-Net（isnet-general-use.onnx，通用）與 U²-Net 人像（u2net_human_seg.onnx），模型來自 rembg（Apache-2.0）。
-''' 前處理與後處理照 rembg：縮放到模型輸入大小、正規化、輸出做最小最大值正規化後放大回原尺寸。
+''' AI 去背，五個模型（檔名見 CutoutModels.FileName）：
+''' IS-Net 一般與 U²-Net 人像（rembg，Apache-2.0）、BiRefNet lite 一般（MIT）、MODNet 人像（Apache-2.0）、BiRefNet HR Matting 精細（MIT，fp16）。
+''' 前處理：縮放到模型輸入大小（MODNet 保持比例，短邊 512、邊長 32 的倍數；其他縮成正方形）、正規化；
+''' 後處理：rembg 的兩個做最小最大值正規化，BiRefNet lite 做 sigmoid，HR 與 MODNet 已經是 0..1 的透明度。最後放大回原尺寸。
 ''' 同一個模型的工作階段會共用；一次只跑一個推論。
 ''' </summary>
 Public NotInheritable Class BackgroundRemover
     Private Sub New()
     End Sub
 
-    Public Const GeneralModelFile As String = "isnet-general-use.onnx"
-    Public Const HumanModelFile As String = "u2net_human_seg.onnx"
-
     Private Shared ReadOnly Sessions As New Dictionary(Of CutoutModel, InferenceSession)()
     Private Shared ReadOnly SessionLock As New Object()
+    Private Shared ReadOnly ImageNetMean As Single() = {0.485F, 0.456F, 0.406F}
+    Private Shared ReadOnly ImageNetStd As Single() = {0.229F, 0.224F, 0.225F}
 
     Public Shared Function ModelPath(model As CutoutModel) As String
-        Return Path.Combine(AppContext.BaseDirectory, "Models", If(model = CutoutModel.Human, HumanModelFile, GeneralModelFile))
+        Return Path.Combine(AppContext.BaseDirectory, "Models", CutoutModels.FileName(model))
     End Function
 
     Public Shared Function ModelAvailable(model As CutoutModel) As Boolean
         Return File.Exists(ModelPath(model))
     End Function
 
+    ''' <summary>MODNet 的輸入大小：短邊 512（長邊最多 1536），兩邊都是 32 的倍數。</summary>
+    Public Shared Function ModNetInputSize(w As Integer, h As Integer) As OpenCvSharp.Size
+        Dim k = 512.0 / Math.Min(w, h)
+        k = Math.Min(k, 1536.0 / Math.Max(w, h))
+        Dim fit = Function(v As Double) Math.Max(32, CInt(Math.Round(v / 32)) * 32)
+        Return New OpenCvSharp.Size(fit(w * k), fit(h * k))
+    End Function
+
     ''' <summary>算出主體遮罩（灰階 32bpp，白 = 主體），長邊不超過 MaskStore.MaxSide。</summary>
     Public Shared Function ComputeMask(image As Bitmap, model As CutoutModel) As Bitmap
-        Dim size = If(model = CutoutModel.Human, 320, 1024)
-        Dim mean = If(model = CutoutModel.Human, {0.485F, 0.456F, 0.406F}, {0.5F, 0.5F, 0.5F})
-        Dim std = If(model = CutoutModel.Human, {0.229F, 0.224F, 0.225F}, {1.0F, 1.0F, 1.0F})
+        Dim inSize As OpenCvSharp.Size
+        Select Case model
+            Case CutoutModel.ModNet : inSize = ModNetInputSize(image.Width, image.Height)
+            Case Else
+                Dim s = CutoutModels.InputSize(model)
+                inSize = New OpenCvSharp.Size(s, s)
+        End Select
+        Dim mean As Single(), std As Single()
+        Select Case model
+            Case CutoutModel.General : mean = {0.5F, 0.5F, 0.5F} : std = {1.0F, 1.0F, 1.0F}
+            Case CutoutModel.ModNet : mean = {0.5F, 0.5F, 0.5F} : std = {0.5F, 0.5F, 0.5F}
+            Case Else : mean = ImageNetMean : std = ImageNetStd
+        End Select
+        Dim iw = inSize.Width, ih = inSize.Height
 
-        ' 前處理：縮成正方形輸入（不保持比例，同 rembg），RGB、0..1、減平均除標準差。
-        Dim input As New DenseTensor(Of Single)({1, 3, size, size})
+        ' 前處理：RGB、0..1、減平均除標準差，排成 1×3×高×寬。
+        Dim data(3 * iw * ih - 1) As Single
         Using bgra = BitmapConverter.ToMat(image), rgb As New Mat(), small As New Mat()
             Cv2.CvtColor(bgra, rgb, If(bgra.Channels() = 4, ColorConversionCodes.BGRA2RGB, ColorConversionCodes.BGR2RGB))
-            Cv2.Resize(rgb, small, New OpenCvSharp.Size(size, size), 0, 0, InterpolationFlags.Lanczos4)
-            Dim px(size * size * 3 - 1) As Byte
+            ' rembg 的兩個用 Lanczos（同 rembg）；其他照它們的參考實作用雙線性（縮小時用面積平均才不會鋸齒）
+            Dim interp = If(model = CutoutModel.General OrElse model = CutoutModel.Human, InterpolationFlags.Lanczos4,
+                            If(iw < image.Width, InterpolationFlags.Area, InterpolationFlags.Linear))
+            Cv2.Resize(rgb, small, inSize, 0, 0, interp)
+            Dim px(iw * ih * 3 - 1) As Byte
             Runtime.InteropServices.Marshal.Copy(small.Data, px, 0, px.Length)
-            ' U²-Net 先除以影像最大值；IS-Net 直接除以 255。
+            ' U²-Net 先除以影像最大值；其他直接除以 255。
             Dim maxV = If(model = CutoutModel.Human, Math.Max(1, CInt(px.Max())), 255)
-            For y = 0 To size - 1
-                For x = 0 To size - 1
-                    Dim i = (y * size + x) * 3
-                    For c = 0 To 2
-                        input(0, c, y, x) = (px(i + c) / CSng(maxV) - mean(c)) / std(c)
-                    Next
+            Dim plane = iw * ih
+            For i = 0 To plane - 1
+                For c = 0 To 2
+                    data(c * plane + i) = (px(i * 3 + c) / CSng(maxV) - mean(c)) / std(c)
                 Next
             Next
         End Using
@@ -58,29 +79,46 @@ Public NotInheritable Class BackgroundRemover
         SyncLock SessionLock
             Dim session = GetSession(model)
             Dim name = session.InputMetadata.Keys.First()
-            Using results = session.Run({NamedOnnxValue.CreateFromTensor(name, input)})
-                output = results.First().AsTensor(Of Single)().ToArray()
+            Dim dims = {1, 3, ih, iw}
+            Dim input = If(session.InputMetadata(name).ElementDataType = TensorElementType.Float16,
+                           NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Float16)(data.Select(Function(v) CType(v, Float16)).ToArray(), dims)),
+                           NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Single)(data, dims)))
+            Using results = session.Run({input})
+                Dim first = results.First()
+                Dim half = TryCast(first.Value, DenseTensor(Of Float16))
+                output = If(half IsNot Nothing, half.ToArray().Select(Function(x) CType(x, Single)).ToArray(), first.AsTensor(Of Single)().ToArray())
             End Using
         End SyncLock
 
-        ' 後處理：第一個輸出的前 size×size 個值，最小最大值正規化到 0..255。
-        Dim n = size * size
-        Dim mn = Single.MaxValue, mx = Single.MinValue
-        For i = 0 To n - 1
-            mn = Math.Min(mn, output(i)) : mx = Math.Max(mx, output(i))
-        Next
-        Dim range = Math.Max(0.00001F, mx - mn)
+        ' 後處理：第一個輸出的前 寬×高 個值轉成 0..255。
+        Dim n = iw * ih
         Dim gray(n - 1) As Byte
-        For i = 0 To n - 1
-            gray(i) = CByte(Math.Round((output(i) - mn) / range * 255))
-        Next
+        Select Case model
+            Case CutoutModel.General, CutoutModel.Human
+                Dim mn = Single.MaxValue, mx = Single.MinValue
+                For i = 0 To n - 1
+                    mn = Math.Min(mn, output(i)) : mx = Math.Max(mx, output(i))
+                Next
+                Dim range = Math.Max(0.00001F, mx - mn)
+                For i = 0 To n - 1
+                    gray(i) = CByte(Math.Round((output(i) - mn) / range * 255))
+                Next
+            Case CutoutModel.BiRefNetLite
+                For i = 0 To n - 1
+                    gray(i) = CByte(Math.Round(255 / (1 + Math.Exp(-output(i)))))
+                Next
+            Case Else
+                For i = 0 To n - 1
+                    gray(i) = CByte(Math.Round(Math.Max(0, Math.Min(1, output(i))) * 255))
+                Next
+        End Select
 
         Dim longSide = Math.Max(image.Width, image.Height)
         Dim k = Math.Min(1.0, MaskStore.MaxSide / CDbl(longSide))
         Dim mw = Math.Max(1, CInt(image.Width * k)), mh = Math.Max(1, CInt(image.Height * k))
-        Using m As New Mat(size, size, MatType.CV_8UC1), big As New Mat(), bgraOut As New Mat()
+        Using m As New Mat(ih, iw, MatType.CV_8UC1), big As New Mat(), bgraOut As New Mat()
             Runtime.InteropServices.Marshal.Copy(gray, 0, m.Data, n)
-            Cv2.Resize(m, big, New OpenCvSharp.Size(mw, mh), 0, 0, InterpolationFlags.Cubic)
+            Cv2.Resize(m, big, New OpenCvSharp.Size(mw, mh), 0, 0, If(mw < iw, InterpolationFlags.Area, InterpolationFlags.Cubic))
             Cv2.CvtColor(big, bgraOut, ColorConversionCodes.GRAY2BGRA)
             Return BitmapConverter.ToBitmap(bgraOut)
         End Using
@@ -118,6 +156,9 @@ Public NotInheritable Class CutoutCompositor
 
         ' 清掉微弱殘值：10% 以下當背景、90% 以上當主體，中間線性拉開（模型常在背景留下淡淡一層）。
         If aiMask IsNot Nothing Then mask.ConvertTo(mask, -1, 1 / 0.8, -0.1 * 255 / 0.8)
+
+        ' 邊緣精修：依照片附近的主體色、背景色重算透明度，只改邊緣附近（主體裡面、背景遠處不動）。
+        If aiMask IsNot Nothing AndAlso sourcePixels IsNot Nothing AndAlso settings.EdgeRefine > 0 Then RefineEdges(mask, sourcePixels, w, h, settings.EdgeRefine, CutoutModels.InputSize(settings.Model))
 
         ' 內縮／外擴：形態學侵蝕或膨脹。
         If settings.Shift <> 0 Then
@@ -186,6 +227,143 @@ Public NotInheritable Class CutoutCompositor
         Return mask
     End Function
 
+    ''' <summary>
+    ''' 邊緣精修的半徑（像素）：模型一個像素在這張圖上有多大（長邊 ÷ 模型輸入邊長）乘 1～3（強度越高看得越遠）。
+    ''' 遮罩的邊緣模糊大約就是這麼寬，半徑比它小時看不到真正的邊。
+    ''' </summary>
+    Private Shared Function RefineRadius(w As Integer, h As Integer, strength As Integer, modelInput As Integer) As Integer
+        Dim cell = Math.Max(w, h) / CDbl(Math.Max(64, modelInput))
+        Return Math.Max(2, CInt(Math.Ceiling(cell * (1 + 2 * strength / 100.0))))
+    End Function
+
+    ''' <summary>
+    ''' 邊緣精修：在原本邊緣附近的一圈（內外各一個半徑）裡，從遮罩確定的地方取附近的主體色 F、背景色 B，
+    ''' 把每個像素的顏色投影到 B→F 這條線上，得到它的透明度（I = a·F + (1−a)·B）。頭髮、毛邊這些模型畫不細的地方
+    ''' 會依照片真正的顏色變成半透明的細節。主體和背景顏色太接近、或像素顏色不在這條線上（第三種顏色）時不可信，
+    ''' 退回模型的結果。其他地方完全不動。
+    ''' （導向濾波在模型遮罩很模糊時斜率會被拉低，反而更糊，所以不用。）
+    ''' </summary>
+    Public Shared Sub RefineEdges(mask As Mat, sourcePixels As Byte(), w As Integer, h As Integer, strength As Integer, Optional modelInput As Integer = 1024)
+        Dim r = RefineRadius(w, h, strength, modelInput)
+        Dim n = w * h
+        Dim pm(n - 1) As Byte
+        Runtime.InteropServices.Marshal.Copy(mask.Data, pm, 0, n)
+        Dim bandPx(n - 1) As Byte
+        Using k = Cv2.GetStructuringElement(MorphShapes.Ellipse, New OpenCvSharp.Size(r * 2 + 1, r * 2 + 1)),
+              dil As New Mat(), ero As New Mat(), band As New Mat()
+            ' 邊緣帶：原遮罩膨脹與侵蝕差很多的地方，邊上再柔一點才不會看出接縫
+            Cv2.Dilate(mask, dil, k) : Cv2.Erode(mask, ero, k)
+            Cv2.Subtract(dil, ero, band)
+            Cv2.Threshold(band, band, 24, 255, ThresholdTypes.Binary)
+            Cv2.GaussianBlur(band, band, New OpenCvSharp.Size(0, 0), Math.Max(1.0, r / 3.0))
+            Runtime.InteropServices.Marshal.Copy(band.Data, bandPx, 0, n)
+        End Using
+        ' 附近確定的主體色、背景色：權重只給遮罩很確定的像素，再做加權平均（權重也一起模糊，相除）
+        Dim fm(n * 3 - 1) As Single, bm(n * 3 - 1) As Single, fd(n - 1) As Single, bd(n - 1) As Single
+        Using bgra As New Mat(h, w, MatType.CV_8UC4), bgr As New Mat(), img As New Mat(), pf As New Mat(),
+              wf As New Mat(), wb As New Mat(), wf3 As New Mat(), wb3 As New Mat(), fw As New Mat(), bw As New Mat(),
+              fSum As New Mat(), bSum As New Mat(), fDen As New Mat(), bDen As New Mat(), fDen3 As New Mat(), bDen3 As New Mat(), fMean As New Mat(), bMean As New Mat()
+            Runtime.InteropServices.Marshal.Copy(sourcePixels, 0, bgra.Data, sourcePixels.Length)
+            Cv2.CvtColor(bgra, bgr, ColorConversionCodes.BGRA2BGR)
+            bgr.ConvertTo(img, MatType.CV_32FC3, 1 / 255.0)
+            mask.ConvertTo(pf, MatType.CV_32FC1, 1 / 255.0)
+            ' 主體：p 0.9→1 權重 0→1；背景：p 0.1→0 權重 0→1
+            Cv2.Subtract(pf, Scalar.All(0.9), wf) : Cv2.Multiply(wf, Scalar.All(10.0), wf) : Cv2.Max(wf, 0.0, wf)
+            Cv2.Subtract(Scalar.All(0.1), pf, wb) : Cv2.Multiply(wb, Scalar.All(10.0), wb) : Cv2.Max(wb, 0.0, wb)
+            Cv2.Merge({wf, wf, wf}, wf3) : Cv2.Merge({wb, wb, wb}, wb3)
+            Cv2.Multiply(img, wf3, fw) : Cv2.Multiply(img, wb3, bw)
+            Dim sigma = Math.Max(3.0, r * 1.5)
+            Dim ks = New OpenCvSharp.Size(0, 0)
+            Cv2.GaussianBlur(fw, fSum, ks, sigma) : Cv2.GaussianBlur(wf, fDen, ks, sigma)
+            Cv2.GaussianBlur(bw, bSum, ks, sigma) : Cv2.GaussianBlur(wb, bDen, ks, sigma)
+            Cv2.Max(fDen, 0.000001, fDen) : Cv2.Max(bDen, 0.000001, bDen)
+            Cv2.Merge({fDen, fDen, fDen}, fDen3) : Cv2.Merge({bDen, bDen, bDen}, bDen3)
+            Cv2.Divide(fSum, fDen3, fMean) : Cv2.Divide(bSum, bDen3, bMean)
+            Runtime.InteropServices.Marshal.Copy(fMean.Data, fm, 0, fm.Length)
+            Runtime.InteropServices.Marshal.Copy(bMean.Data, bm, 0, bm.Length)
+            Runtime.InteropServices.Marshal.Copy(fDen.Data, fd, 0, n)
+            Runtime.InteropServices.Marshal.Copy(bDen.Data, bd, 0, n)
+        End Using
+        Dim mix = 0.5F + 0.5F * Math.Max(0, Math.Min(100, strength)) / 100.0F
+        Threading.Tasks.Parallel.For(0, h, Sub(y)
+                                               For x = 0 To w - 1
+                                                   Dim i = y * w + x
+                                                   If bandPx(i) = 0 Then Continue For
+                                                   ' F−B 與 I−B
+                                                   Dim dd = 0.0F, dot = 0.0F
+                                                   Dim dv(2) As Single, iv(2) As Single
+                                                   For c = 0 To 2
+                                                       dv(c) = fm(i * 3 + c) - bm(i * 3 + c)
+                                                       iv(c) = sourcePixels(i * 4 + c) / 255.0F - bm(i * 3 + c)
+                                                       dd += dv(c) * dv(c) : dot += iv(c) * dv(c)
+                                                   Next
+                                                   Dim dist = CSng(Math.Sqrt(dd))
+                                                   If dist < 0.06F Then Continue For
+                                                   Dim a = Math.Max(0.0F, Math.Min(1.0F, dot / dd))
+                                                   ' 像素離 B→F 線多遠（第三種顏色）
+                                                   Dim res = 0.0F
+                                                   For c = 0 To 2
+                                                       Dim e = iv(c) - a * dv(c)
+                                                       res += e * e
+                                                   Next
+                                                   res = CSng(Math.Sqrt(res))
+                                                   Dim conf = Math.Min(1.0F, (dist - 0.06F) / 0.15F) *
+                                                              Math.Max(0.0F, 1 - res / (0.5F * dist)) *
+                                                              Math.Min(1.0F, fd(i) / 0.02F) * Math.Min(1.0F, bd(i) / 0.02F)
+                                                   Dim kk = bandPx(i) / 255.0F * conf * mix
+                                                   Dim v = kk * a + (1 - kk) * pm(i) / 255.0F
+                                                   pm(i) = CByte(Math.Round(Math.Max(0, Math.Min(1, v)) * 255))
+                                               Next
+                                           End Sub)
+        Runtime.InteropServices.Marshal.Copy(pm, 0, mask.Data, n)
+    End Sub
+
+    ''' <summary>
+    ''' 去除邊緣殘色：半透明的像素 I = a·F + (1−a)·B（F 主體、B 背景）。B 用附近背景像素的平均、F 從這個式子解回來，
+    ''' 太透明（a 小）的地方解出來不穩，改用附近主體的平均色。只改 0.02 &lt; a &lt; 0.98 的像素。
+    ''' </summary>
+    Public Shared Sub Decontaminate(src As Byte(), alpha As Byte(), w As Integer, h As Integer, radius As Integer)
+        Dim n = w * h
+        Using bgra As New Mat(h, w, MatType.CV_8UC4), bgr As New Mat(), f As New Mat(), aM As New Mat(h, w, MatType.CV_8UC1), af As New Mat(),
+              wf As New Mat(), wb As New Mat(), one As New Mat(), fw As New Mat(), bw As New Mat(), wf3 As New Mat(), wb3 As New Mat(),
+              fSum As New Mat(), bSum As New Mat(), fDen As New Mat(), bDen As New Mat(), fMean As New Mat(), bMean As New Mat()
+            Runtime.InteropServices.Marshal.Copy(src, 0, bgra.Data, src.Length)
+            Runtime.InteropServices.Marshal.Copy(alpha, 0, aM.Data, n)
+            Cv2.CvtColor(bgra, bgr, ColorConversionCodes.BGRA2BGR)
+            bgr.ConvertTo(f, MatType.CV_32FC3, 1 / 255.0)
+            aM.ConvertTo(af, MatType.CV_32FC1, 1 / 255.0)
+            ' 權重：主體 a²、背景 (1−a)²（越確定越算數）
+            Cv2.Multiply(af, af, wf)
+            Cv2.Subtract(Scalar.All(1.0), af, one) : Cv2.Multiply(one, one, wb)
+            Cv2.Merge({wf, wf, wf}, wf3) : Cv2.Merge({wb, wb, wb}, wb3)
+            Cv2.Multiply(f, wf3, fw) : Cv2.Multiply(f, wb3, bw)
+            Dim sigma = Math.Max(2.0, radius * 1.5)
+            Cv2.GaussianBlur(fw, fSum, New OpenCvSharp.Size(0, 0), sigma) : Cv2.GaussianBlur(wf3, fDen, New OpenCvSharp.Size(0, 0), sigma)
+            Cv2.GaussianBlur(bw, bSum, New OpenCvSharp.Size(0, 0), sigma) : Cv2.GaussianBlur(wb3, bDen, New OpenCvSharp.Size(0, 0), sigma)
+            Cv2.Max(fDen, Scalar.All(0.0001), fDen) : Cv2.Max(bDen, Scalar.All(0.0001), bDen)
+            Cv2.Divide(fSum, fDen, fMean) : Cv2.Divide(bSum, bDen, bMean)
+            Dim fm(n * 3 - 1) As Single, bm(n * 3 - 1) As Single
+            Runtime.InteropServices.Marshal.Copy(fMean.Data, fm, 0, fm.Length)
+            Runtime.InteropServices.Marshal.Copy(bMean.Data, bm, 0, bm.Length)
+            Threading.Tasks.Parallel.For(0, h, Sub(y)
+                                                   For x = 0 To w - 1
+                                                       Dim k = y * w + x
+                                                       Dim a = alpha(k) / 255.0F
+                                                       If a <= 0.02F OrElse a >= 0.98F Then Continue For
+                                                       ' a 小時解出來的 F 不穩，往附近主體的平均色靠
+                                                       Dim trust = Math.Max(0, Math.Min(1, (a - 0.1F) / 0.5F))
+                                                       For c = 0 To 2
+                                                           Dim i = src(k * 4 + c) / 255.0F
+                                                           Dim est = (i - (1 - a) * bm(k * 3 + c)) / Math.Max(a, 0.05F)
+                                                           est = Math.Max(0, Math.Min(1, est))
+                                                           Dim v = fm(k * 3 + c) + (est - fm(k * 3 + c)) * trust
+                                                           src(k * 4 + c) = CByte(Math.Round(Math.Max(0, Math.Min(1, v)) * 255))
+                                                       Next
+                                                   Next
+                                               End Sub)
+        End Using
+    End Sub
+
     ''' <summary>依背景設定合成，回傳新的 32bpp 圖（透明背景時 alpha = 遮罩）。</summary>
     Public Shared Function Compose(source As Bitmap, aiMask As Bitmap, settings As CutoutSettings) As Bitmap
         Dim w = source.Width, h = source.Height
@@ -193,6 +371,11 @@ Public NotInheritable Class CutoutCompositor
         Using mask = BuildMask(aiMask, settings, w, h, src)
             Dim m(w * h - 1) As Byte
             Runtime.InteropServices.Marshal.Copy(mask.Data, m, 0, m.Length)
+            ' 換背景、透明時才需要（檢查遮罩時看原本的顏色）
+            If settings.EdgeDecontaminate AndAlso settings.Background <> CutoutBackground.MaskPreview AndAlso settings.Background <> CutoutBackground.Original Then
+                src = DirectCast(src.Clone(), Byte())
+                Decontaminate(src, m, w, h, RefineRadius(w, h, Math.Max(30, settings.EdgeRefine), CutoutModels.InputSize(settings.Model)))
+            End If
             Dim bg As Byte() = Nothing
             Select Case settings.Background
                 Case CutoutBackground.Color

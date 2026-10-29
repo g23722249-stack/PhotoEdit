@@ -11,9 +11,22 @@ Public NotInheritable Class SourceFix
     End Sub
 
     ''' <summary>回傳處理後的新圖；配方沒有任何原圖處理時回傳 Nothing（表示不變）。aiMask 為去背的 AI 遮罩（可為 Nothing）。</summary>
+    ''' <param name="sourceScale">source 相對原圖的比例（預覽用縮圖時小於 1）：JPEG 區塊雜訊的 8×8 格子跟著縮。</param>
     Public Shared Function Apply(source As Bitmap, faces As IReadOnlyList(Of FaceRegion), recipe As EditRecipe,
-                                 Optional aiMask As Bitmap = Nothing) As Bitmap
+                                 Optional aiMask As Bitmap = Nothing, Optional sourceScale As Double = 1) As Bitmap
+        ' 區塊雜訊最先去（降噪、修補之前，格線還在原本的位置）
+        Dim deblocked As Bitmap = Nothing
+        If recipe.Deblock > 0 Then
+            deblocked = source.Clone(New Rectangle(0, 0, source.Width, source.Height), Imaging.PixelFormat.Format32bppArgb)
+            MosaicEffect.Deblock(deblocked, recipe.Deblock, recipe.DeblockGridX, recipe.DeblockGridY, sourceScale)
+            source = deblocked
+        End If
         Dim fixedImage = ApplyRetouch(source, faces, recipe)
+        If fixedImage IsNot Nothing Then
+            deblocked?.Dispose()
+        ElseIf deblocked IsNot Nothing Then
+            fixedImage = deblocked
+        End If
         If recipe.Cutout Is Nothing OrElse Not recipe.Cutout.ChangesImage Then Return fixedImage
         Dim composed = CutoutCompositor.Compose(If(fixedImage, source), aiMask, recipe.Cutout)
         fixedImage?.Dispose()

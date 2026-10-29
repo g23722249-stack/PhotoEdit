@@ -76,6 +76,27 @@ Partial Public NotInheritable Class DrawingRenderer
         End Using
     End Sub
 
+    ''' <summary>
+    ''' 選取區打馬賽克／平滑馬賽克：看下面的照片與圖層（連同本圖層已畫的），格子大小與起點是照片高度的比例，
+    ''' 預覽（縮小）與匯出（原尺寸）看起來一樣。
+    ''' </summary>
+    Private Shared Sub ApplyMosaicOp(bmp As Bitmap, below As Byte(), w As Integer, h As Integer, ox As Integer, oy As Integer,
+                                     op As Global.PhotoEdit.DrawLayer)
+        Dim opacity = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F
+        If opacity <= 0 OrElse op.MosaicSize <= 0 Then Return
+        Dim layerPx = Perspective.ReadPixels(bmp)
+        Dim sample = If(below IsNot Nothing, Over(layerPx, ToLayer(below, w, h, ox, oy)), layerPx)
+        Dim mask = SelectionMask.Render(op.Region, w, h)
+        Dim size = op.MosaicSize * h, gx = op.MosaicX * h - ox, gy = op.MosaicY * h - oy
+        Dim patch = If(op.FillContent = FillContent.Mosaic,
+                       MosaicEffect.Pixelate(sample, w, h, mask, size, gx, gy),
+                       MosaicEffect.Smooth(sample, w, h, mask, size, gx, gy, CType(op.MosaicMethod, MosaicSmoothMethod)))
+        Using fill As New Bitmap(w, h, PixelFormat.Format32bppArgb)
+            Perspective.WritePixels(fill, patch)
+            LayerBlend.Composite(bmp, fill, New Rectangle(0, 0, w, h), opacity, op.Blend)
+        End Using
+    End Sub
+
     ''' <summary>選取區填材質：選取範圍當覆蓋率，用紋理筆的材質上色（顏色 = 填色）。</summary>
     Private Shared Sub ApplyMaterialRegionOp(bmp As Bitmap, w As Integer, h As Integer, op As Global.PhotoEdit.DrawLayer)
         Dim opacity = Math.Max(0, Math.Min(100, op.Opacity)) / 100.0F

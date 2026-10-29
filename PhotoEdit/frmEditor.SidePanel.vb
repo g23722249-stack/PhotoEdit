@@ -321,6 +321,15 @@ Partial Friend Class frmEditor
         AddHeading(L, Lang.T("降噪"))
         AddRow(L, MakeRow("denoise", Lang.T("明度"), 0, 100, AddressOf Plain, Function(r) r.Denoise, Sub(r, v) r.Denoise = v))
         AddRow(L, MakeRow("colornoise", Lang.T("色彩"), 0, 100, AddressOf Plain, Function(r) r.ColorNoise, Sub(r, v) r.ColorNoise = v))
+        ' JPEG 區塊雜訊：第一次調整時偵測原圖 8×8 格線的起點（見 frmEditor.Mosaic.vb）
+        AddRow(L, MakeRow("deblock", Lang.T("JPEG 區塊"), 0, 100, AddressOf Plain, Function(r) r.Deblock,
+                          Sub(r, v)
+                              If v > 0 AndAlso r.Deblock = 0 Then
+                                  Dim g = JpegGrid()
+                                  r.DeblockGridX = g.X : r.DeblockGridY = g.Y
+                              End If
+                              r.Deblock = v
+                          End Sub))
 
         AddHeading(L, Lang.T("透視校正"))
         Dim signed As Func(Of Integer, String) = Function(v) If(v > 0, "+" & v, v.ToString())

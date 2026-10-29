@@ -22,6 +22,8 @@
     <None Include="..\Stick\**\*" LinkBase="stick" CopyToOutputDirectory="PreserveNewest" />
     <!-- 使用手冊的套用前／後範例圖（uismoke manualimages 產生）。 -->
     <None Include="..\Manual\**\*" LinkBase="manual" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 說明 → 關於 的 logo（frmAbout.LoadLogo）。 -->
+    <EmbeddedResource Include="Assets\logo.png" LogicalName="PhotoEditApp.logo.png" />
   </ItemGroup>
 
   <ItemGroup>

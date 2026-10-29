@@ -705,11 +705,6 @@ AI 人像	AI portrait
 選一張圖片填滿文字（例如花紋、天空、木紋）。	Pick an image to fill the text (e.g. a pattern, sky, wood grain).
 填色方式選「圖片」時使用。	Used when the fill type is "Image".
 去	C
-一般模型	General model
-IS-Net 通用模型：寵物、動物、物品與人物都能找出主體。	IS-Net general model: finds the subject for pets, animals, objects and people.
-照片有人臉時預設改用人像模型；畫面裡有其他顯眼物體時可能會一起保留。	When the photo has a face the portrait model is used by default; other prominent objects in the picture may be kept as well.
-人像模型	Portrait model
-U²-Net 人像模型：專門找人，身體輪廓與頭髮比較準，也比較快。	U²-Net portrait model: specialized for people; body outlines and hair are more accurate, and it's faster.
 自動去背	Auto remove background
 用上面選的模型找出主體，背景先換成透明（顯示為棋盤格）。	Find the subject with the model chosen above; the background becomes transparent first (shown as a checkerboard).
 第一次使用要載入模型，需要幾秒鐘；結果在「存檔」時一起存進專案檔。	The model loads the first time, which takes a few seconds; the result is saved into the project file when you save.
@@ -1525,7 +1520,6 @@ A4 橫式	A4 landscape
 拖曳畫出裁切範圍；拖曳四角或四邊調整大小、框內拖曳移動。Enter 套用、Esc 取消。	Drag to draw the crop area; drag corners or sides to resize, drag inside to move. Enter applies, Esc cancels.
 已依人臉位置構圖：眼睛在上方三分線。	Composed by face position: eyes on the upper third line.
 沒有偵測到臉，改用置中構圖。	No face detected; centered instead.
-一般（人像／動物／物品）	General
 修正	Corrections
 保留筆刷（綠）	Restore (green)
 擦除筆刷（紅）	Erase (red)
@@ -1540,10 +1534,8 @@ A4 橫式	A4 landscape
 檢查遮罩（紅＝去掉）	Check mask (red = removed)
 存成貼圖…	Save as sticker…
 透明背景可以在「匯出」時存成 PNG。	A transparent background can be saved as PNG when exporting.
-找不到去背模型：	Cutout model not found:
 去背計算中…（第一次載入模型會久一點）	Removing background… (the first model load takes longer)
 去背失敗：	Background removal failed:
-完成（{0:0.0} 秒，{1}模型）	Done ({0:0.0} s, {1} model)
 一般	General
 按「自動去背」開始。	Click "Auto remove background" to start.
 已載入先前的去背結果。	Loaded the previous cutout result.
@@ -1969,7 +1961,6 @@ GPS 座標	GPS coordinates
 關於 PhotoEdit	About PhotoEdit
 已開啟使用說明：滑鼠停在按鈕或滑桿上就會顯示。	Help is on: hover over a button or slider to see it.
 已關閉使用說明。	Help is off.
-PhotoEdit 0.2 — 非破壞性照片編輯器	PhotoEdit 0.2 — non-destructive photo editor
 「存檔」存成 PhotoEdit 專案（.pedx），保留所有圖層，下次載入可繼續修改；原始照片不會被修改。	"Save" saves a PhotoEdit project (.pedx) with all layers so you can keep editing next time; the original photo is never modified.
 要得到合併後的圖檔，請用「另存新檔」或「匯出」存成 PNG／JPG／BMP。	For a merged image file, use "Save as" or "Export" to save PNG / JPG / BMP.
 人臉偵測：YuNet（OpenCV Zoo，Apache-2.0）	Face detection: YuNet (OpenCV Zoo, Apache-2.0)
@@ -3030,3 +3021,172 @@ PNG 圖片（保留透明）|*.png|JPEG 圖片|*.jpg|BMP 圖片|*.bmp|PDF 文件
 顏料上的紋理	Texture on paint
 表面紋理壓印的範圍：整張照片（照片、文字、貼圖、繪圖一起）、只有繪圖圖層（照片本身不變），或紙張（畫上去的顏料越不透明紋理越淡：厚塗蓋住畫布、薄塗透出紋理，畫油畫、壓克力用）。	Where the surface texture is embossed: the whole photo (photo, text, stickers and drawings together), drawing layers only (the photo stays unchanged), or the paper (the more opaque the paint, the fainter the texture: thick paint covers the canvas, thin paint lets it show; for oil and acrylic painting).
 作用在「紙張」時，完全不透明的顏料上留下多少紋理：0 = 顏料完全蓋住，20% 左右像顏料順著畫布起伏。	With "Paper": how much texture remains on fully opaque paint. 0 = paint covers it completely; about 20% looks like paint following the canvas surface.
+取照片主色	Photo's main color
+下方加寬	Bottom +
+內框線	Inner line
+照片圓角	Photo corners
+預設顏色	Default color
+帶入相機資訊	Insert camera info
+撕紙邊、郵票、花邊、卷軸的外圍是透明的：存成 PNG 會保留透明，存 JPG 時是白色。	Torn paper, stamp, deckle and scroll frames are transparent outside: PNG keeps the transparency, JPG turns it white.
+相片：白邊、黑邊、拍立得、圓角、底片、中片幅底片、幻燈片框、相機資訊（下方白條印相機與拍攝參數）、模糊延伸背景（發社群用的固定比例）。	Photo: white, black, Polaroid, rounded, film, medium format, slide mount, camera info (camera and settings on a strip below), blurred extension (fixed ratios for social media).
+裱框：畫廊襯紙、古典金框、木框、卷軸裱褙。懷舊與手作：老照片花邊、撕紙邊、郵票、紙膠帶、相簿相角。繪畫風：水彩暈邊、毛筆墨刷、鉛筆手繪、柔邊漸淡。選「無」取消邊框。	Framing: gallery mat, classic gold, wood, hanging scroll. Vintage and crafts: deckle edge, torn paper, stamp, washi tape, album corners. Painterly: watercolor edge, ink brush, pencil sketch, soft fade. Choose None to remove the frame.
+下方的邊框再加寬（邊框寬度的百分比）：畫廊的作品、拍立得常常下方比較寬，看起來比較穩。	Makes the bottom border wider (percent of the frame width): gallery prints and Polaroids often have a wider bottom, which looks more balanced.
+照片下方一道柔和的陰影，像照片浮在邊框上。	A soft shadow under the photo, as if it floats above the frame.
+照片外圍一圈細線，數字越大越粗；顏色自動挑和邊框對比的深色或淺色。	A thin line around the photo; higher is thicker. Its color is picked automatically to contrast with the frame.
+把照片的四個角修圓。	Rounds the photo's four corners.
+邊框顏色	Frame color
+邊框的主色：白邊的白、襯紙、相簿的頁、卷軸的絹、毛筆框的墨色……點色塊選顏色。	The frame's main color: the white of a white border, the mat, the album page, the scroll silk, the ink of the brush frame… Click the swatch to choose.
+邊框顏色自動用照片裡最多、最鮮明的顏色，換照片也會跟著變。	The frame color follows the photo's most common, most vivid color, and changes with the photo.
+邊框回到這個樣式原本的顏色。	Returns the frame to this style's original color.
+輸出比例	Output ratio
+模糊延伸背景的整張比例：1:1、4:5（貼文）、9:16（限時動態）、16:9、3:2、2:3。照片完整放在中間，旁邊用照片放大模糊補滿。	Overall ratio for the blurred extension: 1:1, 4:5 (posts), 9:16 (stories), 16:9, 3:2, 2:3. The whole photo sits in the middle; the rest is filled with an enlarged, blurred copy.
+邊框文字	Frame text
+印在邊框上的字：相機資訊（第 1 行相機、第 2 行鏡頭、第 3 行參數、第 4 行日期）、拍立得與襯紙下方的手寫字、郵票面額、底片與幻燈片邊上的字。	Text printed on the frame: camera info (line 1 camera, line 2 lens, line 3 settings, line 4 date), handwriting under a Polaroid or mat, stamp value, text on film and slide edges.
+從照片的 EXIF 讀出相機、鏡頭、焦距、光圈、快門、ISO 與拍攝日期填進文字；沒有記錄的項目留空。	Fills the text with the camera, lens, focal length, aperture, shutter speed, ISO and date from the photo's EXIF; missing items are left blank.
+相機資訊	Camera info
+模糊延伸背景	Blurred extension
+畫廊襯紙	Gallery mat
+古典金框	Classic gold frame
+木框	Wood frame
+卷軸裱褙	Hanging scroll
+老照片花邊	Deckle edge
+撕紙邊	Torn paper
+郵票	Stamp
+紙膠帶	Washi tape
+相簿相角	Album corners
+幻燈片框	Slide mount
+中片幅底片	Medium format film
+水彩暈邊	Watercolor edge
+毛筆墨刷	Ink brush
+鉛筆手繪	Pencil sketch
+柔邊漸淡	Soft fade
+最近鄰（方塊）	Nearest (blocks)
+像素圖放大	Pixel Art Upscale
+最近鄰（對照）	Nearest (for comparison)
+放大結果	Upscaled
+演算法	Algorithm
+倍數	Scale
+放大後太大（超過 1 億像素）：選小一點的倍數，或先把圖裁小。	Too large after upscaling (over 100 million pixels): choose a smaller scale or crop the image first.
+每個像素變成方塊，完全不改顏色。要保留像素風格（例如放大後再印出、做成貼圖）時用。	Every pixel becomes a block and no colors change. Use it to keep the pixel look (for printing or stickers).
+只在對角相同的地方補上鄰點的顏色，不產生新顏色；斜線變成較細的鋸齒。調色盤有限制時適合。	Fills in a neighbor's color only where diagonals match, creating no new colors; diagonals get finer steps. Good for limited palettes.
+相近的顏色之間平滑、不同的顏色之間保持銳利，斜線磨圓。依 HQx 的原理重新實作，和原版相近但不保證逐像素相同。	Smooth between similar colors, sharp between different ones, with rounded diagonals. Reimplemented from the HQx principles: close to the original but not guaranteed to match pixel for pixel.
+比較兩個方向的邊緣強度，沿 45° 與較平、較陡的邊切角混色，斜線與曲線最平滑。遊戲畫面、圖示最常用。	Compares edge strength in two directions and blends corners along 45°, shallow and steep edges; the smoothest diagonals and curves. The usual choice for game screens and icons.
+無法放大：	Cannot upscale: 
+像素放大	Pixel Upscale
+像素圖放大：已存成 	Pixel art upscale: saved as 
+放大演算法	Upscale algorithm
+最近鄰：每個像素變方塊。Scale2x／3x：只在對角相同處補鄰點的顏色，不產生新顏色。HQx：相近的顏色之間平滑、不同的顏色保持銳利。xBR：沿邊緣切角混色，斜線與曲線最平滑。	Nearest: every pixel becomes a block. Scale2x/3x: fills in neighbor colors only where diagonals match, no new colors. HQx: smooth between similar colors, sharp between different ones. xBR: blends corners along edges for the smoothest diagonals and curves.
+像素圖、遊戲畫面、圖示這類小圖用；照片請用一般的縮放。	For small images such as pixel art, game screens and icons; use normal resizing for photos.
+放大倍數	Scale factor
+最近鄰 2～8 倍、Scale2x 2～4 倍、HQx 2～4 倍、xBR 2～6 倍。	Nearest 2–8×, Scale2x 2–4×, HQx 2–4×, xBR 2–6×.
+預覽放大	Preview zoom
+預覽再放大幾倍看細節（不影響結果）。在預覽上拖曳可以平移，左右兩邊一起動。	Zooms the preview further to see details (does not affect the result). Drag in a preview to pan; both sides move together.
+整張放大，存成 PNG（保留透明）到 圖片\\PhotoEdit\\像素放大，並開成新影像；原圖不變。	Upscales the whole image, saves it as PNG (keeping transparency) to Pictures\\PhotoEdit\\Pixel Upscale and opens it as a new image; the original is unchanged.
+像素圖放大（xBR／HQx）…	Pixel Art Upscale (xBR/HQx)…
+重新偵測	Detect again
+平滑（雙三次）	Smooth (bicubic)
+xBR（像素圖）	xBR (pixel art)
+HQx（像素圖）	HQx (pixel art)
+平滑馬賽克	Smooth Mosaic
+打馬賽克	Mosaic
+原本	Before
+平滑之後	Smoothed
+打馬賽克之後	With mosaic
+方塊大小	Block size
+起點 X	Start X
+起點 Y	Start Y
+放大方法	Upscale method
+每一格縮成一個像素再平滑放大，方塊感會消失。方塊裡原本的細節已經被平均掉了，不會回來——這不是還原。	Each block is shrunk to one pixel and smoothly enlarged, so the blocky look goes away. The detail inside each block was averaged away and does not come back: this is not a restoration.
+提醒：馬賽克的方塊太小時，文字、車牌有機會被猜回來；要遮敏感資訊，用「安全遮蔽（實心色塊）」比較安全。	Note: with small blocks, text and license plates can sometimes be guessed back. To hide sensitive information, Safe redaction (solid block) is safer.
+套用	Apply
+偵測到方塊 {0} 像素，起點 ({1}, {2})；明顯程度 {3:P0}。	Detected {0}-pixel blocks starting at ({1}, {2}); clarity {3:P0}.
+沒有偵測到馬賽克方塊，請手動輸入方塊大小。	No mosaic blocks detected; enter the block size manually.
+方塊 {0} 像素（選取範圍 {1} × {2}）。	{0}-pixel blocks (selection {1} × {2}).
+馬賽克	Mosaic
+已平滑馬賽克（新的點陣圖層；方塊裡原本的細節不會回來）。	Mosaic smoothed (new raster layer; the detail inside the blocks does not come back).
+已打馬賽克（方塊 {0} 像素，新的點陣圖層，可以隱藏或刪除）。	Mosaic applied ({0}-pixel blocks, new raster layer that can be hidden or deleted).
+安全遮蔽	Safe redaction
+已用實心色塊蓋住選取範圍（新的點陣圖層）。匯出成 JPG／PNG 後底下的內容就不存在了；存成 .pedx 時原圖還在檔案裡。	The selection is covered with a solid block (new raster layer). Once exported as JPG/PNG the content underneath is gone; a .pedx file still contains the original.
+JPEG 區塊雜訊	JPEG block artifacts
+去掉照片壓縮太重時出現的 8×8 格子：格線兩側都平、只有一個小台階的地方抹成平順的斜坡，真的邊緣不動。格線的位置自動偵測。	Removes the 8×8 grid left by heavy JPEG compression: where both sides of a grid line are flat with only a small step, the step becomes a smooth ramp; real edges are untouched. The grid position is detected automatically.
+只對 JPEG 壓縮造成的格子有效；畫面本來就模糊時效果不明顯。	Only helps with grids caused by JPEG compression; little visible effect on images that are already blurry.
+馬賽克每一格的大小（像素）。越大越看不出原本的樣子。	Size of each mosaic block (pixels). Larger hides more.
+馬賽克每一格的大小（像素）：開啟時自動偵測；偵測不準時可以手動改，對照左右預覽。	Size of each mosaic block (pixels): detected automatically; adjust it by hand if needed, comparing the two previews.
+格線起點	Grid start
+馬賽克格線從哪裡開始（像素，0 到方塊大小−1）。偵測不準時方塊會切到一半，改這裡對齊。	Where the mosaic grid starts (pixels, 0 to block size − 1). If detection is off, blocks get cut in half; adjust here to align.
+照片用「平滑（雙三次）」最自然；xBR、HQx 是給顏色少的像素圖、遊戲畫面用的，用在照片上會變成多邊形或階梯。	For photos, Smooth (bicubic) looks most natural; xBR and HQx are meant for pixel art and game screens with few colors, and turn photos into polygons or steps.
+重新找方塊大小與起點（手動改過之後想回到偵測的結果）。	Finds the block size and start again (to go back to the detected values after manual changes).
+打馬賽克…	Mosaic…
+平滑馬賽克（反馬賽克）…	Smooth Mosaic (De-mosaic)…
+安全遮蔽（實心色塊）	Safe Redaction (Solid Block)
+JPEG 區塊	JPEG blocks
+邊緣精修	Edge refine
+用照片當導引，把 AI 遮罩的邊緣貼齊真正的輪廓：髮絲、毛邊、樹葉縫變成細的半透明。只改邊緣附近，主體裡面不動。	Uses the photo's own colors to snap the AI mask to the real outline: hair, fur and gaps between leaves become fine semi-transparent detail. Only the edge area changes; the inside of the subject stays as is.
+背景和主體顏色很接近時，邊緣可能會吃進一點背景；調低或用修正筆刷補。	When the background and subject colors are close, the edge may pick up a little background; lower it or fix with the correction brush.
+去除邊緣殘色	Remove edge color fringe
+半透明的邊緣（頭髮、毛）扣掉原背景的顏色，換成別的背景或透明時，邊緣不會留下一圈原背景色。	Removes the original background color from semi-transparent edges (hair, fur), so no halo of the old background remains on a new or transparent background.
+去除邊緣殘色（換背景時不留原背景色）	Remove edge color fringe (no old background color on new backgrounds)
+
+一般（BiRefNet）	General (BiRefNet)
+人像（MODNet）	Portrait (MODNet)
+精細（BiRefNet HR，較慢）	Fine (BiRefNet HR, slower)
+人像（舊：U²-Net）	Portrait (old: U²-Net)
+一般（舊：IS-Net）	General (old: IS-Net)
+（未下載）	 (not downloaded)
+「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。	The "{0}" model is not downloaded yet: download it in Settings → Models (or pick a downloaded model).
+完成（{0:0.0} 秒，{1}）	Done ({0:0.0} s, {1})
+去背模型	Cutout model
+一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。	General (BiRefNet): people, animals and objects, with the most accurate edges. Portrait (MODNet): finds only people, with the most natural semi-transparent hair, and is the fastest. Fine (BiRefNet HR): works at high resolution for the finest hair on large photos, but is much slower. The old IS-Net / U²-Net stay for documents cut out with them before.
+照片有人臉時預設用人像模型；畫面裡有其他顯眼物體時，一般模型可能會一起保留。標「未下載」的模型要先到 設定 → 模型 下載。	Photos with faces default to the portrait model; the general model may also keep other prominent objects. Models marked "not downloaded" must first be downloaded in Settings → Models.
+選模型：「人像（MODNet）」適合人物（頭髮較自然），「一般（BiRefNet）」人物、動物、物品都行，「精細」最細但最慢。沒下載的模型到 設定 → 模型 下載。	Choose a model: "Portrait (MODNet)" suits people (more natural hair), "General (BiRefNet)" handles people, animals and objects, "Fine" is the most detailed but slowest. Download missing models in Settings → Models.
+用貼圖小幫手拆一整張貼圖	Split a whole sticker sheet with the Sticker Helper
+網路上下載、或 AI 畫出來的貼圖，常常是一大張排好十幾二十個的圖。貼圖小幫手會自動找出每一張、把背景去掉，存成透明 PNG 的「貼圖主題」，之後在「貼圖」分頁點兩下就能貼到任何照片上。這裡用一張 3 排 × 6 個、白底的金剛鸚鵡貼圖當例子。	Stickers downloaded from the web or drawn by AI often come as one big image with a dozen or more laid out together. The Sticker Helper finds each one, removes the background, and saves them as transparent PNGs in a "sticker theme"; after that, double-click one in the Stickers tab to put it on any photo. The example here is a white-background macaw sticker sheet, 3 rows × 6.
+1. 打開貼圖小幫手	1. Open the Sticker Helper
+右側切到「貼圖」分頁。	On the right, switch to the Stickers tab.
+按上方的「貼圖小幫手…」，會開一個獨立的視窗（可以和主畫面並排）。	Click "Sticker Helper…" at the top. It opens a separate window (you can place it next to the main window).
+「貼圖」分頁右上角的「貼圖小幫手…」。	"Sticker Helper…" at the top right of the Stickers tab.
+2. 放進整張貼圖	2. Load the whole sheet
+按「開啟圖片…」選圖檔（PNG、JPG、BMP、GIF、WebP 都可以），或在別的程式複製圖片後按「貼上圖片」（Ctrl+V）。	Click "Open image…" and pick the file (PNG, JPG, BMP, GIF and WebP all work), or copy an image in another program and click "Paste image" (Ctrl+V).
+小幫手會自動判斷背景色（取圖片四邊最常見的顏色，這張是接近白色），再把「不是背景的東西」一塊塊找出來，每一塊就是一張貼圖。	The helper detects the background color (the most common color along the four edges; here, nearly white), then finds each separate thing that is not background. Each one is a sticker.
+左邊是原圖，綠框是找到的貼圖；右上是拆好的縮圖，右下是選取的那一張放大。	On the left is the original with green boxes around the stickers it found; top right are the split thumbnails; bottom right is the selected one, enlarged.
+這張圖的貼圖排得很密，預設的合併距離把整張當成了一張（上方顯示「找到 1 張」）。	The stickers on this sheet are packed tightly, so the default merge distance treats the whole sheet as one sticker (the top shows "Found 1, 1 selected").
+3. 調整合併距離	3. Adjust the merge distance
+「合併距離」決定多近的東西算同一張：貼圖旁邊的字、愛心、音符和主角之間有一點空隙，距離夠大才會併進來；但距離比貼圖和貼圖之間的空隙還大時，相鄰的貼圖也會黏在一起。	"Merge distance" decides how close things must be to count as one sticker: the words, hearts and notes next to a character are a little apart from it and only join when the distance is large enough; but when it is larger than the gap between stickers, neighboring stickers stick together too.
+整張被當成一張（或好幾張黏在一起）：把「合併距離」往左拉。這張圖拉到大約 15% 的位置，再按「重新拆分」。	The whole sheet is one sticker (or several are stuck together): drag "Merge distance" to the left. For this sheet, about 15%, then click "Split again".
+字或小圖案被拆成單獨一張：往右拉一點，再按「重新拆分」。	Words or small drawings become stickers of their own: drag it a little to the right, then click "Split again".
+「最小尺寸」可以去掉零星的雜點：比它小的東西不算一張。	"Minimum size" drops stray specks: anything smaller does not count as a sticker.
+合併距離 15%：找到 19 張。多出來的第 7 張是第 3 張左上角的一個音符。	Merge distance 15%: 19 found. The extra number 7 is a music note at the top left of number 3.
+滑桿的範圍很敏感：這張圖在 15% 時剛好，拉到 18% 就有相鄰的貼圖黏在一起。調到「大部分都對、只差一兩張」就好，剩下的用下一步手動修。先調好合併距離再修：「重新拆分」會清掉每張的修正（會先詢問）。	The slider is sensitive: this sheet is right at 15%, and at 18% neighboring stickers already stick together. Stop when most are right and only one or two are off, and fix the rest by hand in the next step. Set the merge distance before fixing: "Split again" clears each sticker's fixes (it asks first).
+4. 手動修正框	4. Fix the boxes by hand
+在左邊的原圖上可以直接改框：	You can edit the boxes directly on the original on the left:
+按兩下框（或點左上角的編號）：排除這張，框變成紅色虛線，不會存；再按兩下加回來。	Double-click a box (or click its number at the top left): exclude it. The box turns into a red dashed line and is not saved; double-click again to add it back.
+拖曳框的邊或角：調整範圍。框內拖曳：整個移動。	Drag a box's edge or corner: resize it. Drag inside a box: move it.
+在框上按右鍵：把黏在一起的兩張左右或上下拆開。	Right-click a box: split two stuck-together stickers left/right or top/bottom.
+在空白處按住右鍵拖曳：補畫一個框（漏掉的貼圖）。	Hold the right button and drag on an empty area: draw a new box (for a missed sticker).
+選取後按 Del：刪除這個框。	Select a box and press Del: delete it.
+在第 7 張（單獨的音符）上按兩下，把它排除。	Double-click number 7 (the lone note) to exclude it.
+點第 3 張，把它的左邊往左拖一點，把那個音符完整包進來。	Click number 3 and drag its left edge a little to the left so the note is fully inside.
+第 7 張排除（紅色 ×），第 3 張的框往左拉，音符包在裡面。上方變成「已選 18 張」。	Number 7 excluded (red ×); number 3's box extended to the left with the note inside. The top now shows "Found 19, 18 selected".
+5. 檢查去背	5. Check the cutout
+每一張預設用「背景色填充」去背：從四邊往內把背景色去掉，被線條包住的同色（眼白、對話框、泡泡、紙張）會保留——白底插圖最適合這個方式。	Each sticker starts with "Background fill": the background color is removed from the four edges inward, and same-colored areas enclosed by lines (eye whites, speech bubbles, foam, paper) are kept. It suits illustrations on white best.
+點右上的縮圖（或左邊的框）選一張，下方會放大顯示。	Click a thumbnail at the top right (or a box on the left) to select a sticker; it is shown enlarged below.
+按「檢查遮罩」：被去掉的部分蓋上紅色，比棋盤格容易看出漏掉或多去的地方。	Click "Check mask": the removed parts are covered in red, which shows missed or over-removed areas more clearly than the checkerboard.
+有沒去乾淨的背景（例如手臂和身體之間被包住的一小塊白）：按「魔術棒」在那裡點一下去掉；點錯了 Alt＋點一下補回。範圍用「魔術棒」滑桿調。	Background left behind (for example a small white patch enclosed between an arm and the body): click "Magic wand (W)" and click there to remove it; Alt+click to restore if you clicked the wrong spot. Set its range with the "Magic wand" slider.
+更細的地方用「保留筆刷」「擦除筆刷」塗；「復原」（Ctrl+Z）每張各自記錄。	For finer areas paint with "Restore brush" and "Erase brush"; "Undo" (Ctrl+Z) is kept per sticker.
+背景不是單一顏色、或照片類的貼圖：「去背方式」改成「AI 一般」或「AI 人像」。	Backgrounds that are not one color, or photo-like stickers: change "Background removal" to "AI general" or "AI portrait".
+第 16 張「收到！」按了檢查遮罩：紅色是去掉的背景；對話框裡的白色被線條包住，保留下來。	Number 16 "Got it!" with Check Mask on: red is the removed background; the white inside the speech bubble is enclosed by lines and kept.
+「放大修正」隱藏上方縮圖、讓修正區變大；修正區也可以用滾輪縮放、右鍵拖曳平移。	"Enlarge correction view" hides the thumbnails above so the fixing area is larger; you can also zoom it with the wheel and pan by dragging with the right button.
+6. 存成貼圖主題	6. Save as a sticker theme
+「存到主題」：主題就是 stick 資料夾裡的一個子資料夾，打新名字就建立新主題。開檔時會自動帶入圖檔名，這裡改成「鸚鵡」。	"Save to theme": a theme is a subfolder in the stick folder; type a new name to create a new theme. The image file name is filled in when you open a file; here it is changed to "鸚鵡" (macaw).
+「檔名」：每張的檔名開頭，後面自動加編號（鸚鵡_01.png、鸚鵡_02.png…），同名的不會被覆蓋。	"File name": the start of each file name, followed by a number (鸚鵡_01.png, 鸚鵡_02.png…). Existing files with the same name are not overwritten.
+勾「剪掉透明邊」：存檔時把四周透明的部分剪掉，貼圖剛好包住內容。	Check "Trim transparent edges": the transparent area around each sticker is cut off when saving, so the sticker fits its content.
+按「存成貼圖」。只存有打勾的（右上縮圖左下角的勾選框，或用「全選」「全不選」）。	Click "Save as stickers". Only checked ones are saved (the check box at the bottom left of each thumbnail, or "Select all" / "Select none").
+存好 18 張到 stick\\鸚鵡\\。	Saved 18 to stick\\鸚鵡\\.
+7. 貼到照片上	7. Put them on a photo
+存好後主畫面的「貼圖」分頁會自動切到「鸚鵡」主題。在縮圖上按兩下就貼在照片正中間，也可以直接把縮圖拖到照片上想放的位置。貼上後拖曳移動、拖角落縮放、拖上方的圓點旋轉；大小、旋轉、透明度、陰影在下方「選取的貼圖」調整。	After saving, the Stickers tab in the main window switches to the "鸚鵡" theme. Double-click a thumbnail to place it in the middle of the photo, or drag the thumbnail onto the spot you want. Once placed, drag to move, drag a corner to resize and drag the dot on top to rotate; size, rotation, opacity and shadow are under "Selected sticker" below.
+在海報上貼了「出發！」「讚！」「有你真好」三張。	Three stickers on the poster: "Let's go!", "Great!" and "So glad you're here".
+貼圖是圖層，原照片不變，隨時可以移動或刪掉。存成 .pedx 專案檔時，用到的貼圖會一起放進專案檔，拿到別台電腦也看得到。	Stickers are layers: the original photo is unchanged and you can move or delete them any time. When you save a .pedx project, the stickers it uses are stored in the project file, so they show up on other computers too.
+一整張排了很多貼圖的圖（網路下載、AI 畫的）：按「貼圖小幫手…」自動拆成一張張、去背、存成新主題。完整步驟見「使用教學 → 用貼圖小幫手拆一整張貼圖」。	A whole image with many stickers laid out (downloaded or AI-drawn): click "Sticker Helper…" to split it into separate stickers automatically, remove the backgrounds and save them as a new theme. For the full steps see "Tutorials → Split a whole sticker sheet with the Sticker Helper".
+使用教學	Tutorials
+版本 {0}　非破壞性照片編輯器	Version {0}  Non-destructive photo editor
+其他 AI 模型（去背、臉部網格、AI 重繪）的用途與授權：設定 → 模型。	Other AI models (cutout, face mesh, AI redraw) and their licenses: Settings → Models.

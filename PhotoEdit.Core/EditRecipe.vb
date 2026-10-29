@@ -76,6 +76,11 @@ Public Class EditRecipe
     Public Property Denoise As Integer
     ''' <summary>色彩降噪（彩色雜點），0..100。</summary>
     Public Property ColorNoise As Integer
+    ''' <summary>去 JPEG 區塊雜訊（8×8 的格子），0..100。</summary>
+    Public Property Deblock As Integer
+    ''' <summary>原圖上 JPEG 格線的起點（0..7，第一次調區塊雜訊時偵測；照片轉正或裁切過不一定是 0）。</summary>
+    Public Property DeblockGridX As Integer
+    Public Property DeblockGridY As Integer
 
     ' ---- 色調（「風格」：濾鏡預設集會整組替換這些值）----
     ''' <summary>曝光（EV），-3..3。</summary>
@@ -195,6 +200,22 @@ Public Class EditRecipe
     Public Property Frame As PhotoFrameStyle
     ''' <summary>邊框寬度，0..100。</summary>
     Public Property FrameSize As Integer = 40
+    ''' <summary>邊框的主色（白邊的白、襯紙、紙張、絹、墨…）；Nothing 時用樣式的預設色。</summary>
+    Public Property FrameColorArgb As Integer?
+    ''' <summary>邊框主色取照片的主色（優先於 FrameColorArgb）。</summary>
+    Public Property FrameAutoColor As Boolean
+    ''' <summary>下方再加寬（邊框寬度的 %，0..200）：畫廊作品、拍立得常見下方較寬。</summary>
+    Public Property FrameBottom As Integer
+    ''' <summary>照片的陰影（0..100），照片像浮在邊框上。</summary>
+    Public Property FrameShadow As Integer
+    ''' <summary>照片外圍一圈細線（0 = 無，越大越粗）。</summary>
+    Public Property FrameInnerLine As Integer
+    ''' <summary>照片的圓角（0..100）。</summary>
+    Public Property FrameCorner As Integer
+    ''' <summary>邊框上的文字（相機資訊、拍立得的字、郵票面額、底片邊的字…），多行用換行分開。</summary>
+    Public Property FrameText As String
+    ''' <summary>模糊延伸背景的輸出比例（PhotoFrames.AspectNames 的索引）。</summary>
+    Public Property FrameAspect As Integer
     ''' <summary>文字與貼圖；Nothing 或空清單表示沒有。</summary>
     Public Property Overlays As List(Of Overlay)
 
@@ -321,7 +342,7 @@ Public Class EditRecipe
     ''' <summary>需要在原圖上先處理的項目（修補、降噪、人像），由 PhotoEdit.Vision 執行。</summary>
     Public ReadOnly Property HasSourceFix As Boolean
         Get
-            Return HasSpots OrElse Denoise <> 0 OrElse ColorNoise <> 0 OrElse HasPortrait OrElse HasLiquify OrElse
+            Return HasSpots OrElse Denoise <> 0 OrElse ColorNoise <> 0 OrElse Deblock <> 0 OrElse HasPortrait OrElse HasLiquify OrElse
                    (Cutout IsNot Nothing AndAlso Cutout.ChangesImage)
         End Get
     End Property
@@ -406,12 +427,23 @@ Public Class EditRecipe
         EyeBrighten = other.EyeBrighten
         Beauty = other.Beauty?.Clone()
         Denoise = other.Denoise
+        Deblock = other.Deblock
+        DeblockGridX = other.DeblockGridX
+        DeblockGridY = other.DeblockGridY
         ColorNoise = other.ColorNoise
         BackgroundBlur = other.BackgroundBlur
         TiltShift = other.TiltShift
         TiltShiftPosition = other.TiltShiftPosition
         Frame = other.Frame
         FrameSize = other.FrameSize
+        FrameColorArgb = other.FrameColorArgb
+        FrameAutoColor = other.FrameAutoColor
+        FrameBottom = other.FrameBottom
+        FrameShadow = other.FrameShadow
+        FrameInnerLine = other.FrameInnerLine
+        FrameCorner = other.FrameCorner
+        FrameText = other.FrameText
+        FrameAspect = other.FrameAspect
     End Sub
 
     ''' <summary>重設色調、效果、細節、降噪、人像、局部調整與特效；幾何、透視、污點修補、文字貼圖保留。</summary>

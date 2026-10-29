@@ -3,7 +3,7 @@ Imports System.Threading.Tasks
 Imports PhotoEdit
 
 ''' <summary>
-''' 「去背」分頁：AI 自動去背（一般／人像）、保留與擦除筆刷、邊緣、換背景、檢視遮罩、存成貼圖。
+''' 「去背」分頁：AI 自動去背（模型選單見 CutoutModels.Order）、保留與擦除筆刷、邊緣、換背景、檢視遮罩、存成貼圖。
 ''' AI 遮罩先放在記憶體（_aiMask），「存檔」時寫進專案檔（.pedx）；載入專案時解開成 MaskStore 的檔名再讀回。
 ''' </summary>
 Partial Friend Class frmEditor
@@ -17,8 +17,7 @@ Partial Friend Class frmEditor
     Private _cutoutBusy As Boolean
     Private _cutoutShowMask As Boolean
 
-    Private ReadOnly _modelGeneral As New RadioButton()
-    Private ReadOnly _modelHuman As New RadioButton()
+    Private ReadOnly _cutoutModelCombo As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
     Private ReadOnly _autoCutout As New Button()
     Private ReadOnly _cutoutStatus As New Label()
     Private ReadOnly _keepBrush As New CheckBox()
@@ -31,28 +30,23 @@ Partial Friend Class frmEditor
     Private ReadOnly _viewMask As New RadioButton()
     Private ReadOnly _cutoutControls As New List(Of Control)()
 
-    Private Shared ReadOnly CutoutKeys As String() = {"co_feather", "co_shift", "co_blur"}
+    Private Shared ReadOnly CutoutKeys As String() = {"co_feather", "co_shift", "co_blur", "co_refine"}
+    Private ReadOnly _edgeDecontam As New CheckBox With {.AutoSize = True, .BackColor = Color.Transparent}
 
     Private Sub BuildCutoutPage(page As Aqua.TabPage)
         Dim L = NewLayout(page)
         AddHeading(L, Lang.T("自動去背"))
         Dim half = (L.Width - 16) \ 2
-        For Each rb In {_modelGeneral, _modelHuman}
-            rb.Appearance = Appearance.Button
-            rb.FlatStyle = FlatStyle.Flat
-            rb.TextAlign = ContentAlignment.MiddleCenter
-            rb.BackColor = Color.White
-            rb.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
-            rb.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
-        Next
-        _modelGeneral.Text = Lang.T("一般（人像／動物／物品）")
-        _modelGeneral.Checked = True
-        _modelHuman.Text = Lang.T("人像")
-        _help.SetHelp("cutout.general", _modelGeneral)
-        _help.SetHelp("cutout.human", _modelHuman)
-        ' 兩組選項各放一個容器，才不會和下面「合成結果／檢查遮罩」互斥。
-        L.Add(PairPanel(_modelGeneral, _modelHuman, 8, L.Y + 2, L.Width - 8, 60))
-        L.Y += 36
+        Dim modelCaption As New Label With {.Text = Lang.T("模型"), .AutoSize = True, .BackColor = Color.Transparent, .Location = New Point(8, L.Y + 6)}
+        _cutoutModelCombo.SetBounds(8 + CaptionWidth, L.Y + 3, L.Width - CaptionWidth - 8, 24)
+        FillCutoutModels()
+        SelectedCutoutModel = CutoutModels.Preferred(False, AddressOf BackgroundRemover.ModelAvailable)
+        ' 在設定裡下載模型後，打開選單時「（未下載）」要跟著消失
+        AddHandler _cutoutModelCombo.DropDown, Sub() FillCutoutModels()
+        _help.SetHelpLinked("cutout.model", _cutoutModelCombo, modelCaption, _cutoutModelCombo)
+        L.Add(modelCaption)
+        L.Add(_cutoutModelCombo)
+        L.Y += 34
         _autoCutout.Text = Lang.T("自動去背")
         _autoCutout.UseVisualStyleBackColor = True
         _autoCutout.Font = New Font(_panelFont, FontStyle.Bold)
@@ -105,6 +99,21 @@ Partial Friend Class frmEditor
         AddHeading(L, Lang.T("邊緣"))
         AddRow(L, CutoutRow("co_feather", Lang.T("羽化"), 0, 100, Function(c) c.Feather, Sub(c, v) c.Feather = v))
         AddRow(L, CutoutRow("co_shift", Lang.T("內縮外擴"), -50, 50, Function(c) c.Shift, Sub(c, v) c.Shift = v))
+        ' 邊緣精修（依附近主體色／背景色重算透明度）與去除邊緣殘色：見 PhotoEdit.Vision\BackgroundRemover.vb
+        AddRow(L, CutoutRow("co_refine", Lang.T("邊緣精修"), 0, 100, Function(c) c.EdgeRefine, Sub(c, v) c.EdgeRefine = v))
+        _edgeDecontam.Text = Lang.T("去除邊緣殘色（換背景時不留原背景色）")
+        _edgeDecontam.Location = New Point(8, L.Y + 4)
+        _help.SetHelp("cutout.decontam", _edgeDecontam)
+        AddHandler _edgeDecontam.CheckedChanged, Sub()
+                                                     If _syncing OrElse _recipe.Cutout Is Nothing Then Return
+                                                     Dim isOn = _edgeDecontam.Checked
+                                                     ApplyChange(Sub(r)
+                                                                     If r.Cutout IsNot Nothing Then r.Cutout.EdgeDecontaminate = isOn
+                                                                 End Sub)
+                                                 End Sub
+        L.Add(_edgeDecontam)
+        _cutoutControls.Add(_edgeDecontam)
+        L.Y += RowHeight
 
         AddHeading(L, Lang.T("背景"))
         _help.SetHelpLinked("cutout.bg", _cutoutBgCombo, AddCaption(L, Lang.T("換成"), L.Y), _cutoutBgCombo)
@@ -197,17 +206,34 @@ Partial Friend Class frmEditor
     ' AI 去背
     '---------------------------------------------------------------------
 
-    Private ReadOnly Property SelectedCutoutModel As CutoutModel
+    ''' <summary>模型選單：依 CutoutModels.Order，沒下載的標「（未下載）」（仍可選，按自動去背時提示去設定下載）。</summary>
+    Private Sub FillCutoutModels()
+        Dim keep = _cutoutModelCombo.SelectedIndex
+        _cutoutModelCombo.BeginUpdate()
+        _cutoutModelCombo.Items.Clear()
+        For Each m In CutoutModels.Order
+            _cutoutModelCombo.Items.Add(CutoutModels.DisplayName(m) & If(BackgroundRemover.ModelAvailable(m), "", Lang.T("（未下載）")))
+        Next
+        _cutoutModelCombo.SelectedIndex = keep
+        _cutoutModelCombo.EndUpdate()
+    End Sub
+
+    Private Property SelectedCutoutModel As CutoutModel
         Get
-            Return If(_modelHuman.Checked, CutoutModel.Human, CutoutModel.General)
+            Dim i = _cutoutModelCombo.SelectedIndex
+            Return If(i < 0, CutoutModels.Order(0), CutoutModels.Order(i))
         End Get
+        Set(value As CutoutModel)
+            _cutoutModelCombo.SelectedIndex = Array.IndexOf(CutoutModels.Order, value)
+        End Set
     End Property
 
     Private Sub RunAutoCutout()
         If _photo Is Nothing OrElse _cutoutBusy Then Return
         Dim model = SelectedCutoutModel
         If Not BackgroundRemover.ModelAvailable(model) Then
-            MessageBox.Show(Me, Lang.T("找不到去背模型：") & BackgroundRemover.ModelPath(model), AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show(Me, Lang.F("「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。", CutoutModels.DisplayName(model)) & vbCrLf & BackgroundRemover.ModelPath(model),
+                            AppName, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
         ExitCropMode(apply:=True)
@@ -236,9 +262,10 @@ Partial Friend Class frmEditor
                                         Return
                                     End If
                                     SetAiMask(mask, model, dirty:=True)
-                                    _cutoutStatus.Text = Lang.F("完成（{0:0.0} 秒，{1}模型）", watch.Elapsed.TotalSeconds, If(model = CutoutModel.Human, Lang.T("人像"), Lang.T("一般")))
+                                    _cutoutStatus.Text = Lang.F("完成（{0:0.0} 秒，{1}）", watch.Elapsed.TotalSeconds, CutoutModels.DisplayName(model))
                                     ApplyChange(Sub(r)
-                                                    If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings()
+                                                    ' 新的去背：邊緣精修、去除殘色預設開（舊文件沒有這兩個值，維持原本的樣子）
+                                                    If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.EdgeRefine = 50, .EdgeDecontaminate = True}
                                                     r.Cutout.Model = model
                                                     If r.Cutout.Background = CutoutBackground.Original Then r.Cutout.Background = CutoutBackground.Transparent
                                                 End Sub)
@@ -266,8 +293,7 @@ Partial Friend Class frmEditor
             _cutoutStatus.Text = Lang.T("按「自動去背」開始。")
             Return
         End If
-        _modelHuman.Checked = _recipe.Cutout.Model = CutoutModel.Human
-        _modelGeneral.Checked = Not _modelHuman.Checked
+        SelectedCutoutModel = _recipe.Cutout.Model
         Dim mask = MaskStore.Load(_photo.Path, _recipe.Cutout.Model)
         If mask IsNot Nothing Then
             SetAiMask(mask, _recipe.Cutout.Model, dirty:=False)
@@ -360,6 +386,7 @@ Partial Friend Class frmEditor
             row.Slider.Enabled = has
         Next
         _wandDespeckle.Checked = has AndAlso c.WandDespeckle
+        _edgeDecontam.Checked = has AndAlso c.EdgeDecontaminate
         If Not has AndAlso MaskBrushActive Then
             _keepBrush.Checked = False
             _eraseBrush.Checked = False

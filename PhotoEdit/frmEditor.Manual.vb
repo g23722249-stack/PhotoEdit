@@ -67,8 +67,75 @@ Partial Class frmEditor
         links.LinkTargets.Add(BuildVectorTutorial(s))
         links.LinkTargets.Add(BuildCharcoalTutorial(s))
         links.LinkTargets.Add(BuildOilTutorial(s))
+        links.LinkTargets.Add(BuildStickerTutorial(s))
         s.Add(links)
         Return s
+    End Function
+
+    ''' <summary>貼圖小幫手：一張排了 18 張鸚鵡貼圖的圖 → 拆分、合併距離、調整框、檢查遮罩、存成主題、貼到照片上。截圖由 uismoke stickertut 產生。</summary>
+    Private Shared Function BuildStickerTutorial(parent As ManualSection) As ManualSection
+        Dim t = parent.AddChild(Lang.T("用貼圖小幫手拆一整張貼圖"))
+        t.Add(ManualBlock.Para(Lang.T("網路上下載、或 AI 畫出來的貼圖，常常是一大張排好十幾二十個的圖。貼圖小幫手會自動找出每一張、把背景去掉，存成透明 PNG 的「貼圖主題」，之後在「貼圖」分頁點兩下就能貼到任何照片上。這裡用一張 3 排 × 6 個、白底的金剛鸚鵡貼圖當例子。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("1. 打開貼圖小幫手")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("右側切到「貼圖」分頁。"),
+            Lang.T("按上方的「貼圖小幫手…」，會開一個獨立的視窗（可以和主畫面並排）。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_01.jpg", Lang.T("「貼圖」分頁右上角的「貼圖小幫手…」。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("2. 放進整張貼圖")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("按「開啟圖片…」選圖檔（PNG、JPG、BMP、GIF、WebP 都可以），或在別的程式複製圖片後按「貼上圖片」（Ctrl+V）。"),
+            Lang.T("小幫手會自動判斷背景色（取圖片四邊最常見的顏色，這張是接近白色），再把「不是背景的東西」一塊塊找出來，每一塊就是一張貼圖。"),
+            Lang.T("左邊是原圖，綠框是找到的貼圖；右上是拆好的縮圖，右下是選取的那一張放大。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_02.jpg", Lang.T("這張圖的貼圖排得很密，預設的合併距離把整張當成了一張（上方顯示「找到 1 張」）。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("3. 調整合併距離")))
+        t.Add(ManualBlock.Para(Lang.T("「合併距離」決定多近的東西算同一張：貼圖旁邊的字、愛心、音符和主角之間有一點空隙，距離夠大才會併進來；但距離比貼圖和貼圖之間的空隙還大時，相鄰的貼圖也會黏在一起。")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("整張被當成一張（或好幾張黏在一起）：把「合併距離」往左拉。這張圖拉到大約 15% 的位置，再按「重新拆分」。"),
+            Lang.T("字或小圖案被拆成單獨一張：往右拉一點，再按「重新拆分」。"),
+            Lang.T("「最小尺寸」可以去掉零星的雜點：比它小的東西不算一張。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_03.jpg", Lang.T("合併距離 15%：找到 19 張。多出來的第 7 張是第 3 張左上角的一個音符。")))
+        t.Add(ManualBlock.Note(Lang.T("滑桿的範圍很敏感：這張圖在 15% 時剛好，拉到 18% 就有相鄰的貼圖黏在一起。調到「大部分都對、只差一兩張」就好，剩下的用下一步手動修。先調好合併距離再修：「重新拆分」會清掉每張的修正（會先詢問）。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("4. 手動修正框")))
+        t.Add(ManualBlock.Para(Lang.T("在左邊的原圖上可以直接改框：")))
+        t.Add(ManualBlock.Bullets(
+            Lang.T("按兩下框（或點左上角的編號）：排除這張，框變成紅色虛線，不會存；再按兩下加回來。"),
+            Lang.T("拖曳框的邊或角：調整範圍。框內拖曳：整個移動。"),
+            Lang.T("在框上按右鍵：把黏在一起的兩張左右或上下拆開。"),
+            Lang.T("在空白處按住右鍵拖曳：補畫一個框（漏掉的貼圖）。"),
+            Lang.T("選取後按 Del：刪除這個框。")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("在第 7 張（單獨的音符）上按兩下，把它排除。"),
+            Lang.T("點第 3 張，把它的左邊往左拖一點，把那個音符完整包進來。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_04.jpg", Lang.T("第 7 張排除（紅色 ×），第 3 張的框往左拉，音符包在裡面。上方變成「已選 18 張」。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("5. 檢查去背")))
+        t.Add(ManualBlock.Para(Lang.T("每一張預設用「背景色填充」去背：從四邊往內把背景色去掉，被線條包住的同色（眼白、對話框、泡泡、紙張）會保留——白底插圖最適合這個方式。")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("點右上的縮圖（或左邊的框）選一張，下方會放大顯示。"),
+            Lang.T("按「檢查遮罩」：被去掉的部分蓋上紅色，比棋盤格容易看出漏掉或多去的地方。"),
+            Lang.T("有沒去乾淨的背景（例如手臂和身體之間被包住的一小塊白）：按「魔術棒」在那裡點一下去掉；點錯了 Alt＋點一下補回。範圍用「魔術棒」滑桿調。"),
+            Lang.T("更細的地方用「保留筆刷」「擦除筆刷」塗；「復原」（Ctrl+Z）每張各自記錄。"),
+            Lang.T("背景不是單一顏色、或照片類的貼圖：「去背方式」改成「AI 一般」或「AI 人像」。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_05.jpg", Lang.T("第 16 張「收到！」按了檢查遮罩：紅色是去掉的背景；對話框裡的白色被線條包住，保留下來。")))
+        t.Add(ManualBlock.Note(Lang.T("「放大修正」隱藏上方縮圖、讓修正區變大；修正區也可以用滾輪縮放、右鍵拖曳平移。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("6. 存成貼圖主題")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("「存到主題」：主題就是 stick 資料夾裡的一個子資料夾，打新名字就建立新主題。開檔時會自動帶入圖檔名，這裡改成「鸚鵡」。"),
+            Lang.T("「檔名」：每張的檔名開頭，後面自動加編號（鸚鵡_01.png、鸚鵡_02.png…），同名的不會被覆蓋。"),
+            Lang.T("勾「剪掉透明邊」：存檔時把四周透明的部分剪掉，貼圖剛好包住內容。"),
+            Lang.T("按「存成貼圖」。只存有打勾的（右上縮圖左下角的勾選框，或用「全選」「全不選」）。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_06.jpg", Lang.T("存好 18 張到 stick\鸚鵡\。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("7. 貼到照片上")))
+        t.Add(ManualBlock.Para(Lang.T("存好後主畫面的「貼圖」分頁會自動切到「鸚鵡」主題。在縮圖上按兩下就貼在照片正中間，也可以直接把縮圖拖到照片上想放的位置。貼上後拖曳移動、拖角落縮放、拖上方的圓點旋轉；大小、旋轉、透明度、陰影在下方「選取的貼圖」調整。")))
+        t.Add(ManualBlock.Picture("tutorial_sticker_07.jpg", Lang.T("在海報上貼了「出發！」「讚！」「有你真好」三張。")))
+        t.Add(ManualBlock.Note(Lang.T("貼圖是圖層，原照片不變，隨時可以移動或刪掉。存成 .pedx 專案檔時，用到的貼圖會一起放進專案檔，拿到別台電腦也看得到。")))
+        Return t
     End Function
 
     ''' <summary>新手用向量工具畫海報：矩形＋漸層、鋼筆描色塊、參考圖右鍵吸填色、由大到小、群組、文字、直線、外框、圓角矩形、橢圓、匯出 SVG。</summary>
@@ -401,6 +468,7 @@ Partial Class frmEditor
             Case "airedraw" : Return Lang.T("用本機顯示卡的 AI 把照片重繪成宮崎駿動畫風格，有多種風格可選。需要下載模型。")
             Case "morph" : Return Lang.T("在兩張臉之間做出漸變的動畫，可以輸出影片或 GIF。")
             Case "trace" : Return Lang.T("把點陣圖描成向量圖形（可以無限放大、修改節點），可以選顏色數與細緻度。")
+            Case "pixelscale" : Return Lang.T("把像素圖、遊戲畫面、圖示這類小圖放大 2～8 倍：xBR、HQx 讓斜線與曲線平滑、邊緣保持銳利，Scale2x 不產生新顏色，最近鄰保留方塊。結果開成新影像。")
             Case "facechange" : Return Lang.T("把照片做成川劇變臉的影片：依序換上幾張臉譜，輸出 MP4 或 GIF。")
             ' 選取
             Case "selectall" : Return Lang.T("選取整張照片。")
@@ -410,6 +478,9 @@ Partial Class frmEditor
             Case "seladjust" : Return Lang.T("之後的調整只作用在選取區（變成一個局部調整）。")
             Case "seldelete" : Return Lang.T("刪除選取區的內容，變成透明。")
             Case "selfill" : Return Lang.T("用顏色、漸層或材質填滿選取區。")
+            Case "mosaic" : Return Lang.T("選取範圍（沒有選取時整張）打上馬賽克，可以調方塊大小；加成新的點陣圖層，原照片不變。")
+            Case "demosaic" : Return Lang.T("把已經是馬賽克、像素化的地方變平滑：自動偵測方塊大小與起點，再用雙三次、xBR 或 HQx 放大。方塊裡原本的細節不會回來。")
+            Case "redact" : Return Lang.T("用不透明的實心黑塊蓋住選取範圍（邊緣不羽化），遮密碼、證件號碼、車牌比馬賽克安全。")
             Case "selstroke" : Return Lang.T("沿著選取區的邊緣描一條線。")
             Case "selcrop" : Return Lang.T("把照片裁切成選取區的外框大小。")
             Case "selcutout" : Return Lang.T("把選取區當成去背範圍：選取的部分保留，其餘變成背景。")
@@ -503,9 +574,15 @@ Partial Class frmEditor
                     Lang.T("選一種選取工具（矩形、橢圓、套索、魔術棒、貝茲），在照片上拖曳或點選。"),
                     Lang.T("按住 Shift 加入、Alt 減去；也可以用上方的模式按鈕切換。"),
                     Lang.T("選好之後用「選取」選單或本頁的按鈕：複製成物件、只調整選取區、填色、描邊、裁切、當作去背範圍。")))
+                s.Add(ManualBlock.Bullets(
+                    Lang.T("打馬賽克：選取範圍（沒有選取時整張）切成方塊，可以調大小。"),
+                    Lang.T("平滑馬賽克：已經是馬賽克、像素化的地方，自動偵測方塊再平滑放大，方塊感消失；方塊裡原本的細節不會回來。照片用「平滑（雙三次）」，像素圖用 xBR、HQx。"),
+                    Lang.T("安全遮蔽：實心黑塊蓋住，邊緣不羽化。遮密碼、證件、車牌時用它，比馬賽克安全——小方塊的馬賽克有機會被猜回原字。")))
+                s.Add(ManualBlock.Note(Lang.T("三個都加成新的點陣圖層，原照片不變；匯出 JPG／PNG 後底下的內容才真的不見（.pedx 編輯檔裡原圖還在）。")))
+                s.Add(ManualBlock.Picture("select_mosaic.jpg", Lang.T("左起：原圖、14 像素馬賽克、平滑（雙三次）、xBR、HQx。平滑只是讓方塊消失，眼睛嘴巴的細節並沒有回來。")))
             Case 6 ' 去背
                 s.Add(ManualBlock.Steps(
-                    Lang.T("選模型：「人像」適合人物（頭髮較準），「一般」適合動物與物品。"),
+                    Lang.T("選模型：「人像（MODNet）」適合人物（頭髮較自然），「一般（BiRefNet）」人物、動物、物品都行，「精細」最細但最慢。沒下載的模型到 設定 → 模型 下載。"),
                     Lang.T("按「自動去背」，AI 找出主體（第一次會久一點）。"),
                     Lang.T("用修正筆刷把漏掉的補回來、多出來的擦掉。"),
                     Lang.T("選背景：透明、純色、模糊原背景或換成其他圖片；也可以把主體存成貼圖。")))
@@ -531,7 +608,20 @@ Partial Class frmEditor
                     Lang.T("選主題，把貼圖拖到照片上就貼在那個位置；在貼圖上按兩下則貼在照片中央。"),
                     Lang.T("拖曳移動；Ctrl＋滾輪縮放、Shift＋滾輪旋轉選取中的貼圖。")))
                 s.Add(ManualBlock.Note(Lang.T("貼圖放在程式資料夾的 stick\主題\ 裡，自己加 PNG 進去就會出現新的貼圖。")))
+                s.Add(ManualBlock.Note(Lang.T("一整張排了很多貼圖的圖（網路下載、AI 畫的）：按「貼圖小幫手…」自動拆成一張張、去背、存成新主題。完整步驟見「使用教學 → 用貼圖小幫手拆一整張貼圖」。")))
             Case 11 ' 裝飾
+                s.Add(ManualBlock.Steps(
+                    Lang.T("在「樣式」選一種邊框，用「寬度」調粗細。"),
+                    Lang.T("需要時再調：下方加寬（畫廊作品、拍立得常見）、陰影、內框線、照片圓角；「顏色」可以自選、取照片主色或回到預設。"),
+                    Lang.T("相機資訊、拍立得、襯紙、郵票、底片與幻燈片框可以在「文字」寫字；相機資訊選了會自動帶入相機、鏡頭、光圈、快門、ISO 與日期。"),
+                    Lang.T("模糊延伸背景用「比例」選 1:1、4:5、9:16 等，照片完整放在中間，發社群剛好。")))
+                s.Add(ManualBlock.Bullets(
+                    Lang.T("相片：白邊、黑邊、拍立得、圓角、底片、中片幅底片、幻燈片框、相機資訊、模糊延伸背景。"),
+                    Lang.T("裱框：畫廊襯紙（斜切口的卡紙）、古典金框、木框、卷軸裱褙（水墨畫裱起來）。"),
+                    Lang.T("懷舊與手作：老照片花邊、撕紙邊、郵票、紙膠帶、相簿相角。"),
+                    Lang.T("繪畫風：水彩暈邊、毛筆墨刷、鉛筆手繪、柔邊漸淡。")))
+                s.Add(ManualBlock.Note(Lang.T("撕紙邊、郵票、花邊、卷軸的外圍是透明的：存成 PNG 會保留透明，存 JPG 時是白色。")))
+                s.Add(ManualBlock.Picture("decor_frames.jpg", Lang.T("22 種邊框（梵谷《星夜》）。")))
                 s.Add(ManualBlock.Pair("decor", Lang.T("拍立得邊框：下方留白較多，可以寫字。")))
         End Select
     End Sub
