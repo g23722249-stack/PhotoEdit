@@ -120,8 +120,10 @@ Models/
 
 需求：Windows 10/11 x64、.NET 8 SDK（或 Visual Studio 2022 17.8 以上）。
 
+本機專案位置：`C:\專案\AutoComposite`。
+
 ```powershell
-cd AutoComposite
+cd C:\專案\AutoComposite
 dotnet build AutoComposite.sln -c Release
 dotnet test AutoComposite.Tests
 dotnet run --project AutoComposite.App -c Release
