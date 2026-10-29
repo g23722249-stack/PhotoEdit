@@ -9,14 +9,14 @@ Module ModelCatalogTests
         Console.WriteLine("模型清單")
         ' ---- 隨程式發佈的清單 ----
         Dim real = ModelCatalog.Load()
-        Check("ModelCatalog.json 跟著程式：13 個模型", real.Models.Count = 13, real.Models.Count.ToString())
+        Check("ModelCatalog.json 跟著程式：14 個模型", real.Models.Count = 14, real.Models.Count.ToString())
         Dim files = real.Models.SelectMany(Function(m) m.Files).ToList()
         Check("每個檔案都有路徑與大小、路徑不重複", files.All(Function(f) f.Path <> "" AndAlso f.Size > 0) AndAlso files.Select(Function(f) f.Path.ToLowerInvariant()).Distinct().Count() = files.Count)
         Check("每個模型都有名稱、用途、授權、來源", real.Models.All(Function(m) m.Name <> "" AndAlso m.Use.Length > 20 AndAlso m.License <> "" AndAlso m.Source.StartsWith("https://")))
         Dim noUrl = real.Models.Where(Function(m) m.Files.Any(Function(f) f.Url = "")).Select(Function(m) m.Id).ToList()
         Check("沒有公開位址的只有兩個自己轉檔的 UNet", noUrl.SequenceEqual({"ghibli-unet", "anything-unet"}), String.Join(",", noUrl))
         Check("用到的模型檔都在清單裡（人臉、網格、特徵點、去背）",
-              {FaceDetector.ModelFile, FaceMesh.ModelFile, FaceLandmarks.ModelFile, CutoutModels.FileName(CutoutModel.General), CutoutModels.FileName(CutoutModel.Human), CutoutModels.FileName(CutoutModel.BiRefNetLite), CutoutModels.FileName(CutoutModel.ModNet), CutoutModels.FileName(CutoutModel.BiRefNetHR)}.All(Function(n) files.Any(Function(f) f.Path = n)))
+              {FaceDetector.ModelFile, FaceMesh.ModelFile, FaceLandmarks.ModelFile, CutoutModels.FileName(CutoutModel.General), CutoutModels.FileName(CutoutModel.Human), CutoutModels.FileName(CutoutModel.BiRefNetLite), CutoutModels.FileName(CutoutModel.ModNet), CutoutModels.FileName(CutoutModel.BiRefNetHR), CutoutModels.FileName(CutoutModel.ToonOut)}.All(Function(n) files.Any(Function(f) f.Path = n)))
 
         ' ---- 暫存資料夾：狀態與下載 ----
         Dim root = Path.Combine(Path.GetTempPath(), "PhotoEditModelTest_" & Guid.NewGuid().ToString("N"))

@@ -3136,9 +3136,7 @@ JPEG 區塊	JPEG blocks
 「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。	The "{0}" model is not downloaded yet: download it in Settings → Models (or pick a downloaded model).
 完成（{0:0.0} 秒，{1}）	Done ({0:0.0} s, {1})
 去背模型	Cutout model
-一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。	General (BiRefNet): people, animals and objects, with the most accurate edges. Portrait (MODNet): finds only people, with the most natural semi-transparent hair, and is the fastest. Fine (BiRefNet HR): works at high resolution for the finest hair on large photos, but is much slower. The old IS-Net / U²-Net stay for documents cut out with them before.
 照片有人臉時預設用人像模型；畫面裡有其他顯眼物體時，一般模型可能會一起保留。標「未下載」的模型要先到 設定 → 模型 下載。	Photos with faces default to the portrait model; the general model may also keep other prominent objects. Models marked "not downloaded" must first be downloaded in Settings → Models.
-選模型：「人像（MODNet）」適合人物（頭髮較自然），「一般（BiRefNet）」人物、動物、物品都行，「精細」最細但最慢。沒下載的模型到 設定 → 模型 下載。	Choose a model: "Portrait (MODNet)" suits people (more natural hair), "General (BiRefNet)" handles people, animals and objects, "Fine" is the most detailed but slowest. Download missing models in Settings → Models.
 用貼圖小幫手拆一整張貼圖	Split a whole sticker sheet with the Sticker Helper
 網路上下載、或 AI 畫出來的貼圖，常常是一大張排好十幾二十個的圖。貼圖小幫手會自動找出每一張、把背景去掉，存成透明 PNG 的「貼圖主題」，之後在「貼圖」分頁點兩下就能貼到任何照片上。這裡用一張 3 排 × 6 個、白底的金剛鸚鵡貼圖當例子。	Stickers downloaded from the web or drawn by AI often come as one big image with a dozen or more laid out together. The Sticker Helper finds each one, removes the background, and saves them as transparent PNGs in a "sticker theme"; after that, double-click one in the Stickers tab to put it on any photo. The example here is a white-background macaw sticker sheet, 3 rows × 6.
 1. 打開貼圖小幫手	1. Open the Sticker Helper
@@ -3173,7 +3171,6 @@ JPEG 區塊	JPEG blocks
 按「檢查遮罩」：被去掉的部分蓋上紅色，比棋盤格容易看出漏掉或多去的地方。	Click "Check mask": the removed parts are covered in red, which shows missed or over-removed areas more clearly than the checkerboard.
 有沒去乾淨的背景（例如手臂和身體之間被包住的一小塊白）：按「魔術棒」在那裡點一下去掉；點錯了 Alt＋點一下補回。範圍用「魔術棒」滑桿調。	Background left behind (for example a small white patch enclosed between an arm and the body): click "Magic wand (W)" and click there to remove it; Alt+click to restore if you clicked the wrong spot. Set its range with the "Magic wand" slider.
 更細的地方用「保留筆刷」「擦除筆刷」塗；「復原」（Ctrl+Z）每張各自記錄。	For finer areas paint with "Restore brush" and "Erase brush"; "Undo" (Ctrl+Z) is kept per sticker.
-背景不是單一顏色、或照片類的貼圖：「去背方式」改成「AI 一般」或「AI 人像」。	Backgrounds that are not one color, or photo-like stickers: change "Background removal" to "AI general" or "AI portrait".
 第 16 張「收到！」按了檢查遮罩：紅色是去掉的背景；對話框裡的白色被線條包住，保留下來。	Number 16 "Got it!" with Check Mask on: red is the removed background; the white inside the speech bubble is enclosed by lines and kept.
 「放大修正」隱藏上方縮圖、讓修正區變大；修正區也可以用滾輪縮放、右鍵拖曳平移。	"Enlarge correction view" hides the thumbnails above so the fixing area is larger; you can also zoom it with the wheel and pan by dragging with the right button.
 6. 存成貼圖主題	6. Save as a sticker theme
@@ -3190,3 +3187,10 @@ JPEG 區塊	JPEG blocks
 使用教學	Tutorials
 版本 {0}　非破壞性照片編輯器	Version {0}  Non-destructive photo editor
 其他 AI 模型（去背、臉部網格、AI 重繪）的用途與授權：設定 → 模型。	Other AI models (cutout, face mesh, AI redraw) and their licenses: Settings → Models.
+動漫（ToonOut）	Anime (ToonOut)
+AI 動漫	AI anime
+用動漫專用的 AI 模型（ToonOut）去背：角色旁邊畫的愛心、文字、特效會一起保留（AI 一般常把它們丟掉）。背景不是單一顏色的卡通、動漫貼圖用它。	Remove the background with the anime model (ToonOut): hearts, text and effects drawn next to the character are kept too (AI general often drops them). Use it for cartoon and anime stickers whose background is not a single color.
+第一次使用要到 設定 → 模型 下載「AI 去背：動漫」。	Before first use, download "AI 去背：動漫" (AI cutout: anime) in Settings → Models.
+一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。動漫（ToonOut）：卡通、動漫、貼圖類的圖專用，角色旁邊畫的愛心、文字、特效也會一起保留；照片、寫實插畫和海報反而會留下背景碎塊，用一般。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。	General (BiRefNet): people, animals and objects, with the most accurate edges. Portrait (MODNet): finds only people, with the most natural semi-transparent hair, and is the fastest. Anime (ToonOut): for cartoons, anime and stickers; hearts, text and effects drawn next to the character are kept too, but photos, realistic illustrations and posters get leftover background bits, so use General for those. Fine (BiRefNet HR): works at high resolution for the finest hair on large photos, but is much slower. The old IS-Net / U²-Net stay for documents cut out with them before.
+選模型：「人像（MODNet）」適合人物（頭髮較自然），「一般（BiRefNet）」人物、動物、物品都行，「動漫（ToonOut）」適合卡通、動漫、貼圖（畫上去的愛心、文字也會保留），「精細」最細但最慢。沒下載的模型到 設定 → 模型 下載。	Choose a model: "Portrait (MODNet)" suits people (more natural hair), "General (BiRefNet)" handles people, animals and objects, "Anime (ToonOut)" suits cartoons, anime and stickers (drawn hearts and text are kept too), "Fine" is the most detailed but slowest. Download missing models in Settings → Models.
+背景不是單一顏色、或照片類的貼圖：「去背方式」改成「AI 一般」或「AI 人像」；卡通、動漫貼圖用「AI 動漫」，旁邊畫的愛心、文字也會保留。	Backgrounds that are not one color, or photo-like stickers: change "Background removal" to "AI general" or "AI portrait"; for cartoon and anime stickers use "AI anime", which also keeps hearts and text drawn next to the character.

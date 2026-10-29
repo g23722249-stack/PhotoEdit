@@ -15,7 +15,19 @@ Friend Class frmStickerHelper
         AiGeneral = 1
         AiHuman = 2
         None = 3
+        AiAnime = 4
     End Enum
+
+    ''' <summary>去背方式按鈕的順序（AI 動漫是後來加的，enum 值排在後面）。</summary>
+    Private Shared ReadOnly ModeOrder As CutMode() = {CutMode.EdgeFill, CutMode.AiGeneral, CutMode.AiHuman, CutMode.AiAnime, CutMode.None}
+
+    Private Shared Function IsAi(mode As CutMode) As Boolean
+        Return mode = CutMode.AiGeneral OrElse mode = CutMode.AiHuman OrElse mode = CutMode.AiAnime
+    End Function
+
+    Private Function ModeButton(mode As CutMode) As RadioButton
+        Return _modeButtons(Array.IndexOf(ModeOrder, mode))
+    End Function
 
     Private NotInheritable Class StickerItem
         Public Rect As Rectangle
@@ -265,17 +277,17 @@ Friend Class frmStickerHelper
         Dim modes = Bar(36)
         modes.BackColor = Color.FromArgb(236, 238, 242)
         modes.Controls.Add(Caption(Lang.T("去背方式")))
-        Dim modeNames = {Lang.T("背景色填充"), Lang.T("AI 一般"), Lang.T("AI 人像"), Lang.T("不去背")}
-        Dim modeKeys = {"helper.mode.edge", "helper.mode.aigeneral", "helper.mode.aihuman", "helper.mode.none"}
-        For i = 0 To 3
-            Dim index = i
+        Dim modeNames = {Lang.T("背景色填充"), Lang.T("AI 一般"), Lang.T("AI 人像"), Lang.T("AI 動漫"), Lang.T("不去背")}
+        Dim modeKeys = {"helper.mode.edge", "helper.mode.aigeneral", "helper.mode.aihuman", "helper.mode.aianime", "helper.mode.none"}
+        For i = 0 To ModeOrder.Length - 1
+            Dim mode = ModeOrder(i)
             Dim rb As New RadioButton With {.Text = modeNames(i), .Appearance = Appearance.Button, .FlatStyle = FlatStyle.Flat, .AutoSize = False, .TextAlign = ContentAlignment.MiddleCenter, .Size = New Size(TextRenderer.MeasureText(modeNames(i), _font).Width + 26, 28),
                                             .Margin = New Padding(2, 0, 2, 0), .BackColor = Color.White, .Padding = New Padding(6, 0, 6, 0)}
             rb.FlatAppearance.CheckedBackColor = Color.FromArgb(210, 228, 250)
             rb.FlatAppearance.BorderColor = Color.FromArgb(170, 180, 195)
             AddHandler rb.CheckedChanged, Sub(s, e)
                                               If _syncing OrElse Not DirectCast(s, RadioButton).Checked Then Return
-                                              SetMode(CType(index, CutMode))
+                                              SetMode(mode)
                                           End Sub
             _help.SetHelp(modeKeys(i), rb)
             _modeButtons.Add(rb)
@@ -492,7 +504,7 @@ Friend Class frmStickerHelper
         it.Rect = r
         it.DisposeImages()
         Recompose(it)
-        If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then ComputeAi(it, AiModel(it.Mode))
+        If IsAi(it.Mode) Then ComputeAi(it, AiModel(it.Mode))
         SelectItem(index)
         RefreshTiles()
     End Sub
@@ -552,7 +564,7 @@ Friend Class frmStickerHelper
             Dim it As New StickerItem With {.Rect = r, .Mode = old.Mode}
             it.Settings.EdgeFillColorArgb = old.Settings.EdgeFillColorArgb
             it.Settings.EdgeFillTolerance = old.Settings.EdgeFillTolerance
-            If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then it.Mode = CutMode.EdgeFill
+            If IsAi(it.Mode) Then it.Mode = CutMode.EdgeFill
             Recompose(it)
             _items.Add(it)
             added.Add(it)
@@ -624,12 +636,13 @@ Friend Class frmStickerHelper
         s.Background = background
         s.EdgeFill = it.Mode = CutMode.EdgeFill
         Dim ai As Bitmap = Nothing
-        If it.Mode = CutMode.AiGeneral OrElse it.Mode = CutMode.AiHuman Then it.AiMasks.TryGetValue(AiModel(it.Mode), ai)
+        If IsAi(it.Mode) Then it.AiMasks.TryGetValue(AiModel(it.Mode), ai)
         Return CutoutCompositor.Compose(it.Crop, ai, s)
     End Function
 
-    ''' <summary>AI 一般／人像用哪個模型：有下載的裡面最好的（見 CutoutModels.Preferred）。</summary>
+    ''' <summary>AI 一般／人像用哪個模型：有下載的裡面最好的（見 CutoutModels.Preferred）；AI 動漫固定用 ToonOut（沒下載時按下去會提示）。</summary>
     Private Shared Function AiModel(mode As CutMode) As CutoutModel
+        If mode = CutMode.AiAnime Then Return CutoutModel.ToonOut
         Return CutoutModels.Preferred(mode = CutMode.AiHuman, AddressOf BackgroundRemover.ModelAvailable)
     End Function
 
@@ -639,7 +652,7 @@ Friend Class frmStickerHelper
         it.History.Push((it.Mode, it.Settings.Clone()))
         it.Mode = mode
         Dim model = AiModel(mode)
-        If (mode = CutMode.AiGeneral OrElse mode = CutMode.AiHuman) AndAlso Not it.AiMasks.ContainsKey(model) Then
+        If IsAi(mode) AndAlso Not it.AiMasks.ContainsKey(model) Then
             ComputeAi(it, model)
             Return
         End If
@@ -753,7 +766,7 @@ Friend Class frmStickerHelper
     Private Sub SetModeSilently(it As StickerItem, mode As CutMode)
         it.Mode = mode
         _syncing = True
-        _modeButtons(CInt(mode)).Checked = True
+        ModeButton(mode).Checked = True
         _syncing = False
     End Sub
 
@@ -824,7 +837,7 @@ Friend Class frmStickerHelper
                 rb.Enabled = has
             Next
             If has Then
-                _modeButtons(CInt(it.Mode)).Checked = True
+                ModeButton(it.Mode).Checked = True
                 _edgeTol.Value = it.Settings.EdgeFillTolerance
                 _feather.Value = it.Settings.Feather
                 _shift.Value = it.Settings.Shift

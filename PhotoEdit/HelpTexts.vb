@@ -307,6 +307,8 @@ Friend Module HelpTexts
           Lang.T("邊緣有殘留時調「背景容許度」。"))
         A("helper.mode.aigeneral", Lang.T("AI 一般"), Lang.T("用 AI 找出主體去背（人、動物、物品），適合照片類貼圖。"), Lang.T("第一次使用要載入模型，需要幾秒鐘。"))
         A("helper.mode.aihuman", Lang.T("AI 人像"), Lang.T("用 AI 人像模型去背，人物的輪廓與頭髮比較準。"))
+        A("helper.mode.aianime", Lang.T("AI 動漫"), Lang.T("用動漫專用的 AI 模型（ToonOut）去背：角色旁邊畫的愛心、文字、特效會一起保留（AI 一般常把它們丟掉）。背景不是單一顏色的卡通、動漫貼圖用它。"),
+          Lang.T("第一次使用要到 設定 → 模型 下載「AI 去背：動漫」。"))
         A("helper.mode.none", Lang.T("不去背"), Lang.T("這張保留原本的背景。"))
         A("helper.wand", Lang.T("魔術棒"), Lang.T("在下方的貼圖上點一下，去掉相近的顏色；Alt＋點一下補回。"), Lang.T("快捷鍵 W；範圍用「魔術棒」滑桿調整（會改最後一次點擊）。"))
         A("helper.keep", Lang.T("保留筆刷"), Lang.T("塗抹被誤去掉的地方，把它補回來。"), Lang.T("大小用「筆刷」滑桿調整。"))
@@ -393,7 +395,7 @@ Friend Module HelpTexts
         A("text.texture", Lang.T("填字圖片"), Lang.T("選一張圖片填滿文字（例如花紋、天空、木紋）。"), Lang.T("填色方式選「圖片」時使用。"), NeedText)
 
         _glyph = Lang.T("去")
-        A("cutout.model", Lang.T("去背模型"), Lang.T("一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。"),
+        A("cutout.model", Lang.T("去背模型"), Lang.T("一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。動漫（ToonOut）：卡通、動漫、貼圖類的圖專用，角色旁邊畫的愛心、文字、特效也會一起保留；照片、寫實插畫和海報反而會留下背景碎塊，用一般。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。"),
           Lang.T("照片有人臉時預設用人像模型；畫面裡有其他顯眼物體時，一般模型可能會一起保留。標「未下載」的模型要先到 設定 → 模型 下載。"))
         A("cutout.auto", Lang.T("自動去背"), Lang.T("用上面選的模型找出主體，背景先換成透明（顯示為棋盤格）。"),
           Lang.T("第一次使用要載入模型，需要幾秒鐘；結果在「存檔」時一起存進專案檔。"), Lang.T("正在計算去背，請稍候。"))

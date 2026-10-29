@@ -90,6 +90,7 @@ Module CutoutRefineTests
         Check("每個模型的遮罩附屬檔、模型檔名都不同",
               all.Select(Function(m) MaskStore.MaskPath("a.jpg", m)).Distinct().Count() = all.Length AndAlso all.Select(Function(m) CutoutModels.FileName(m)).Distinct().Count() = all.Length)
         Dim parsed As CutoutModel
+        Check("ToonOut 的遮罩附屬檔名", MaskStore.MaskPath("a.jpg", CutoutModel.ToonOut) = "a.jpg.pedit.mask-toonout.png")
         Check("專案檔裡的遮罩名稱讀得回新模型", [Enum].TryParse("birefnetlite", True, parsed) AndAlso parsed = CutoutModel.BiRefNetLite)
         Dim ok1 = New OpenCvSharp.Size() {BackgroundRemover.ModNetInputSize(4000, 3000), BackgroundRemover.ModNetInputSize(300, 1000), BackgroundRemover.ModNetInputSize(10000, 500)}
         Check("MODNet 輸入：短邊約 512、長邊最多 1536、都是 32 的倍數",
@@ -108,7 +109,7 @@ Module CutoutRefineTests
                 g.Clear(Color.FromArgb(235, 235, 230))
                 g.FillEllipse(New SolidBrush(Color.FromArgb(150, 40, 30)), 120, 70, 160, 160)
             End Using
-            For Each m In {CutoutModel.BiRefNetLite, CutoutModel.ModNet}
+            For Each m In {CutoutModel.BiRefNetLite, CutoutModel.ModNet, CutoutModel.ToonOut}
                 If Not BackgroundRemover.ModelAvailable(m) Then
                     Console.WriteLine($"  （略過 {m}：沒有模型檔）")
                     Continue For

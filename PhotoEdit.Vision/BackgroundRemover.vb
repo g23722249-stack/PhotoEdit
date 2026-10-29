@@ -8,9 +8,10 @@ Imports OpenCvSharp.Extensions
 
 ''' <summary>
 ''' AI 去背，五個模型（檔名見 CutoutModels.FileName）：
-''' IS-Net 一般與 U²-Net 人像（rembg，Apache-2.0）、BiRefNet lite 一般（MIT）、MODNet 人像（Apache-2.0）、BiRefNet HR Matting 精細（MIT，fp16）。
+''' IS-Net 一般與 U²-Net 人像（rembg，Apache-2.0）、BiRefNet lite 一般（MIT）、MODNet 人像（Apache-2.0）、BiRefNet HR Matting 精細（MIT，fp16）、
+''' BiRefNet ToonOut 動漫（MIT，fp16 權重、fp32 輸入輸出）。
 ''' 前處理：縮放到模型輸入大小（MODNet 保持比例，短邊 512、邊長 32 的倍數；其他縮成正方形）、正規化；
-''' 後處理：rembg 的兩個做最小最大值正規化，BiRefNet lite 做 sigmoid，HR 與 MODNet 已經是 0..1 的透明度。最後放大回原尺寸。
+''' 後處理：rembg 的兩個做最小最大值正規化，BiRefNet lite 做 sigmoid，HR、MODNet、ToonOut 已經是 0..1 的透明度。最後放大回原尺寸。
 ''' 同一個模型的工作階段會共用；一次只跑一個推論。
 ''' </summary>
 Public NotInheritable Class BackgroundRemover

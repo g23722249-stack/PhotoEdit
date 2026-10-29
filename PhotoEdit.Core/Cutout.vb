@@ -13,6 +13,8 @@ Public Enum CutoutModel
     ModNet = 3
     ''' <summary>BiRefNet HR Matting（MIT，fp16）：精細，2048 輸入，最慢。</summary>
     BiRefNetHR = 4
+    ''' <summary>BiRefNet ToonOut（MIT，fp16 權重、fp32 輸入輸出）：針對動漫角色微調，頭髮、武器、飾品的輪廓比較完整。</summary>
+    ToonOut = 5
 End Enum
 
 Public Enum CutoutBackground
@@ -59,7 +61,7 @@ Public NotInheritable Class CutoutModels
     End Sub
 
     ''' <summary>選單上的順序：新的在前（精細最慢放第三），舊模型留著給已經用它去背的文件。</summary>
-    Public Shared ReadOnly Order As CutoutModel() = {CutoutModel.BiRefNetLite, CutoutModel.ModNet, CutoutModel.BiRefNetHR, CutoutModel.General, CutoutModel.Human}
+    Public Shared ReadOnly Order As CutoutModel() = {CutoutModel.BiRefNetLite, CutoutModel.ModNet, CutoutModel.ToonOut, CutoutModel.BiRefNetHR, CutoutModel.General, CutoutModel.Human}
 
     ''' <summary>Models\ 下的檔名（和 ModelCatalog.json 的 path 一致）。</summary>
     Public Shared Function FileName(model As CutoutModel) As String
@@ -68,6 +70,7 @@ Public NotInheritable Class CutoutModels
             Case CutoutModel.BiRefNetLite : Return "birefnet-lite.onnx"
             Case CutoutModel.ModNet : Return "modnet.onnx"
             Case CutoutModel.BiRefNetHR : Return "birefnet-hr-matting-fp16.onnx"
+            Case CutoutModel.ToonOut : Return "birefnet-toonout-fp16.onnx"
             Case Else : Return "isnet-general-use.onnx"
         End Select
     End Function
@@ -77,6 +80,7 @@ Public NotInheritable Class CutoutModels
             Case CutoutModel.BiRefNetLite : Return Lang.T("一般（BiRefNet）")
             Case CutoutModel.ModNet : Return Lang.T("人像（MODNet）")
             Case CutoutModel.BiRefNetHR : Return Lang.T("精細（BiRefNet HR，較慢）")
+            Case CutoutModel.ToonOut : Return Lang.T("動漫（ToonOut）")
             Case CutoutModel.Human : Return Lang.T("人像（舊：U²-Net）")
             Case Else : Return Lang.T("一般（舊：IS-Net）")
         End Select
