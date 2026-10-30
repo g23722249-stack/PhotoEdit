@@ -3194,3 +3194,214 @@ AI 動漫	AI anime
 一般（BiRefNet）：人物、動物、物品都適用，邊緣最準。人像（MODNet）：只找人，頭髮的半透明最自然、也最快。動漫（ToonOut）：卡通、動漫、貼圖類的圖專用，角色旁邊畫的愛心、文字、特效也會一起保留；照片、寫實插畫和海報反而會留下背景碎塊，用一般。精細（BiRefNet HR）：用高解析度算，大照片的髮絲最細，但慢很多。舊的 IS-Net／U²-Net 留給以前用它們去背的文件。	General (BiRefNet): people, animals and objects, with the most accurate edges. Portrait (MODNet): finds only people, with the most natural semi-transparent hair, and is the fastest. Anime (ToonOut): for cartoons, anime and stickers; hearts, text and effects drawn next to the character are kept too, but photos, realistic illustrations and posters get leftover background bits, so use General for those. Fine (BiRefNet HR): works at high resolution for the finest hair on large photos, but is much slower. The old IS-Net / U²-Net stay for documents cut out with them before.
 選模型：「人像（MODNet）」適合人物（頭髮較自然），「一般（BiRefNet）」人物、動物、物品都行，「動漫（ToonOut）」適合卡通、動漫、貼圖（畫上去的愛心、文字也會保留），「精細」最細但最慢。沒下載的模型到 設定 → 模型 下載。	Choose a model: "Portrait (MODNet)" suits people (more natural hair), "General (BiRefNet)" handles people, animals and objects, "Anime (ToonOut)" suits cartoons, anime and stickers (drawn hearts and text are kept too), "Fine" is the most detailed but slowest. Download missing models in Settings → Models.
 背景不是單一顏色、或照片類的貼圖：「去背方式」改成「AI 一般」或「AI 人像」；卡通、動漫貼圖用「AI 動漫」，旁邊畫的愛心、文字也會保留。	Backgrounds that are not one color, or photo-like stickers: change "Background removal" to "AI general" or "AI portrait"; for cartoon and anime stickers use "AI anime", which also keeps hearts and text drawn next to the character.
+遮罩中沒有人物（全部透明），無法分析。	The mask has no figure (fully transparent), so it cannot be analyzed.
+天際線上的平坦頂面（寬 {0} 像素），頂部對著天空	Flat top on the skyline ({0} px wide) facing the sky
+沒有偵測到天空，放在畫面下方中央的地面	No sky detected; placed on the ground at the bottom center
+沒有找到夠寬的平坦頂面，放在畫面下方中央	No wide enough flat top found; placed at the bottom center
+畫面中央	Center
+左三分之一	Left third
+右三分之一	Right third
+偏離中央	Off center
+半身像：裁切邊貼齊畫面下緣，{0}；高度約畫面 {1:P0}	Half-length figure: cut edge on the bottom of the frame, {0}; about {1:P0} of the frame height
+；高度約畫面 {0:P0}	; about {0:P0} of the frame height
+，往{0}一點	, a little to the {0}
+超出畫面	Outside the frame
+超出站立面	Over the edge of the surface
+腳下懸空	Floating above the ground
+偏離建議尺寸	Off the suggested size
+上一步	Back
+下一步	Next
+檢查遮罩（紅色＝去掉的部分）	Check mask (red = removed)
+清除筆刷修正	Clear brush fixes
+自動定位	Auto place
+保持人物原本的顏色	Keep the figure's original colors
+依背景自動融合	Blend with the background
+重新分析	Analyze again
+人物合成	Person Composite
+選人物	Choose figure
+位置與大小	Position & size
+開啟人物圖片…	Open figure image…
+推薦的位置（點一下套用）	Suggested positions (click to apply)
+人物高度	Figure height
+在預覽上拖曳人物可以移動，滾輪放大縮小。	Drag the figure in the preview to move it; use the wheel to resize.
+亮度	Brightness
+自動融合只會小幅調整（有上限），保留人物原本的線條與配色。	Auto blend only makes small, limited adjustments and keeps the figure's original lines and colors.
+請先選一張人物圖片。	Please choose a figure image first.
+請先去背（或使用原圖的透明背景）。	Please remove the background first (or use the image's own transparency).
+1. 選人物	1. Choose figure
+選一張要放進照片的人物圖（照片、插畫、動漫都可以）。已經是透明背景的 PNG 可以直接使用，不用再去背。	Choose a figure to put into the photo (photo, illustration or anime all work). A PNG with a transparent background can be used directly without removing the background.
+2. 去背	2. Remove background
+用 AI 把人物和原本的背景分開。按「自動去背」，再用筆刷修正漏掉或多出來的地方；「檢查遮罩」用紅色顯示被去掉的部分。	AI separates the figure from its original background. Click "Auto remove", then fix missed or extra areas with the brushes; "Check mask" shows the removed parts in red.
+原圖已經是透明背景，可以直接下一步；也可以換成 AI 去背。	The image already has a transparent background, so you can go straight to the next step, or use AI removal instead.
+3. 位置與大小	3. Position & size
+「自動定位」會分析背景（天空、柱頂、屋頂、地面）和人物（腳的位置、是不是半身像），推薦幾個位置。也可以直接拖曳、用滾輪調整大小。	"Auto place" analyzes the background (sky, column tops, roofs, ground) and the figure (where the feet are, whether it is a half-length figure) and suggests positions. You can also drag it and resize with the wheel.
+讓人物的亮度、色溫、對比和背景接近，看起來像在同一個地方拍的。選「依背景自動融合」後可以再微調。	Brings the figure's brightness, color temperature and contrast close to the background so it looks shot in the same place. After choosing "Blend with the background" you can fine-tune.
+人物：{0}（{1} × {2}）	Figure: {0} ({1} × {2})
+去背：{0}	Background removal: {0}
+使用原圖的透明背景	Uses the image's own transparency
+，筆刷修正 {0} 筆	, {0} brush fixes
+位置：高度約畫面 {0:P0}{1}	Position: about {0:P0} of the frame height{1}
+（半身像，貼齊畫面下緣）	 (half-length, on the bottom of the frame)
+，左右翻轉	, flipped horizontally
+色彩：{0}	Color: {0}
+保持原色	Original colors
+依背景融合（強度 {0}）	Blended with the background (strength {0})
+選擇人物圖片	Choose figure image
+圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.tif;*.tiff|所有檔案|*.*	Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.tif;*.tiff|All files|*.*
+無法讀取剪貼簿：	Cannot read the clipboard:
+{0}{1}{2} × {3} 像素	{0}{1}{2} × {3} px
+貼上的圖片	Pasted image
+這張圖已經是透明背景，可以直接用（去背那一步可以略過）。	This image already has a transparent background and can be used as is (you can skip the background step).
+下一步用 AI 去背。	Next, remove the background with AI.
+去背完成（{0:0.0} 秒，{1}）。可以用筆刷修正，或直接下一步。	Background removed ({0:0.0} s, {1}). Fix it with the brushes, or go to the next step.
+已套用推薦的位置：	Applied the suggested position:
+先選一張人物圖片	Choose a figure image first
+還沒完成前面的步驟。	The earlier steps are not finished yet.
+合成	Composites
+合成_	Composite_
+無法儲存合成的檔案：	Cannot save the composite files:
+已加入合成圖層：可以拖曳移動、拖角落縮放；原本的照片不變。	Added a composite layer: drag to move, drag a corner to resize; the original photo is unchanged.
+開啟人物圖片	Open figure image
+選一張要放進照片的人物圖：照片、插畫、動漫都可以；透明背景的 PNG 可以直接用。	Choose a figure to put into the photo: photo, illustration or anime all work; a PNG with a transparent background can be used directly.
+很大的圖會先縮到長邊 2048 像素。	Very large images are first reduced to 2048 px on the long side.
+把剪貼簿裡的圖片（截圖、網頁複製的圖、檔案總管複製的圖檔）當成人物。	Uses the image on the clipboard (a screenshot, an image copied from a web page, or an image file copied in File Explorer) as the figure.
+一般（BiRefNet）人物、動物都適用；人像（MODNet）頭髮最自然；動漫（ToonOut）適合卡通、插畫角色。	General (BiRefNet) suits people and animals; Portrait (MODNet) gives the most natural hair; Anime (ToonOut) suits cartoon and illustrated characters.
+標「未下載」的模型要先到 設定 → 模型 下載。	Models marked "not downloaded" must first be downloaded in Settings → Models.
+用上面選的模型把人物和原本的背景分開。	Separates the figure from its original background using the model chosen above.
+依照片的顏色重新算髮絲、毛邊的半透明，邊緣更細。	Recalculates the semi-transparency of hair and fuzzy edges from the photo's colors for finer edges.
+背景和人物顏色很接近時調低。	Lower it when the background and the figure have similar colors.
+半透明的邊緣扣掉原背景的顏色，放到新背景上不會留一圈原背景色。	Removes the original background color from semi-transparent edges, so no halo of it remains on the new background.
+在預覽上塗抹被誤去掉的地方，把它補回來。	Paint over areas that were removed by mistake in the preview to bring them back.
+大小用「筆刷大小」調整。	Set the size with "Brush size".
+在預覽上塗抹沒去乾淨的背景，把它擦掉。	Paint over leftover background in the preview to erase it.
+取消所有筆刷修正，回到 AI 去背的結果。	Cancels all brush fixes and returns to the AI result.
+分析背景（天空、柱頂、屋頂、地面）和人物（腳的位置、是不是半身像），推薦站的位置與大小。	Analyzes the background (sky, column tops, roofs, ground) and the figure (where the feet are, whether it is a half-length figure) and suggests where to stand and how big.
+半身像會貼齊畫面下緣；結果只是推薦，可以拖曳調整。	Half-length figures are placed on the bottom of the frame; the result is only a suggestion and you can drag to adjust.
+推薦的位置	Suggested positions
+依分數排序的候選位置，點一下套用。分數越高越合理（不超出畫面、不懸空、站得下）。	Candidate positions sorted by score; click one to apply it. A higher score is more plausible (inside the frame, not floating, fits the surface).
+人物占畫面高度的比例；也可以在預覽上用滾輪調整。	The figure's height as a fraction of the frame; you can also resize with the wheel in the preview.
+把人物左右翻過來，讓臉或身體朝向畫面裡的光源或主體。	Flips the figure horizontally so the face or body turns toward the light or the subject in the photo.
+人物的顏色完全不變。	The figure's colors stay exactly the same.
+取人物附近的背景，小幅調整人物的亮度、對比、飽和度與色溫，看起來像在同一個地方拍的。	Samples the background around the figure and slightly adjusts the figure's brightness, contrast, saturation and color temperature so it looks shot in the same place.
+每一項都有上限，不會把人物改得面目全非。	Every adjustment is limited, so the figure never changes beyond recognition.
+移動人物之後，依新位置附近的背景重新計算色彩。	After moving the figure, recalculates the colors from the background around its new position.
+色彩融合的整體強度：0 是原色、100 是完全套用。	Overall strength of the color blend: 0 is the original colors, 100 applies it fully.
+人物整體變亮或變暗。	Makes the whole figure brighter or darker.
+人物的明暗對比。	The figure's light-dark contrast.
+人物顏色的鮮豔程度。	How vivid the figure's colors are.
+往右偏暖（黃橘）、往左偏冷（藍）。	Right is warmer (yellow-orange), left is cooler (blue).
+合成：	Composite:
+人物	Figure
+人物合成…	Person composite…
+畫參考線	Draw guides
+依參考線推估	Estimate from guides
+前景筆刷	Foreground brush
+擦除	Erase
+清除遮擋	Clear occlusion
+加上陰影	Add shadow
+陰影不落在天空上	Keep shadows off the sky
+方向與透視	Direction & perspective
+前後遮擋	Occlusion
+仰角透視	Keystone
+仰拍建築、柱子時，畫面上的直線會往上收。按「畫參考線」沿著兩條本來應該平行的直線（柱子、門框的左右邊）各拖一條，再按「依參考線推估」，人物就會跟著傾斜、上窄下寬。	When shooting buildings or columns from below, straight lines converge upward. Click "Draw guides", drag along two lines that should be parallel (the left and right edges of a column or door frame), then click "Estimate from guides" and the figure tilts and narrows toward the top to match.
+魔術棒範圍	Wand range
+把背景裡應該在人物前面的東西（桌子、欄杆、樹幹、草）塗起來，人物被它擋住的部分就會藏到後面。紅色是塗到的範圍。沒有東西在人物前面時可以直接下一步。	Paint over things in the background that should be in front of the figure (tables, railings, tree trunks, grass); the parts of the figure behind them are hidden. Red shows the painted area. If nothing is in front of the figure, just go to the next step.
+半身像沒有踩在地上，不加陰影。	A half-length figure is not standing on the ground, so no shadow is added.
+濃淡	Opacity
+柔和	Softness
+接觸陰影	Contact shadow
+在預覽上點一下或拖曳，決定頭的影子落在哪裡（方向和長度會跟著改）。	Click or drag in the preview to choose where the shadow of the head falls (the direction and length follow).
+4. 方向與透視	4. Direction & perspective
+背景是斜的、或是仰拍的建築時，讓人物跟著傾斜和上窄下寬，看起來才像站在同一個空間。一般的照片可以直接下一步。	When the background is tilted or a building is shot from below, tilt and narrow the figure to match so it looks like it is in the same space. For ordinary photos, just go to the next step.
+5. 前後遮擋	5. Occlusion
+背景裡有東西應該擋在人物前面時（例如欄杆、桌子、花草），把它塗起來，人物就會站到它後面。	When something in the background should be in front of the figure (a railing, a table, plants), paint over it and the figure moves behind it.
+6. 光線與色彩	6. Light & color
+7. 陰影	7. Shadow
+人物腳下的接觸陰影和投在地上的影子，讓人物真的「站」在地面上。方向、長度、濃淡都可以調；半身像沒有踩在地上，不需要陰影。	A contact shadow under the feet and a shadow cast on the ground make the figure really stand on the ground. Direction, length and opacity are adjustable; a half-length figure is not standing on the ground and needs no shadow.
+8. 完成	8. Done
+按「套用」，人物（和陰影）會加成主畫面上的合成圖層，原本的照片不變。之後可以在主畫面移動、縮放、調整透明度，或刪除。	Click "Apply" and the figure (and its shadow) are added as composite layers in the main window; the original photo is unchanged. You can then move, resize, change their opacity or delete them there.
+方向與透視：旋轉 {0:0}°，仰角透視 {1:P0}	Direction & perspective: rotation {0:0}°, keystone {1:P0}
+前後遮擋：有（人物站在塗起來的東西後面）	Occlusion: yes (the figure stands behind the painted objects)
+前後遮擋：沒有	Occlusion: none
+陰影：方向 {0:0}°，長度 {1:P0}，濃淡 {2}	Shadow: direction {0:0}°, length {1:P0}, opacity {2}
+陰影：沒有	Shadow: none
+請先畫兩條參考線。	Please draw two guides first.
+依參考線：旋轉 {0:0.0}°，仰角透視 {1:P0}。	From the guides: rotation {0:0.0}°, keystone {1:P0}.
+人物整個在畫面外面，請先移回畫面裡。	The figure is entirely outside the frame; move it back into the frame first.
+已加入合成圖層與陰影圖層：可以拖曳移動、拖角落縮放；原本的照片不變。	Added a composite layer and a shadow layer: drag to move, drag a corner to resize; the original photo is unchanged.
+以腳（或半身像的裁切邊）為中心轉動人物，配合傾斜的地面或拍歪的照片。	Rotates the figure around its feet (or the cut edge of a half-length figure) to match sloping ground or a tilted photo.
+人物頂部相對腳部的寬度：小於 100% 上窄下寬（仰拍），大於 100% 上寬下窄（俯拍）。	The width at the top of the figure relative to the feet: below 100% narrows toward the top (shot from below), above 100% widens (shot from above).
+用參考線推估比較準。	Estimating from guides is more accurate.
+在預覽上沿著兩條本來應該平行的直線（柱子、門框、牆角的左右邊）各拖一條。	Drag along two lines in the preview that should be parallel (the left and right edges of a column, door frame or wall corner).
+畫第三條會換掉最舊的一條。	Drawing a third guide replaces the oldest one.
+由兩條參考線算出人物該傾斜多少、上窄下寬多少，讓人物和建築的透視一致。	Calculates from the two guides how much the figure should tilt and narrow so it matches the building's perspective.
+移除畫好的參考線（已套用的旋轉與透視不變）。	Removes the guides (the applied rotation and keystone stay).
+塗抹背景裡應該擋在人物前面的東西，人物在那裡會藏到後面。	Paint over things in the background that should be in front of the figure; the figure is hidden behind them there.
+擦掉塗多的遮擋範圍。	Erases occlusion painted by mistake.
+在背景上點一下，把顏色相近的相連範圍（例如一整根欄杆）加進遮擋。	Click on the background to add a connected area of similar color (for example a whole railing) to the occlusion.
+範圍用「魔術棒範圍」調整。	Set the range with "Wand range".
+前景筆刷與擦除的大小（螢幕像素）。	Size of the foreground brush and eraser (screen pixels).
+顏色差多少以內算同一個東西：越大選得越廣。	How different a color can be and still count as the same object: larger selects more.
+移除所有遮擋範圍，人物回到最前面。	Removes all occlusion; the figure comes back to the front.
+在人物下面加一個陰影圖層：腳下的接觸陰影和投在地上的影子。	Adds a shadow layer under the figure: a contact shadow under the feet and a shadow cast on the ground.
+半身像沒有踩在地上，不能加陰影。	A half-length figure is not standing on the ground and cannot have a shadow.
+依背景估計光從哪一邊來，推薦影子的方向和濃淡。	Estimates which side the light comes from in the background and suggests the shadow's direction and opacity.
+影子在地上的方向：0° 向右、90° 朝鏡頭（畫面下方）、180° 向左、-90° 往遠處。	Direction of the shadow on the ground: 0° right, 90° toward the camera (down in the frame), 180° left, -90° away.
+也可以在預覽上點一下頭的影子要落的位置。	You can also click in the preview where the shadow of the head should fall.
+影子的長度（人物高度的百分比）：太陽越低影子越長。	Length of the shadow (percent of the figure's height): the lower the sun, the longer the shadow.
+投在地上的影子有多深。陰天、室內調淡，大太陽調深。	How dark the cast shadow is. Lighter for overcast or indoor light, darker for bright sun.
+影子邊緣的模糊程度：陰天、散射光越柔和。	How blurred the shadow's edges are: softer for overcast or diffuse light.
+腳和地面接觸處那一小圈深色陰影，讓人物看起來真的踩在地上。	The small dark shadow where the feet touch the ground, which makes the figure look like it is really standing there.
+影子只畫在地面、建築上，投到天空的部分不畫（站在柱頂、屋頂時很重要）。	Draws the shadow only on the ground and buildings, not where it would fall on the sky (important when standing on a column top or roof).
+合成陰影：	Composite shadow:
+依地平線決定大小	Size from horizon
+半身像看不到腳，不適用地平線輔助。	A half-length figure shows no feet, so the horizon helper does not apply.
+拖曳青色的地平線對齊照片的地平線；之後把人物往前、往後拖，大小會跟著遠近變。	Drag the cyan horizon line onto the photo's horizon; then drag the figure nearer or farther and its size follows the distance.
+邊緣透光	Light wrap
+，邊緣透光 {0}，顆粒 {1}	, light wrap {0}, grain {1}
+找不到這個合成圖層的人物原圖，無法修改。	The figure image of this composite layer is missing, so it cannot be edited.
+找不到這個合成圖層的遮罩，無法修改。	The mask of this composite layer is missing, so it cannot be edited.
+人物合成（修改）	Person Composite (edit)
+正在修改既有的合成圖層，按「套用」會取代原本的圖層。	Editing an existing composite layer; "Apply" replaces the original layer.
+已依人物附近的背景調整亮度、對比、飽和度、色溫與顆粒。	Adjusted brightness, contrast, saturation, color temperature and grain from the background around the figure.
+地平線	Horizon
+無法修改這個合成圖層：人物原圖或遮罩檔案不見了（可能被移動或刪除）。	Cannot edit this composite layer: the figure image or mask file is missing (it may have been moved or deleted).
+一般拍照時相機和眼睛差不多高，站在地上的人眼睛會落在地平線上。打開後把青色的線拖到照片的地平線，之後把人物往前、往後拖，大小會自動跟著遠近變。	In normal photos the camera is about at eye height, so the eyes of people standing on the ground fall on the horizon. Turn this on, drag the cyan line onto the photo's horizon, then drag the figure nearer or farther and its size changes with the distance automatically.
+只適用全身像（看得到腳）。	Only for full-length figures (with visible feet).
+把背景的光滲進人物邊緣一點點，人物看起來被環境光包住，不像剪貼上去的。	Lets a little of the background light bleed into the figure's edges, so the figure looks wrapped in the ambient light instead of pasted on.
+背光、逆光的背景調高。	Raise it for backlit backgrounds.
+在人物上加一點雜訊，讓乾淨的人物和有顆粒的照片（夜景、高 ISO）質感接近。	Adds a little noise to the figure so a clean figure matches the texture of a grainy photo (night scenes, high ISO).
+自動融合會依背景的雜訊估計。	Auto blend estimates it from the background's noise.
+用人物合成把人物放進照片	Put a person into a photo with Person Composite
+「影像 → 人物合成…」一步一步把另一張圖裡的人物放進目前的照片：AI 去背、推薦站的位置與大小、配合透視、藏到前面的東西後面、融合色彩、加上陰影。每一步都有「自動」，不想調的地方直接按「下一步」。結果是主畫面上的合成圖層（和陰影圖層），原照片不變，之後還能回來修改。	"Image → Person composite…" puts a figure from another image into the current photo step by step: AI background removal, suggested position and size, matching perspective, hiding behind things in front, blending colors and adding a shadow. Every step has an automatic option; click "Next" to skip anything you don't want to adjust. The result is a composite layer (and a shadow layer) in the main window; the original photo is unchanged and you can come back to edit it.
+這裡用兩個例子：大衛像（全身像）放進鸚鵡海報，示範透視、遮擋與陰影；科幻美女（半身像）放進紫藤步道，示範半身像的放法。	Two examples are used here: the statue of David (full-length) in the macaw poster shows perspective, occlusion and shadows; the sci-fi girl (half-length) on the wisteria path shows how half-length figures are placed.
+先開好背景照片（要放進去的那張），再選「影像 → 人物合成…」。	Open the background photo (the one to put the figure into) first, then choose "Image → Person composite…".
+按「開啟人物圖片…」選人物圖，或在別的程式複製圖片後按「貼上圖片」。照片、插畫、動漫都可以；已經是透明背景的 PNG 可以直接用。	Click "Open figure image…" to choose the figure, or copy an image in another program and click "Paste image". Photos, illustrations and anime all work; a PNG with a transparent background can be used directly.
+上方是八個步驟，可以點來跳；左邊是預覽，右邊是這一步的說明。還沒去背時不能跳到後面的步驟。	The eight steps are at the top and you can click to jump; the preview is on the left and this step's explanation on the right. You cannot jump past the background step before the background is removed.
+選模型（人物用「人像」頭髮最自然，雕像、動物、物品用「一般」，卡通角色用「動漫」），按「自動去背」。	Choose a model ("Portrait" gives the most natural hair for people, "General" for statues, animals and objects, "Anime" for cartoon characters) and click "Auto remove".
+勾「檢查遮罩」：紅色是被去掉的部分。漏掉的地方用「保留筆刷」塗回來，多出來的用「擦除筆刷」擦掉。	Check "Check mask": red shows the removed parts. Paint missed areas back with "Restore brush" and erase extra areas with "Erase brush".
+「邊緣精修」讓髮絲、毛邊更細；「去除邊緣殘色」讓邊緣不留原背景的顏色。	"Edge refine" makes hair and fuzzy edges finer; "Remove edge color fringe" keeps the old background color off the edges.
+大衛像去背後勾「檢查遮罩」：原本的背景蓋上紅色，雕像和台座保留。	David after background removal with "Check mask" on: the original background is covered in red, the statue and pedestal are kept.
+一進來就會自動定位：分析背景有沒有天空、柱頂、屋頂這類可以站的地方，再依人物的腳和高度推薦幾個位置（右邊清單，點一下套用）。在預覽上拖曳人物可以移動，滾輪放大縮小。	Auto place runs as soon as you arrive: it analyzes the background for places to stand such as sky, column tops and roofs, then suggests positions from the figure's feet and height (the list on the right; click one to apply). Drag the figure in the preview to move it and use the wheel to resize.
+海報上沒有乾淨的天空，大衛像站到畫面下方中央的地面。粉紅點是腳的位置。	The poster has no clean sky, so David stands on the ground at the bottom center. The pink dot is the feet.
+半身像（圖的下緣把人物切掉）沒有腳可以站，會貼齊畫面下緣，像人像照一樣從畫面底部延伸上來。	A half-length figure (cut off by the bottom of its image) has no feet to stand on, so it is placed on the bottom of the frame and rises from it like a portrait.
+科幻美女是半身像：裁切邊貼齊畫面下緣、高度約畫面 60%，推薦中央與左右三分之一。	The sci-fi girl is half-length: the cut edge sits on the bottom of the frame at about 60% of the frame height, with the center and the left and right thirds suggested.
+勾「依地平線決定大小」會出現青色的地平線，把它拖到照片的地平線（遠方海面、地面盡頭）。一般拍照時相機和眼睛差不多高，所以人站在哪裡，眼睛都落在地平線上：把人物往前（往下）拖會變大、往後（往上）拖會變小。	Check "Size from horizon" to show a cyan horizon line and drag it onto the photo's horizon (the far sea, the end of the ground). In normal photos the camera is about at eye height, so wherever a person stands their eyes fall on the horizon: drag the figure nearer (down) and it grows, farther (up) and it shrinks.
+地平線輔助：人物的眼睛對著青色虛線，大小依遠近自動決定。	Horizon helper: the figure's eyes are on the cyan dashed line and its size follows the distance.
+背景是斜的、或仰拍高大的建築時，直線會往上收，人物也要跟著傾斜、上窄下寬才自然。一般的照片可以直接下一步。	When the background is tilted or tall buildings are shot from below, straight lines converge upward and the figure must tilt and narrow toward the top too. For ordinary photos, just go to the next step.
+按「畫參考線」，在預覽上沿著兩條本來應該平行的直線（柱子、門框、牆角的左右邊）各拖一條。	Click "Draw guides" and drag along two lines in the preview that should be parallel (the left and right edges of a column, door frame or wall corner).
+按「依參考線推估」：旋轉和仰角透視會自動算好。也可以直接拉「旋轉」「仰角透視」滑桿。	Click "Estimate from guides" and the rotation and keystone are calculated. You can also drag the "Rotation" and "Keystone" sliders directly.
+兩條黃色參考線往上收斂，推估出仰角透視 83%：大衛像上窄下寬。	The two yellow guides converge upward, giving a keystone of 83%: David narrows toward the top.
+背景裡有東西應該擋在人物前面時（欄杆、桌子、樹幹、草叢），把它塗起來，人物就會站到它後面。用「前景筆刷」塗、「擦除」擦掉多的，「魔術棒」點一下可以選一整塊顏色相近的東西。沒有東西在前面時直接下一步。	When something in the background should be in front of the figure (railings, tables, tree trunks, bushes), paint over it and the figure moves behind it. Paint with "Foreground brush", erase extra with "Erase", and click with "Magic wand" to select a whole object of similar color. If nothing is in front, just go to the next step.
+示範：在大衛像的小腿前塗一條帶子（紅色），之後小腿就藏到那條帶子後面。	Demonstration: paint a band (red) in front of David's lower legs, and the legs then hide behind it.
+一進來會依人物附近的背景自動融合：小幅調整亮度、對比、飽和度、色溫（都有上限，不會把人物改得面目全非），也會估計背景的顆粒並補到人物上。「邊緣透光」把背景的光滲進人物邊緣一點點，減少剪貼感。每一項都可以再微調；想保留原色就選「保持人物原本的顏色」。	Auto blend runs as soon as you arrive: it slightly adjusts brightness, contrast, saturation and color temperature from the background around the figure (all limited, so the figure never changes beyond recognition) and also estimates the background's grain and adds it to the figure. "Light wrap" lets a little background light bleed into the figure's edges to reduce the pasted look. Everything can be fine-tuned; choose "Keep the figure's original colors" to keep the original.
+海報偏暖，大衛像的色溫往暖調、飽和度提高一點。	The poster is warm, so David's color temperature moves warmer and the saturation rises a little.
+全身像會自動加上陰影：腳下的接觸陰影，加上投在地上的影子（離腳越遠越淡越模糊）。方向依背景估計光從哪一邊來；在預覽上點一下或拖曳，就能指定頭的影子落在哪裡。勾著「陰影不落在天空上」時，站在柱頂、屋頂的人，影子不會畫到天空上。半身像沒有踩在地上，不加陰影。	Full-length figures get a shadow automatically: a contact shadow under the feet plus a shadow cast on the ground (lighter and softer farther from the feet). The direction is estimated from which side the light comes from; click or drag in the preview to set where the shadow of the head falls. With "Keep shadows off the sky" checked, a person standing on a column top or roof casts no shadow onto the sky. Half-length figures are not standing on the ground and get no shadow.
+陰影頁：方向、長度、濃淡、柔和、接觸陰影都可以調。前一步塗的遮擋帶，在這裡已經擋在小腿前面。	The shadow step: direction, length, opacity, softness and contact shadow are adjustable. The occlusion band painted in the previous step is already in front of the lower legs here.
+「完成」頁列出每一步的設定，按「套用」。主畫面會多兩個圖層：「合成：人物名稱」和在它下面的「合成陰影：人物名稱」。它們和貼圖一樣可以拖曳、縮放、調透明度、刪除；按一次復原會一起拿掉。	The "Done" step lists the settings of each step; click "Apply". The main window gets two layers: "Composite: name" and "Composite shadow: name" below it. Like stickers they can be dragged, resized, given an opacity or deleted; one undo removes both.
+套用後的主畫面：大衛像站在海報前，小腿被遮擋帶擋住，腳下有淡淡的陰影。	The main window after applying: David stands in front of the poster, his lower legs behind the occlusion band, with a faint shadow at his feet.
+回頭修改	Editing later
+在預覽上雙擊合成圖層（或它的陰影），或在「圖層」分頁的清單上雙擊，會回到引導視窗，所有設定都讀回來，從「位置與大小」開始。背景會先拿掉這個人物，色彩、陰影可以照新的位置重算。按「套用」取代原本的圖層，圖層順序不變。在主畫面移動、縮放過的位置也會跟著帶進來。	Double-click the composite layer (or its shadow) in the preview, or double-click it in the list on the Layers tab, to return to the guide with every setting restored, starting at "Position & size". The figure is first removed from the background, so colors and shadow can be recalculated for the new position. "Apply" replaces the original layers and keeps the layer order. Moving or resizing done in the main window is carried over too.
+修改科幻美女：背景已經拿掉原本的人物，主畫面上放大過的大小也帶進來了。	Editing the sci-fi girl: the original figure is gone from the background and the size enlarged in the main window is carried over.
+人物原圖、遮罩、遮擋範圍存在「圖片\\PhotoEdit\\合成」，存成 .pedx 專案時會一起放進專案檔，換電腦也能修改。	The figure image, masks and occlusion are stored in "Pictures\\PhotoEdit\\合成" (Composites) and are packed into the .pedx project file when you save, so they can be edited on another computer too.
+一步一步把人物放進目前的照片：選人物、AI 去背、自動推薦位置與大小（會辨認柱頂、屋頂、地面與半身像）、用參考線配合透視、塗出擋在前面的東西、依背景融合色彩、加上陰影。結果是合成圖層與陰影圖層，原照片不變。	Puts a person into the current photo step by step: choose the figure, AI background removal, suggested position and size (recognizes column tops, roofs, the ground and half-length figures), matching perspective with guides, painting what is in front, blending colors with the background and adding a shadow. The result is a composite layer and a shadow layer; the original photo is unchanged.

@@ -68,8 +68,66 @@ Partial Class frmEditor
         links.LinkTargets.Add(BuildCharcoalTutorial(s))
         links.LinkTargets.Add(BuildOilTutorial(s))
         links.LinkTargets.Add(BuildStickerTutorial(s))
+        links.LinkTargets.Add(BuildCompositeTutorial(s))
         s.Add(links)
         Return s
+    End Function
+
+    ''' <summary>人物合成引導：大衛像放進鸚鵡海報（全身像）、科幻美女放進紫藤（半身像），八步與回頭修改。截圖由 uismoke compositeui 產生。</summary>
+    Private Shared Function BuildCompositeTutorial(parent As ManualSection) As ManualSection
+        Dim t = parent.AddChild(Lang.T("用人物合成把人物放進照片"))
+        t.Add(ManualBlock.Para(Lang.T("「影像 → 人物合成…」一步一步把另一張圖裡的人物放進目前的照片：AI 去背、推薦站的位置與大小、配合透視、藏到前面的東西後面、融合色彩、加上陰影。每一步都有「自動」，不想調的地方直接按「下一步」。結果是主畫面上的合成圖層（和陰影圖層），原照片不變，之後還能回來修改。")))
+        t.Add(ManualBlock.Note(Lang.T("這裡用兩個例子：大衛像（全身像）放進鸚鵡海報，示範透視、遮擋與陰影；科幻美女（半身像）放進紫藤步道，示範半身像的放法。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("1. 選人物")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("先開好背景照片（要放進去的那張），再選「影像 → 人物合成…」。"),
+            Lang.T("按「開啟人物圖片…」選人物圖，或在別的程式複製圖片後按「貼上圖片」。照片、插畫、動漫都可以；已經是透明背景的 PNG 可以直接用。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_01.jpg", Lang.T("上方是八個步驟，可以點來跳；左邊是預覽，右邊是這一步的說明。還沒去背時不能跳到後面的步驟。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("2. 去背")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("選模型（人物用「人像」頭髮最自然，雕像、動物、物品用「一般」，卡通角色用「動漫」），按「自動去背」。"),
+            Lang.T("勾「檢查遮罩」：紅色是被去掉的部分。漏掉的地方用「保留筆刷」塗回來，多出來的用「擦除筆刷」擦掉。"),
+            Lang.T("「邊緣精修」讓髮絲、毛邊更細；「去除邊緣殘色」讓邊緣不留原背景的顏色。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_02.jpg", Lang.T("大衛像去背後勾「檢查遮罩」：原本的背景蓋上紅色，雕像和台座保留。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("3. 位置與大小")))
+        t.Add(ManualBlock.Para(Lang.T("一進來就會自動定位：分析背景有沒有天空、柱頂、屋頂這類可以站的地方，再依人物的腳和高度推薦幾個位置（右邊清單，點一下套用）。在預覽上拖曳人物可以移動，滾輪放大縮小。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_03.jpg", Lang.T("海報上沒有乾淨的天空，大衛像站到畫面下方中央的地面。粉紅點是腳的位置。")))
+        t.Add(ManualBlock.Para(Lang.T("半身像（圖的下緣把人物切掉）沒有腳可以站，會貼齊畫面下緣，像人像照一樣從畫面底部延伸上來。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_03b.jpg", Lang.T("科幻美女是半身像：裁切邊貼齊畫面下緣、高度約畫面 60%，推薦中央與左右三分之一。")))
+        t.Add(ManualBlock.Para(Lang.T("勾「依地平線決定大小」會出現青色的地平線，把它拖到照片的地平線（遠方海面、地面盡頭）。一般拍照時相機和眼睛差不多高，所以人站在哪裡，眼睛都落在地平線上：把人物往前（往下）拖會變大、往後（往上）拖會變小。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_03c.jpg", Lang.T("地平線輔助：人物的眼睛對著青色虛線，大小依遠近自動決定。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("4. 方向與透視")))
+        t.Add(ManualBlock.Para(Lang.T("背景是斜的、或仰拍高大的建築時，直線會往上收，人物也要跟著傾斜、上窄下寬才自然。一般的照片可以直接下一步。")))
+        t.Add(ManualBlock.Steps(
+            Lang.T("按「畫參考線」，在預覽上沿著兩條本來應該平行的直線（柱子、門框、牆角的左右邊）各拖一條。"),
+            Lang.T("按「依參考線推估」：旋轉和仰角透視會自動算好。也可以直接拉「旋轉」「仰角透視」滑桿。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_04.jpg", Lang.T("兩條黃色參考線往上收斂，推估出仰角透視 83%：大衛像上窄下寬。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("5. 前後遮擋")))
+        t.Add(ManualBlock.Para(Lang.T("背景裡有東西應該擋在人物前面時（欄杆、桌子、樹幹、草叢），把它塗起來，人物就會站到它後面。用「前景筆刷」塗、「擦除」擦掉多的，「魔術棒」點一下可以選一整塊顏色相近的東西。沒有東西在前面時直接下一步。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_05.jpg", Lang.T("示範：在大衛像的小腿前塗一條帶子（紅色），之後小腿就藏到那條帶子後面。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("6. 光線與色彩")))
+        t.Add(ManualBlock.Para(Lang.T("一進來會依人物附近的背景自動融合：小幅調整亮度、對比、飽和度、色溫（都有上限，不會把人物改得面目全非），也會估計背景的顆粒並補到人物上。「邊緣透光」把背景的光滲進人物邊緣一點點，減少剪貼感。每一項都可以再微調；想保留原色就選「保持人物原本的顏色」。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_06.jpg", Lang.T("海報偏暖，大衛像的色溫往暖調、飽和度提高一點。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("7. 陰影")))
+        t.Add(ManualBlock.Para(Lang.T("全身像會自動加上陰影：腳下的接觸陰影，加上投在地上的影子（離腳越遠越淡越模糊）。方向依背景估計光從哪一邊來；在預覽上點一下或拖曳，就能指定頭的影子落在哪裡。勾著「陰影不落在天空上」時，站在柱頂、屋頂的人，影子不會畫到天空上。半身像沒有踩在地上，不加陰影。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_07.jpg", Lang.T("陰影頁：方向、長度、濃淡、柔和、接觸陰影都可以調。前一步塗的遮擋帶，在這裡已經擋在小腿前面。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("8. 完成")))
+        t.Add(ManualBlock.Para(Lang.T("「完成」頁列出每一步的設定，按「套用」。主畫面會多兩個圖層：「合成：人物名稱」和在它下面的「合成陰影：人物名稱」。它們和貼圖一樣可以拖曳、縮放、調透明度、刪除；按一次復原會一起拿掉。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_08.jpg", Lang.T("套用後的主畫面：大衛像站在海報前，小腿被遮擋帶擋住，腳下有淡淡的陰影。")))
+
+        t.Add(ManualBlock.Heading(Lang.T("回頭修改")))
+        t.Add(ManualBlock.Para(Lang.T("在預覽上雙擊合成圖層（或它的陰影），或在「圖層」分頁的清單上雙擊，會回到引導視窗，所有設定都讀回來，從「位置與大小」開始。背景會先拿掉這個人物，色彩、陰影可以照新的位置重算。按「套用」取代原本的圖層，圖層順序不變。在主畫面移動、縮放過的位置也會跟著帶進來。")))
+        t.Add(ManualBlock.Picture("tutorial_composite_09.jpg", Lang.T("修改科幻美女：背景已經拿掉原本的人物，主畫面上放大過的大小也帶進來了。")))
+        t.Add(ManualBlock.Note(Lang.T("人物原圖、遮罩、遮擋範圍存在「圖片\PhotoEdit\合成」，存成 .pedx 專案時會一起放進專案檔，換電腦也能修改。")))
+        Return t
     End Function
 
     ''' <summary>貼圖小幫手：一張排了 18 張鸚鵡貼圖的圖 → 拆分、合併距離、調整框、檢查遮罩、存成主題、貼到照片上。截圖由 uismoke stickertut 產生。</summary>
@@ -468,6 +526,7 @@ Partial Class frmEditor
             Case "airedraw" : Return Lang.T("用本機顯示卡的 AI 把照片重繪成宮崎駿動畫風格，有多種風格可選。需要下載模型。")
             Case "morph" : Return Lang.T("在兩張臉之間做出漸變的動畫，可以輸出影片或 GIF。")
             Case "trace" : Return Lang.T("把點陣圖描成向量圖形（可以無限放大、修改節點），可以選顏色數與細緻度。")
+            Case "composite" : Return Lang.T("一步一步把人物放進目前的照片：選人物、AI 去背、自動推薦位置與大小（會辨認柱頂、屋頂、地面與半身像）、用參考線配合透視、塗出擋在前面的東西、依背景融合色彩、加上陰影。結果是合成圖層與陰影圖層，原照片不變。")
             Case "pixelscale" : Return Lang.T("把像素圖、遊戲畫面、圖示這類小圖放大 2～8 倍：xBR、HQx 讓斜線與曲線平滑、邊緣保持銳利，Scale2x 不產生新顏色，最近鄰保留方塊。結果開成新影像。")
             Case "facechange" : Return Lang.T("把照片做成川劇變臉的影片：依序換上幾張臉譜，輸出 MP4 或 GIF。")
             ' 選取

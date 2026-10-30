@@ -374,6 +374,7 @@ Partial Friend Class frmEditor
     Private Sub EditStackLayer()
         Dim s = StackSel(_recipe)
         If s Is Nothing Then Return
+        If s.IsOverlay AndAlso EditCompositeLayer(s.Overlay) Then Return ' 人物合成：回到引導視窗修改
         If s.IsOverlay Then
             _overlayIndex = _recipe.Overlays.IndexOf(s.Overlay)
             _tabs.SelectedIndex = If(s.Overlay.Kind = OverlayKind.Text, TabText, If(s.Overlay.Kind = OverlayKind.Image, TabSticker, TabDecor))

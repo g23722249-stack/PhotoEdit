@@ -47,6 +47,7 @@ Module Program
             PixelScalerTestsRun()
             MosaicTestsRun()
             CutoutRefineTestsRun()
+            CompositeTestsRun()
             ModelCatalogTestsRun()
             GradientTestsRun()
             SelectionFillTestsRun()

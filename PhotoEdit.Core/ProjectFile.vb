@@ -116,6 +116,11 @@ Public NotInheritable Class ProjectFile
         For Each o In If(recipe.Overlays, New List(Of Overlay)())
             If o.Kind = OverlayKind.Image Then add(o.ImagePath)
             add(o.TexturePath)
+            ' 人物合成：原圖與遮罩也要帶著，回到引導視窗才能重新調整。
+            add(o.Composite?.SourcePath)
+            add(o.Composite?.MaskPath)
+            add(o.Composite?.AiMaskPath)
+            add(o.Composite?.OcclusionMaskPath)
         Next
         add(recipe.Cutout?.BackgroundImagePath)
         Return list
@@ -176,6 +181,13 @@ Public NotInheritable Class ProjectFile
         For Each o In If(recipe.Overlays, New List(Of Overlay)())
             If same(o.ImagePath) Then o.ImagePath = target
             If same(o.TexturePath) Then o.TexturePath = target
+            If o.Composite IsNot Nothing Then
+                If same(o.Composite.SourcePath) Then o.Composite.SourcePath = target
+                If same(o.Composite.MaskPath) Then o.Composite.MaskPath = target
+                If same(o.Composite.AiMaskPath) Then o.Composite.AiMaskPath = target
+                If same(o.Composite.OcclusionMaskPath) Then o.Composite.OcclusionMaskPath = target
+                If same(o.Composite.ShadowLayerPath) Then o.Composite.ShadowLayerPath = target
+            End If
         Next
         If recipe.Cutout IsNot Nothing AndAlso same(recipe.Cutout.BackgroundImagePath) Then recipe.Cutout.BackgroundImagePath = target
     End Sub

@@ -79,6 +79,13 @@ Public NotInheritable Class LayerRef
                         If t.Length > 24 Then t = t.Substring(0, 24) & "…"
                         Return Lang.T("文字：") & If(t = "", Lang.T("（空白）"), t)
                     Case OverlayKind.Image
+                        If Overlay.CompositeShadowName IsNot Nothing Then
+                            Return Lang.T("合成陰影：") & If(Overlay.CompositeShadowName = "", Lang.T("人物"), Overlay.CompositeShadowName)
+                        End If
+                        If Overlay.Composite IsNot Nothing Then
+                            Dim n = Overlay.Composite.Name
+                            Return Lang.T("合成：") & If(String.IsNullOrEmpty(n), Lang.T("人物"), n)
+                        End If
                         Return Lang.T("貼圖：") & IO.Path.GetFileNameWithoutExtension(If(Overlay.ImagePath, "").Replace("\"c, "/"c).Split("/"c).Last())
                     Case Else
                         Return Lang.T("貼圖：") & Overlay.Sticker

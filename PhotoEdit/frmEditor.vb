@@ -125,6 +125,9 @@ Partial Friend Class frmEditor
         AddHandler _canvas.OverlayScaled, AddressOf OnOverlayScaled
         AddHandler _canvas.OverlayRotated, AddressOf OnOverlayRotated
         AddHandler _canvas.OverlayWheel, AddressOf OnOverlayWheel
+        AddHandler _canvas.OverlayDoubleClicked, Sub(i)
+                                                     If _recipe.Overlays IsNot Nothing AndAlso i >= 0 AndAlso i < _recipe.Overlays.Count Then EditCompositeLayer(_recipe.Overlays(i))
+                                                 End Sub
         AddHandler _canvas.Resize, Sub() UpdateStatus()
         _canvas.AfterPaint = Sub(g)
                                  PaintSelectionAnts(g)
@@ -210,6 +213,7 @@ Partial Friend Class frmEditor
         imageMenu.AddItem(Item("auto", Lang.T("自動增強")))
         imageMenu.AddItem(Item("autowb", Lang.T("自動白平衡")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
+        imageMenu.AddItem(Item("composite", Lang.T("人物合成…")))
         imageMenu.AddItem(Item("airedraw", Lang.T("宮崎風 AI 重繪…")))
         imageMenu.AddItem(Item("morph", Lang.T("變形動畫…")))
         imageMenu.AddItem(Item("trace", Lang.T("描圖（轉成向量）…")))
@@ -278,6 +282,7 @@ Partial Friend Class frmEditor
             Case "morph" : ShowMorph()
             Case "trace" : ShowTrace()
             Case "pixelscale" : ShowPixelScale() ' 見 frmEditor.PixelScale.vb
+            Case "composite" : ShowCompositeGuide() ' 見 frmEditor.Composite.vb
             Case "facechange" : ShowFaceChange()
             Case "exit" : Close()
             Case "settings" : OpenSettings() ' 沒開圖片也能設定

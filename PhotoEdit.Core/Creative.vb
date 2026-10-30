@@ -132,8 +132,15 @@ Public Class Overlay
     ''' <summary>弧形，-360..360 度：正值向上拱（彩虹形），負值向下彎（微笑形），360 為整圈。</summary>
     Public Property Arc As Integer
 
+    ''' <summary>人物合成圖層的來源與參數（影像 → 人物合成…）；一般的文字、貼圖是 Nothing。</summary>
+    Public Property Composite As CompositeFigure
+    ''' <summary>人物合成的陰影圖層：人物的名稱（圖層清單顯示用）；不是陰影圖層時 Nothing。</summary>
+    Public Property CompositeShadowName As String
+
     Public Function Clone() As Overlay
-        Return DirectCast(MemberwiseClone(), Overlay)
+        Dim c = DirectCast(MemberwiseClone(), Overlay)
+        c.Composite = Composite?.Clone()
+        Return c
     End Function
 
     ''' <summary>套用文字樣式預設集：複製外觀，保留文字內容、位置、大小與角度。</summary>

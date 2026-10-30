@@ -232,7 +232,7 @@ Public NotInheritable Class CutoutCompositor
     ''' 邊緣精修的半徑（像素）：模型一個像素在這張圖上有多大（長邊 ÷ 模型輸入邊長）乘 1～3（強度越高看得越遠）。
     ''' 遮罩的邊緣模糊大約就是這麼寬，半徑比它小時看不到真正的邊。
     ''' </summary>
-    Private Shared Function RefineRadius(w As Integer, h As Integer, strength As Integer, modelInput As Integer) As Integer
+    Friend Shared Function RefineRadius(w As Integer, h As Integer, strength As Integer, modelInput As Integer) As Integer
         Dim cell = Math.Max(w, h) / CDbl(Math.Max(64, modelInput))
         Return Math.Max(2, CInt(Math.Ceiling(cell * (1 + 2 * strength / 100.0))))
     End Function

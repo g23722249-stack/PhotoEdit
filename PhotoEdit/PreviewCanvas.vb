@@ -91,6 +91,8 @@ Partial Friend Class PreviewCanvas
     Public Event OverlayRotated(index As Integer, degrees As Single)
     ''' <summary>Ctrl+滾輪（縮放）或 Shift+滾輪（旋轉）。</summary>
     Public Event OverlayWheel(index As Integer, up As Boolean, rotate As Boolean)
+    ''' <summary>在文字／貼圖上按兩下（人物合成圖層用來回到引導視窗修改）。</summary>
+    Public Event OverlayDoubleClicked(index As Integer)
 
     Private Enum OverlayHit
         None
@@ -791,6 +793,11 @@ Partial Friend Class PreviewCanvas
         MyBase.OnMouseDoubleClick(e)
         If _tool = CanvasTool.Draw AndAlso e.Button = MouseButtons.Left AndAlso _image IsNot Nothing Then
             _drawHost?.DrawDoubleClick(e)
+            Return
+        End If
+        If _tool = CanvasTool.Overlay AndAlso e.Button = MouseButtons.Left AndAlso _image IsNot Nothing Then
+            Dim index As Integer
+            If HitOverlay(e.Location, index) <> OverlayHit.None AndAlso index >= 0 Then RaiseEvent OverlayDoubleClicked(index)
             Return
         End If
         If _image Is Nothing OrElse _cropMode OrElse _tool <> CanvasTool.None OrElse e.Button <> MouseButtons.Left Then Return
