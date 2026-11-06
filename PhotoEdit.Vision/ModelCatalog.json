@@ -168,6 +168,39 @@
         { "path": "AnimeAnything/unet_controlnet/model.onnx", "size": 1206479, "url": "" },
         { "path": "AnimeAnything/unet_controlnet/weights.pb", "size": 1718976000, "url": "" }
       ]
+    },
+    {
+      "id": "ddcolor-tiny",
+      "group": "黑白照片上色",
+      "name": "上色：快速（DDColor 小）",
+      "use": "影像 → 黑白照片上色 的「快速」：檔案小、一張約一兩秒，顏色鮮明。只算顏色、亮度用原照片，放大回原尺寸細節不會糊。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/edgetools/ddcolor",
+      "files": [
+        { "path": "ddcolor-tiny-fp16.onnx", "size": 135444402, "url": "https://huggingface.co/edgetools/ddcolor/resolve/main/ddcolor-tiny-fp16.onnx" }
+      ]
+    },
+    {
+      "id": "ddcolor",
+      "group": "黑白照片上色",
+      "name": "上色：精細（DDColor）",
+      "use": "影像 → 黑白照片上色 的「精細」：DDColor 完整版，顏色最準、層次最多，比快速版慢一點、較吃記憶體。",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/facefusion/models-3.0.0",
+      "files": [
+        { "path": "ddcolor.onnx", "size": 980103562, "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/ddcolor.onnx" }
+      ]
+    },
+    {
+      "id": "deoldify",
+      "group": "黑白照片上色",
+      "name": "上色：柔和（DeOldify）",
+      "use": "影像 → 黑白照片上色 的「柔和」：DeOldify 藝術版，顏色比較淡、自然，適合想要低調一點的老照片。",
+      "license": "MIT",
+      "source": "https://huggingface.co/facefusion/models-3.0.0",
+      "files": [
+        { "path": "deoldify_artistic.onnx", "size": 255044725, "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/deoldify_artistic.onnx" }
+      ]
     }
   ]
 }

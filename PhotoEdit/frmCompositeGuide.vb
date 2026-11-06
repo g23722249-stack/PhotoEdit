@@ -7,6 +7,8 @@ Imports PhotoEdit
 ''' 影像 → 人物合成…：一步一步把人物放進目前的照片。左邊是預覽，右邊是這一步的說明與控制項。
 ''' 1 選人物 → 2 去背 → 3 位置與大小 → 4 方向與透視 → 5 前後遮擋 → 6 光線與色彩 → 7 陰影 → 8 完成。
 ''' 按「套用」後由主畫面加成合成圖層（人物）與合成陰影圖層，原照片不變。
+''' 背景可以在第一步換：目前的影像、開啟另一張、貼上，或不用背景——不用背景時只做去背，
+''' 完成時存成透明 PNG、複製到剪貼簿，或開成新影像（第 3～7 步跳過）。
 ''' 背景是主畫面目前的結果（縮小過的預覽）；位置都用這張背景的像素算，套用時換算成照片的 0..1 座標，
 ''' 變形、遮擋、陰影都做進圖層 PNG（解析度依照片原尺寸與人物原圖決定）。
 ''' </summary>
@@ -32,12 +34,17 @@ Friend Class frmCompositeGuide
     Private ReadOnly _help As HelpTip
     Private ReadOnly _font As New Font(Lang.UiFont, 10.0F)
     Private ReadOnly _boldFont As New Font(Lang.UiFont, 12.0F, FontStyle.Bold)
-    Private ReadOnly _outputSize As Size
+    Private _outputSize As Size
 
-    ' 背景（預覽尺寸）
-    Private ReadOnly _bg As Bitmap
-    Private ReadOnly _bgPx As Byte()
-    Private ReadOnly _bw, _bh As Integer
+    ' 背景（預覽尺寸）；沒有背景時 _bg 是 Nothing
+    Private _bg As Bitmap
+    Private _bgPx As Byte()
+    Private _bw, _bh As Integer
+    ' 主畫面目前的影像（可以換回來）；換成別張時記下檔案或貼上的原圖
+    Private _currentBg As Bitmap
+    Private ReadOnly _currentSize As Size
+    Private _bgFile As String
+    Private _bgPasted As Bitmap
     Private _scene As SceneAnalysis
 
     ' 人物（工作尺寸，長邊最多 CompositeBaker.MaxSide）
@@ -45,11 +52,9 @@ Friend Class frmCompositeGuide
     Private _figPx As Byte()
     Private _fw, _fh As Integer
     Private _sourceFile As String
-    Private _aiMask As Byte()
-    Private _aiMaskIsSource As Boolean
+    ''' <summary>最後的遮罩（去背面板算好的，跟著 MaskChanged 更新）。</summary>
     Private _mask As Byte()
     Private _sourceHadAlpha As Boolean
-    Private ReadOnly _strokes As New List(Of (X As Single, Y As Single, R As Single, Keep As Boolean))()
     Private _fig As New CompositeFigure()
 
     ' 位置：錨點（顯示方向）放在背景 (_tx, _ty)，縮放 _scale（背景像素 / 人物像素）
@@ -68,7 +73,6 @@ Friend Class frmCompositeGuide
     Private _bgBlur As Byte()
 
     ' 預覽
-    Private _maskView As Bitmap
     Private _prepared As Byte()
     Private _layerPrev As Bitmap
     Private _layerRect As RectangleF
@@ -80,7 +84,6 @@ Friend Class frmCompositeGuide
     Private ReadOnly _preparedTimer As New Timer With {.Interval = 250}
 
     Private _step As GuideStep = GuideStep.Pick
-    Private _busy As Boolean
     Private _syncing As Boolean
 
     ' 介面
@@ -94,19 +97,18 @@ Friend Class frmCompositeGuide
     Private ReadOnly _next As New Button With {.Text = Lang.T("下一步")}
     Private ReadOnly _cancel As New Button With {.Text = Lang.T("取消"), .DialogResult = DialogResult.Cancel}
 
-    ' 1 選人物
+    ' 1 選人物、背景
     Private ReadOnly _figInfo As New Label With {.AutoSize = False, .BackColor = Color.Transparent}
-    ' 2 去背
-    Private ReadOnly _model As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-    Private ReadOnly _autoCut As New Button With {.Text = Lang.T("自動去背")}
-    Private ReadOnly _refine As New Aqua.Slider()
-    Private ReadOnly _refineValue As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleRight}
-    Private ReadOnly _decontam As New CheckBox With {.Text = Lang.T("去除邊緣殘色"), .AutoSize = True, .Checked = True, .BackColor = Color.Transparent}
-    Private ReadOnly _showMask As New CheckBox With {.Text = Lang.T("檢查遮罩（紅色＝去掉的部分）"), .AutoSize = True, .BackColor = Color.Transparent}
-    Private ReadOnly _keepBrush As New CheckBox With {.Text = Lang.T("保留筆刷"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter}
-    Private ReadOnly _eraseBrush As New CheckBox With {.Text = Lang.T("擦除筆刷"), .Appearance = Appearance.Button, .TextAlign = ContentAlignment.MiddleCenter}
-    Private ReadOnly _brushSize As New Aqua.Slider()
-    Private ReadOnly _restoreAi As New Button With {.Text = Lang.T("清除筆刷修正")}
+    Private ReadOnly _bgInfo As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .ForeColor = Color.FromArgb(70, 76, 88)}
+    Private ReadOnly _bgOpen As New Button With {.Text = Lang.T("開啟背景…")}
+    Private ReadOnly _bgPaste As New Button With {.Text = Lang.T("貼上背景")}
+    Private ReadOnly _bgNone As New Button With {.Text = Lang.T("不用背景（透明）")}
+    Private ReadOnly _bgCurrent As New Button With {.Text = Lang.T("目前的影像")}
+    ' 8 完成（沒有背景時）
+    Private ReadOnly _savePng As New Button With {.Text = Lang.T("存成透明 PNG…")}
+    Private ReadOnly _copyPng As New Button With {.Text = Lang.T("複製到剪貼簿")}
+    ' 2 去背（共用的去背面板）
+    Private _cut As CutoutPanel
     ' 3 位置與大小
     Private ReadOnly _autoPlace As New Button With {.Text = Lang.T("自動定位")}
     Private ReadOnly _candList As New ListBox With {.IntegralHeight = False}
@@ -163,16 +165,20 @@ Friend Class frmCompositeGuide
         ''' <summary>圖片物件的中心（照片 0..1）與高度（照片高度的比例）。</summary>
         Public X, Y, Size As Double
         Public ShadowX, ShadowY, ShadowSize As Double
+        ''' <summary>背景是在引導視窗裡換的另一張：檔案（或貼上的原圖）；用目前的影像時兩個都是 Nothing。</summary>
+        Public BackgroundFile As String
+        Public BackgroundImage As Bitmap
+        ''' <summary>沒有背景：只有去背的人物（透明 PNG），其他欄位沒有用。</summary>
+        Public NoBackground As Boolean
+        Public Cutout As Bitmap
     End Class
 
-    ''' <param name="background">主畫面目前的結果（預覽尺寸），由這裡複製一份。</param>
+    ''' <param name="background">主畫面目前的結果（預覽尺寸），由這裡複製一份；沒有開啟影像時 Nothing（先不用背景，可以在第一步選）。</param>
     ''' <param name="outputSize">照片輸出的原尺寸（圖層解析度依這個決定）。</param>
     Public Sub New(background As Bitmap, help As HelpTip, outputSize As Size)
         _help = help
-        _outputSize = outputSize
-        _bg = CompositeBaker.FitWorking(DirectCast(background.Clone(), Bitmap))
-        _bw = _bg.Width : _bh = _bg.Height
-        _bgPx = CompositeBaker.ReadPixels(_bg)
+        _currentSize = outputSize
+        If background IsNot Nothing Then _currentBg = CompositeBaker.FitWorking(DirectCast(background.Clone(), Bitmap))
         Text = Lang.T("人物合成")
         Font = _font
         WindowBorderStyle = Aqua.FormBorderStyle.Fixed
@@ -234,7 +240,14 @@ Friend Class frmCompositeGuide
         _next.SetBounds(ClientSize.Width - 16 - 96 - 8 - 120, by, 120, 32)
         _back.SetBounds(ClientSize.Width - 16 - 96 - 8 - 120 - 8 - 110, by, 110, 32)
         _next.Font = New Font(_font, FontStyle.Bold)
-        AddHandler _back.Click, Sub() TryGoTo(CType(_step - 1, GuideStep))
+        AddHandler _back.Click, Sub()
+                                    ' 沒有背景時第 3～7 步跳過：往前找第一個能進的
+                                    Dim s = _step - 1
+                                    While s > GuideStep.Pick AndAlso Not CanEnter(CType(s, GuideStep))
+                                        s -= 1
+                                    End While
+                                    TryGoTo(CType(s, GuideStep))
+                                End Sub
         AddHandler _next.Click, Sub() NextClicked()
         Controls.AddRange({_back, _next, _cancel})
         CancelButton = _cancel
@@ -243,6 +256,7 @@ Friend Class frmCompositeGuide
                                             RebuildPrepared()
                                         End Sub
         ThemeManager.Attach(Me)
+        If _currentBg IsNot Nothing Then UseBackground(DirectCast(_currentBg.Clone(), Bitmap), _currentSize, Nothing, Nothing) Else UseBackground(Nothing, Size.Empty, Nothing, Nothing)
         ShowStep(GuideStep.Pick)
     End Sub
 
@@ -287,60 +301,60 @@ Friend Class frmCompositeGuide
         AddHandler paste.Click, Sub() PasteFigure()
         _help.SetHelp("comp.open", open)
         _help.SetHelp("comp.paste", paste)
-        _figInfo.SetBounds(0, 44, PanelW, 120)
+        _figInfo.SetBounds(0, 44, PanelW, 110)
         p.Controls.AddRange({open, paste, _figInfo})
+        ' 背景
+        Dim head As New Label With {.Text = Lang.T("背景"), .AutoSize = False, .Font = New Font(_font, FontStyle.Bold), .BackColor = Color.Transparent}
+        head.SetBounds(0, 166, PanelW, 22)
+        _bgInfo.SetBounds(0, 190, PanelW, 64)
+        NewButton(_bgOpen, 0, 258, 160)
+        NewButton(_bgPaste, 168, 258, 120)
+        NewButton(_bgNone, 0, 296, 160)
+        NewButton(_bgCurrent, 168, 296, 120)
+        AddHandler _bgOpen.Click, Sub() OpenBackgroundWithDialog()
+        AddHandler _bgPaste.Click, Sub() PasteBackground()
+        AddHandler _bgNone.Click, Sub() UseBackground(Nothing, Size.Empty, Nothing, Nothing)
+        AddHandler _bgCurrent.Click, Sub()
+                                         If _currentBg IsNot Nothing Then UseBackground(DirectCast(_currentBg.Clone(), Bitmap), _currentSize, Nothing, Nothing)
+                                     End Sub
+        _help.SetHelp("comp.bgopen", _bgOpen)
+        _help.SetHelp("comp.bgpaste", _bgPaste)
+        _help.SetHelp("comp.bgnone", _bgNone)
+        _help.SetHelp("comp.bgcurrent", _bgCurrent)
+        p.Controls.AddRange({head, _bgInfo, _bgOpen, _bgPaste, _bgNone, _bgCurrent})
     End Sub
 
     Private Sub BuildCutoutPanel(p As Panel)
-        Dim l As New Label With {.Text = Lang.T("模型"), .AutoSize = False, .BackColor = Color.Transparent}
-        l.SetBounds(0, 4, 50, 22)
-        _model.SetBounds(52, 0, PanelW - 52, 26)
-        FillModels()
-        AddHandler _model.DropDown, Sub() FillModels()
-        AddHandler _model.SelectedIndexChanged, Sub()
-                                                    If Not _syncing AndAlso _model.SelectedIndex >= 0 Then _fig.Model = CutoutModels.Order(_model.SelectedIndex)
-                                                End Sub
-        _help.SetHelpLinked("comp.model", _model, l, _model)
-        NewButton(_autoCut, 0, 36, PanelW)
-        _autoCut.Font = New Font(_font, FontStyle.Bold)
-        AddHandler _autoCut.Click, Sub() RunAutoCutout()
-        _help.SetHelp("comp.autocut", _autoCut)
-        p.Controls.AddRange({l, _model, _autoCut})
-        Dim y = AddSlider(p, 80, Lang.T("邊緣精修"), _refine, _refineValue, 0, 100, 50, "comp.refine")
-        AddHandler _refine.ValueChanged, Sub()
-                                             _refineValue.Text = _refine.Value.ToString()
-                                             If _syncing Then Return
-                                             _fig.EdgeRefine = _refine.Value
-                                             RecomputeMask()
-                                         End Sub
-        _refineValue.Text = "50"
-        _decontam.Location = New Point(0, y)
-        AddHandler _decontam.CheckedChanged, Sub()
-                                                 If _syncing Then Return
-                                                 _fig.Decontaminate = _decontam.Checked
-                                                 InvalidatePrepared()
-                                             End Sub
-        _help.SetHelp("comp.decontam", _decontam)
-        _showMask.Location = New Point(0, y + 28)
-        AddHandler _showMask.CheckedChanged, Sub() RebuildMaskView()
-        _help.SetHelp("comp.showmask", _showMask)
-        y += 64
-        NewButton(_keepBrush, 0, y, 110)
-        NewButton(_eraseBrush, 118, y, 110)
-        ExclusiveTools(_keepBrush, _eraseBrush)
-        _help.SetHelp("comp.keep", _keepBrush)
-        _help.SetHelp("comp.erase", _eraseBrush)
-        p.Controls.AddRange({_decontam, _showMask, _keepBrush, _eraseBrush})
-        Dim sizeValue As New Label With {.AutoSize = False, .BackColor = Color.Transparent, .TextAlign = ContentAlignment.MiddleRight, .Text = "24"}
-        y = AddSlider(p, y + 40, Lang.T("筆刷大小"), _brushSize, sizeValue, 4, 120, 24, "comp.brush")
-        AddHandler _brushSize.ValueChanged, Sub() sizeValue.Text = _brushSize.Value.ToString()
-        NewButton(_restoreAi, 0, y, 160)
-        AddHandler _restoreAi.Click, Sub()
-                                         _strokes.Clear()
-                                         RecomputeMask()
+        _cut = New CutoutPanel(_help, PanelW, Lang.T("自動去背"), portrait:=False) With {.Location = New Point(0, 0)}
+        AddHandler _cut.MaskChanged, Sub() CutMaskChanged()
+        AddHandler _cut.OptionsChanged, Sub()
+                                            SyncCutOptions()
+                                            InvalidatePrepared()
+                                        End Sub
+        AddHandler _cut.ViewChanged, Sub()
+                                         If _step = GuideStep.Cutout Then
+                                             _canvas.Cursor = If(_cut.BrushActive, Cursors.Cross, Cursors.Default)
+                                             _canvas.Invalidate()
+                                         End If
                                      End Sub
-        _help.SetHelp("comp.restore", _restoreAi)
-        p.Controls.Add(_restoreAi)
+        AddHandler _cut.StatusChanged, Sub(sender, text) _status.Text = text
+        p.Controls.Add(_cut)
+    End Sub
+
+    ''' <summary>去背面板的遮罩變了：記下來，人物分析與預覽圖層重做。</summary>
+    Private Sub CutMaskChanged()
+        _mask = _cut.Mask
+        _figAnalysis = Nothing
+        SyncCutOptions()
+        InvalidatePrepared()
+        UpdateStepLabels()
+    End Sub
+
+    ''' <summary>做圖層要用的去背設定（去除殘色的半徑依精修與模型）記到 _fig。</summary>
+    Private Sub SyncCutOptions()
+        If Not _cut.AiMaskIsSource Then _fig.Model = _cut.MaskModel
+        _fig.EdgeRefine = _cut.Options.EdgeRefine
+        _fig.Decontaminate = _cut.Options.Decontaminate
     End Sub
 
     Private Sub BuildPlacePanel(p As Panel)
@@ -552,20 +566,13 @@ Friend Class frmCompositeGuide
 
     Private Sub BuildFinishPanel(p As Panel)
         _summary.SetBounds(0, 0, PanelW, 360)
-        p.Controls.Add(_summary)
-    End Sub
-
-    Private Sub FillModels()
-        Dim keep = _model.SelectedIndex
-        _syncing = True
-        _model.BeginUpdate()
-        _model.Items.Clear()
-        For Each m In CutoutModels.Order
-            _model.Items.Add(CutoutModels.DisplayName(m) & If(BackgroundRemover.ModelAvailable(m), "", Lang.T("（未下載）")))
-        Next
-        _model.SelectedIndex = If(keep >= 0, keep, Array.IndexOf(CutoutModels.Order, _fig.Model))
-        _model.EndUpdate()
-        _syncing = False
+        NewButton(_savePng, 0, 120, 160)
+        NewButton(_copyPng, 168, 120, 140)
+        AddHandler _savePng.Click, Sub() SaveCutoutWithDialog()
+        AddHandler _copyPng.Click, Sub() CopyCutout()
+        _help.SetHelp("comp.savepng", _savePng)
+        _help.SetHelp("comp.copypng", _copyPng)
+        p.Controls.AddRange({_summary, _savePng, _copyPng})
     End Sub
 
     '=====================================================================
@@ -576,11 +583,13 @@ Friend Class frmCompositeGuide
         If s <= GuideStep.Pick Then Return True
         If _figure Is Nothing Then Return False
         If s >= GuideStep.Place AndAlso _mask Is Nothing Then Return False
+        ' 沒有背景：只有去背，位置、透視、遮擋、色彩、陰影都跳過
+        If _bg Is Nothing AndAlso s >= GuideStep.Place AndAlso s < GuideStep.Finish Then Return False
         Return True
     End Function
 
     Private Sub TryGoTo(s As GuideStep)
-        If s < GuideStep.Pick OrElse s > GuideStep.Finish OrElse _busy Then Return
+        If s < GuideStep.Pick OrElse s > GuideStep.Finish OrElse _cut.Busy Then Return
         If Not CanEnter(s) Then
             _status.Text = If(_figure Is Nothing, Lang.T("請先選一張人物圖片。"), Lang.T("請先去背（或使用原圖的透明背景）。"))
             Return
@@ -591,6 +600,10 @@ Friend Class frmCompositeGuide
     Private Sub NextClicked()
         If _step = GuideStep.Finish Then
             Finish()
+            Return
+        End If
+        If _bg Is Nothing AndAlso _step = GuideStep.Cutout Then
+            TryGoTo(GuideStep.Finish)
             Return
         End If
         TryGoTo(CType(_step + 1, GuideStep))
@@ -612,22 +625,24 @@ Friend Class frmCompositeGuide
         Next
         UpdateStepLabels()
         _back.Enabled = s > GuideStep.Pick
-        _next.Text = If(s = GuideStep.Finish, Lang.T("套用"), Lang.T("下一步"))
+        _next.Text = If(s = GuideStep.Finish, If(_bg Is Nothing, Lang.T("開成新影像"), Lang.T("套用")), Lang.T("下一步"))
+        _savePng.Visible = _bg Is Nothing
+        _copyPng.Visible = _bg Is Nothing
         _status.Text = ""
         _canvas.Cursor = Cursors.Default
         Select Case s
             Case GuideStep.Pick
                 _title.Text = Lang.T("1. 選人物")
-                _desc.Text = Lang.T("選一張要放進照片的人物圖（照片、插畫、動漫都可以）。已經是透明背景的 PNG 可以直接使用，不用再去背。")
+                _desc.Text = Lang.T("選一張要放進照片的人物圖（照片、插畫、動漫都可以）。已經是透明背景的 PNG 可以直接使用，不用再去背。下面可以換背景，或不用背景只去背。")
             Case GuideStep.Cutout
                 _title.Text = Lang.T("2. 去背")
                 _desc.Text = Lang.T("用 AI 把人物和原本的背景分開。按「自動去背」，再用筆刷修正漏掉或多出來的地方；「檢查遮罩」用紅色顯示被去掉的部分。")
-                If _aiMask Is Nothing AndAlso Not _busy Then
+                If _cut.AiMask Is Nothing AndAlso Not _cut.Busy Then
                     _status.Text = Lang.T("按「自動去背」開始。")
-                ElseIf _sourceHadAlpha AndAlso _aiMaskIsSource AndAlso _strokes.Count = 0 Then
+                ElseIf _sourceHadAlpha AndAlso _cut.AiMaskIsSource AndAlso _cut.StrokeCount = 0 Then
                     _status.Text = Lang.T("原圖已經是透明背景，可以直接下一步；也可以換成 AI 去背。")
                 End If
-                If _keepBrush.Checked OrElse _eraseBrush.Checked Then _canvas.Cursor = Cursors.Cross
+                If _cut.BrushActive Then _canvas.Cursor = Cursors.Cross
             Case GuideStep.Place
                 _title.Text = Lang.T("3. 位置與大小")
                 _desc.Text = Lang.T("「自動定位」會分析背景（天空、柱頂、屋頂、地面）和人物（腳的位置、是不是半身像），推薦幾個位置。也可以直接拖曳、用滾輪調整大小。")
@@ -658,8 +673,16 @@ Friend Class frmCompositeGuide
                 SyncShadowControls()
             Case GuideStep.Finish
                 _title.Text = Lang.T("8. 完成")
-                _desc.Text = Lang.T("按「套用」，人物（和陰影）會加成主畫面上的合成圖層，原本的照片不變。之後可以在主畫面移動、縮放、調整透明度，或刪除。")
-                _summary.Text = SummaryText()
+                If _bg Is Nothing Then
+                    _desc.Text = Lang.T("沒有背景：去背好的人物可以存成透明 PNG、複製到剪貼簿（貼到其他程式），或按「開成新影像」在主畫面繼續編輯。")
+                    _summary.Text = Lang.F("人物：{0}（{1} × {2}）", IO.Path.GetFileName(If(_sourceFile, Lang.T("貼上的圖片"))), _fw, _fh) & vbCrLf & vbCrLf &
+                                    Lang.F("去背：{0}", If(_cut.AiMaskIsSource, Lang.T("使用原圖的透明背景"), CutoutModels.DisplayName(_fig.Model)))
+                Else
+                    _desc.Text = If(_bgFile IsNot Nothing OrElse _bgPasted IsNot Nothing,
+                                    Lang.T("按「套用」，背景會開成新影像、人物（和陰影）加成上面的合成圖層。之後可以在主畫面移動、縮放、調整透明度，或刪除。"),
+                                    Lang.T("按「套用」，人物（和陰影）會加成主畫面上的合成圖層，原本的照片不變。之後可以在主畫面移動、縮放、調整透明度，或刪除。"))
+                    _summary.Text = SummaryText()
+                End If
         End Select
         _canvas.Invalidate()
     End Sub
@@ -668,8 +691,8 @@ Friend Class frmCompositeGuide
         Dim fa = DisplayAnalysis()
         Dim lines As New List(Of String) From {
             Lang.F("人物：{0}（{1} × {2}）", Path.GetFileName(If(_sourceFile, Lang.T("貼上的圖片"))), _fw, _fh),
-            Lang.F("去背：{0}", If(_aiMaskIsSource, Lang.T("使用原圖的透明背景"), CutoutModels.DisplayName(_fig.Model))) &
-                If(_strokes.Count > 0, Lang.F("，筆刷修正 {0} 筆", _strokes.Count), ""),
+            Lang.F("去背：{0}", If(_cut.AiMaskIsSource, Lang.T("使用原圖的透明背景"), CutoutModels.DisplayName(_fig.Model))) &
+                If(_cut.StrokeCount > 0, Lang.F("，筆刷修正 {0} 筆", _cut.StrokeCount), ""),
             Lang.F("位置：高度約畫面 {0:P0}{1}", fa.Height * _scale / _bh, If(fa.BottomCropped, Lang.T("（半身像，貼齊畫面下緣）"), "")) &
                 If(_fig.FlipHorizontal, Lang.T("，左右翻轉"), ""),
             Lang.F("方向與透視：旋轉 {0:0}°，仰角透視 {1:P0}", _fig.Rotation, _fig.Keystone),
@@ -719,31 +742,33 @@ Friend Class frmCompositeGuide
         End Try
     End Sub
 
+    ''' <summary>
+    ''' 人物由別的工具交過來（怪獸去背小幫手已經去好背的透明圖，由這裡複製一份）：
+    ''' 透明背景會被當成「已經去背」，去背那一步可以略過；說明改成提示先在下面選背景。
+    ''' </summary>
+    Friend Sub PresetFigure(cutout As Bitmap, name As String, hint As String)
+        SetFigure(CompositeBaker.FitWorking(DirectCast(cutout.Clone(), Bitmap)), Nothing)
+        _figInfo.Text = Lang.F("{0}{1}{2} × {3} 像素", name, vbCrLf, _fw, _fh) & vbCrLf & vbCrLf & hint
+        _status.Text = hint
+    End Sub
+
     Private Sub SetFigure(bmp As Bitmap, file As String)
         _figure?.Dispose()
         _figure = bmp
         _fw = bmp.Width : _fh = bmp.Height
         _figPx = CompositeBaker.ReadPixels(bmp)
         _sourceFile = file
-        _strokes.Clear()
         _placed = False
         _shadowInit = False
         _candidates.Clear()
         _candList.Items.Clear()
         Dim srcAlpha = CompositeBaker.SourceAlpha(_figPx, _fw, _fh)
         _sourceHadAlpha = srcAlpha IsNot Nothing
-        _aiMaskIsSource = _sourceHadAlpha
-        _aiMask = srcAlpha
-        _mask = If(srcAlpha Is Nothing, Nothing, DirectCast(srcAlpha.Clone(), Byte()))
+        _cut.SetFigure(bmp, _figPx, srcAlpha, _sourceHadAlpha)
         _figAnalysis = Nothing
-        If Not _sourceHadAlpha Then
-            _fig.Model = CutoutModels.Preferred(False, AddressOf BackgroundRemover.ModelAvailable)
-            FillModels()
-        End If
         _fig.Color = New CompositeColor With {.Mode = CompositeColorMode.Environment}
         _figInfo.Text = Lang.F("{0}{1}{2} × {3} 像素", If(file Is Nothing, Lang.T("貼上的圖片"), Path.GetFileName(file)), vbCrLf, _fw, _fh) & vbCrLf & vbCrLf &
                         If(_sourceHadAlpha, Lang.T("這張圖已經是透明背景，可以直接用（去背那一步可以略過）。"), Lang.T("下一步用 AI 去背。"))
-        RebuildMaskView()
         InvalidatePrepared(immediate:=True)
         ShowStep(_step)
     End Sub
@@ -765,18 +790,20 @@ Friend Class frmCompositeGuide
         _fw = bmp.Width : _fh = bmp.Height
         _figPx = CompositeBaker.ReadPixels(bmp)
         _sourceFile = Nothing
-        _strokes.Clear()
         _figAnalysis = Nothing
-        _aiMask = CompositeBaker.LoadMask(c.AiMaskPath, _fw, _fh)
-        _mask = CompositeBaker.LoadMask(c.MaskPath, _fw, _fh)
-        If _mask Is Nothing Then
+        Dim ai = CompositeBaker.LoadMask(c.AiMaskPath, _fw, _fh)
+        Dim final = CompositeBaker.LoadMask(c.MaskPath, _fw, _fh)
+        If final Is Nothing Then
             _status.Text = Lang.T("找不到這個合成圖層的遮罩，無法修改。")
             Return False
         End If
         ' 沒有 AI 遮罩：原圖本來就透明（或用的是最後的遮罩），筆刷修正以最後的遮罩為準
-        _aiMaskIsSource = _aiMask Is Nothing
-        If _aiMask Is Nothing Then _aiMask = DirectCast(_mask.Clone(), Byte())
-        _sourceHadAlpha = _aiMaskIsSource
+        _sourceHadAlpha = ai Is Nothing
+        _cut.SetOptions(New CutoutEditOptions With {.EdgeRefine = _fig.EdgeRefine, .Decontaminate = _fig.Decontaminate})
+        _cut.SetFigure(bmp, _figPx, If(ai, DirectCast(final.Clone(), Byte())), _sourceHadAlpha, _fig.Model)
+        _cut.SetFinalMask(final) ' 存好的遮罩（含當時的筆刷修正）原樣用
+        _mask = final
+        _figAnalysis = Nothing
         _occ = CompositeBaker.LoadMask(c.OcclusionMaskPath, _bw, _bh)
         Dim follow = CompositePlacement.FollowLayer(c.TargetX, c.TargetY, c.LayerX, c.LayerY, c.LayerSize, o.X, o.Y, o.Size)
         Dim fa = DisplayAnalysis()
@@ -788,13 +815,9 @@ Friend Class frmCompositeGuide
         _syncing = True
         _flip.Checked = _fig.FlipHorizontal
         _useHorizon.Checked = _horizon >= 0
-        _decontam.Checked = _fig.Decontaminate
-        _refine.Value = Math.Clamp(_fig.EdgeRefine, 0, 100)
         _syncing = False
-        FillModels()
         _figInfo.Text = Lang.F("{0}{1}{2} × {3} 像素", _fig.Name, vbCrLf, _fw, _fh)
         Text = Lang.T("人物合成（修改）")
-        RebuildMaskView()
         RebuildOccluderViews()
         SyncHeightSlider()
         SyncPerspectiveControls()
@@ -808,99 +831,10 @@ Friend Class frmCompositeGuide
     ' 2 去背
     '=====================================================================
 
-    ''' <summary>AI 去背（背景執行）；完成或失敗後回傳。測試也用這個。</summary>
+    ''' <summary>AI 去背（處理中視窗）；完成或失敗後回傳。測試也用這個。</summary>
     Friend Function RunAutoCutout() As Task
-        If _figure Is Nothing OrElse _busy Then Return Task.CompletedTask
-        Dim model = _fig.Model
-        If Not BackgroundRemover.ModelAvailable(model) Then
-            _status.Text = Lang.F("「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。", CutoutModels.DisplayName(model))
-            Return Task.CompletedTask
-        End If
-        _busy = True
-        _autoCut.Enabled = False
-        _next.Enabled = False
-        _status.Text = Lang.T("去背計算中…（第一次載入模型會久一點）")
-        Cursor = Cursors.AppStarting
-        Dim copy = DirectCast(_figure.Clone(), Bitmap)
-        Dim watch = Diagnostics.Stopwatch.StartNew()
-        Return Task.Run(Function() CompositeBaker.AiMask(copy, model)).ContinueWith(
-            Sub(t)
-                copy.Dispose()
-                Dim err = t.Exception?.GetBaseException().Message
-                Dim result = If(t.Status = TaskStatus.RanToCompletion, t.Result, Nothing)
-                Dim apply = Sub()
-                                _busy = False
-                                _autoCut.Enabled = True
-                                _next.Enabled = True
-                                Cursor = Cursors.Default
-                                If result Is Nothing Then
-                                    _status.Text = Lang.T("去背失敗：") & err
-                                    Return
-                                End If
-                                _aiMask = result
-                                _aiMaskIsSource = False
-                                _strokes.Clear()
-                                RecomputeMask()
-                                _status.Text = Lang.F("去背完成（{0:0.0} 秒，{1}）。可以用筆刷修正，或直接下一步。", watch.Elapsed.TotalSeconds, CutoutModels.DisplayName(model))
-                                UpdateStepLabels()
-                            End Sub
-                If IsDisposed Then Return
-                If InvokeRequired Then Invoke(apply) Else apply()
-            End Sub)
+        Return _cut.RunCutoutAsync(Me)
     End Function
-
-    ''' <summary>由 AI 遮罩重算：邊緣精修（原圖透明時不精修）→ 依序套用筆刷。</summary>
-    Private Sub RecomputeMask()
-        If _aiMask Is Nothing Then Return
-        _mask = If(_aiMaskIsSource, DirectCast(_aiMask.Clone(), Byte()), CompositeBaker.RefineMask(_aiMask, _figPx, _fw, _fh, _fig.EdgeRefine, _fig.Model))
-        For Each s In _strokes
-            PaintDab(_mask, _fw, _fh, s.X, s.Y, s.R, s.Keep)
-        Next
-        _figAnalysis = Nothing
-        RebuildMaskView()
-        InvalidatePrepared()
-    End Sub
-
-    Private Shared Sub PaintDab(mask As Byte(), w As Integer, h As Integer, cx As Single, cy As Single, r As Single, keep As Boolean)
-        Dim x0 = Math.Max(0, CInt(cx - r)), x1 = Math.Min(w - 1, CInt(cx + r))
-        Dim y0 = Math.Max(0, CInt(cy - r)), y1 = Math.Min(h - 1, CInt(cy + r))
-        For y = y0 To y1
-            For x = x0 To x1
-                Dim d = Math.Sqrt((x - cx) ^ 2 + (y - cy) ^ 2)
-                If d > r Then Continue For
-                ' 邊上 1.5 像素柔和過渡
-                Dim a = Math.Clamp((r - d) / 1.5, 0, 1)
-                Dim i = y * w + x
-                Dim target = If(keep, 255, 0)
-                mask(i) = CByte(Math.Round(mask(i) + (target - mask(i)) * a))
-            Next
-        Next
-    End Sub
-
-    ''' <summary>去背頁的預覽：人物＋遮罩（棋盤格上），或「檢查遮罩」時把去掉的部分蓋紅色。</summary>
-    Private Sub RebuildMaskView()
-        _maskView?.Dispose()
-        _maskView = Nothing
-        If _figure Is Nothing Then
-            _canvas.Invalidate()
-            Return
-        End If
-        Dim px = DirectCast(_figPx.Clone(), Byte())
-        For i = 0 To _fw * _fh - 1
-            Dim a = If(_mask Is Nothing, 255, CInt(_mask(i)))
-            If _showMask.Checked Then
-                Dim k = (255 - a) * 0.6 / 255
-                px(i * 4) = CByte(px(i * 4) * (1 - k))
-                px(i * 4 + 1) = CByte(px(i * 4 + 1) * (1 - k))
-                px(i * 4 + 2) = CByte(px(i * 4 + 2) * (1 - k) + 255 * k)
-                px(i * 4 + 3) = 255
-            Else
-                px(i * 4 + 3) = CByte(a)
-            End If
-        Next
-        _maskView = CompositeBaker.ToBitmap(px, _fw, _fh)
-        _canvas.Invalidate()
-    End Sub
 
     '=====================================================================
     ' 3 位置與大小
@@ -1037,7 +971,7 @@ Friend Class frmCompositeGuide
 
     Private Sub OcclusionPaint(bx As Single, by As Single, r As Single, keep As Boolean)
         If _occ Is Nothing Then ReDim _occ(_bw * _bh - 1)
-        PaintDab(_occ, _bw, _bh, bx, by, r, keep)
+        CutoutEdit.PaintDab(_occ, _bw, _bh, bx, by, r, keep)
     End Sub
 
     '=====================================================================
@@ -1218,7 +1152,7 @@ Friend Class frmCompositeGuide
 
     Private ReadOnly Property SceneMode As Boolean
         Get
-            Return _step >= GuideStep.Place
+            Return _step >= GuideStep.Place AndAlso _bg IsNot Nothing
         End Get
     End Property
 
@@ -1227,7 +1161,7 @@ Friend Class frmCompositeGuide
         g.InterpolationMode = InterpolationMode.HighQualityBilinear
         g.PixelOffsetMode = PixelOffsetMode.HighQuality
         If Not SceneMode Then
-            If _maskView Is Nothing Then
+            If _figure Is Nothing Then
                 Using f As New Font(Lang.UiFont, 13)
                     TextRenderer.DrawText(g, Lang.T("先選一張人物圖片"), f, _canvas.ClientRectangle, Color.FromArgb(180, 185, 195), TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
                 End Using
@@ -1235,9 +1169,7 @@ Friend Class frmCompositeGuide
             End If
             Dim s = ViewScale(_fw, _fh)
             Dim o = ViewOrigin(_fw, _fh, s)
-            Dim r As New RectangleF(o.X, o.Y, _fw * s, _fh * s)
-            DrawChecker(g, Rectangle.Round(r))
-            g.DrawImage(_maskView, r)
+            _cut.DrawView(g, New RectangleF(o.X, o.Y, _fw * s, _fh * s), If(_step = GuideStep.Cutout, _hover, Nothing))
             Return
         End If
         Dim vs = ViewScale(_bw, _bh)
@@ -1288,18 +1220,6 @@ Friend Class frmCompositeGuide
         End If
     End Sub
 
-    Private Shared Sub DrawChecker(g As Graphics, r As Rectangle)
-        Const cell = 12
-        Using light As New SolidBrush(Color.FromArgb(250, 250, 250)), dark As New SolidBrush(Color.FromArgb(220, 222, 226))
-            g.FillRectangle(light, r)
-            For y = r.Top To r.Bottom - 1 Step cell
-                For x = r.Left + If(((y - r.Top) \ cell) Mod 2 = 0, 0, cell) To r.Right - 1 Step cell * 2
-                    g.FillRectangle(dark, x, y, Math.Min(cell, r.Right - x), Math.Min(cell, r.Bottom - y))
-                Next
-            Next
-        End Using
-    End Sub
-
     '=====================================================================
     ' 滑鼠
     '=====================================================================
@@ -1309,6 +1229,7 @@ Friend Class frmCompositeGuide
     Private _guideFrom As PointF?
     Private _guideTo As PointF?
     Private _draggingHorizon As Boolean
+    Private _hover As Point? ' 去背那一步：筆刷圓圈的位置
 
     Private Function CanvasToFigure(p As Point) As PointF
         Dim s = ViewScale(_fw, _fh)
@@ -1323,13 +1244,10 @@ Friend Class frmCompositeGuide
     End Function
 
     Private Sub CanvasMouseDown(sender As Object, e As MouseEventArgs)
-        If e.Button <> MouseButtons.Left OrElse _busy Then Return
+        If e.Button <> MouseButtons.Left OrElse _cut.Busy Then Return
         Select Case _step
             Case GuideStep.Cutout
-                If _mask IsNot Nothing AndAlso (_keepBrush.Checked OrElse _eraseBrush.Checked) Then
-                    _painting = True
-                    PaintAt(e.Location)
-                End If
+                If _cut.BeginStroke(CanvasToFigure(e.Location), ViewScale(_fw, _fh)) Then _painting = True
             Case GuideStep.Perspective
                 If _guideMode.Checked Then
                     _guideFrom = CanvasToBackground(e.Location)
@@ -1367,6 +1285,10 @@ Friend Class frmCompositeGuide
     End Sub
 
     Private Sub CanvasMouseMove(sender As Object, e As MouseEventArgs)
+        If _step = GuideStep.Cutout AndAlso _cut.BrushActive Then
+            _hover = e.Location
+            If Not _painting Then _canvas.Invalidate()
+        End If
         If _draggingHorizon Then
             _horizon = Math.Clamp(CanvasToBackground(e.Location).Y, 0, _bh)
             ApplyHorizon()
@@ -1376,7 +1298,7 @@ Friend Class frmCompositeGuide
             _canvas.Invalidate()
         ElseIf _painting Then
             Select Case _step
-                Case GuideStep.Cutout : PaintAt(e.Location)
+                Case GuideStep.Cutout : _cut.ContinueStroke(CanvasToFigure(e.Location), ViewScale(_fw, _fh))
                 Case GuideStep.Occlusion : OcclusionPaintAt(e.Location)
                 Case GuideStep.Shadow
                     Dim b = CanvasToBackground(e.Location)
@@ -1409,8 +1331,7 @@ Friend Class frmCompositeGuide
         If _painting Then
             _painting = False
             If _step = GuideStep.Cutout Then
-                _figAnalysis = Nothing
-                InvalidatePrepared()
+                _cut.EndStroke()
             ElseIf _step = GuideStep.Occlusion Then
                 RebuildOccluderViews()
             End If
@@ -1420,15 +1341,6 @@ Friend Class frmCompositeGuide
             _canvas.Cursor = Cursors.Default
             RebuildLayers()
         End If
-    End Sub
-
-    Private Sub PaintAt(p As Point)
-        Dim f = CanvasToFigure(p)
-        Dim r = CSng(_brushSize.Value / 2.0 / ViewScale(_fw, _fh))
-        Dim keep = _keepBrush.Checked
-        _strokes.Add((f.X, f.Y, r, keep))
-        PaintDab(_mask, _fw, _fh, f.X, f.Y, r, keep)
-        RebuildMaskView()
     End Sub
 
     Private Sub OcclusionPaintAt(p As Point)
@@ -1447,11 +1359,169 @@ Friend Class frmCompositeGuide
     End Sub
 
     '=====================================================================
+    ' 背景（第一步可以換）
+    '=====================================================================
+
+    ''' <summary>
+    ''' 換背景：working＝工作尺寸的背景（這裡接手，Nothing＝不用背景），full＝輸出的原尺寸；
+    ''' file／pasted＝換成的那張（用目前的影像時兩個都是 Nothing）。位置、遮擋、地平線、陰影都重來。測試也用這個。
+    ''' </summary>
+    Friend Sub UseBackground(working As Bitmap, full As Size, file As String, pasted As Bitmap)
+        _bg?.Dispose()
+        _bgPasted?.Dispose()
+        _bg = working
+        _bgFile = file
+        _bgPasted = pasted
+        _outputSize = full
+        If working IsNot Nothing Then
+            _bw = working.Width : _bh = working.Height
+            _bgPx = CompositeBaker.ReadPixels(working)
+        Else
+            _bw = 0 : _bh = 0
+            _bgPx = Nothing
+        End If
+        _scene = Nothing
+        _bgBlur = Nothing
+        _occ = Nothing
+        _occluderView?.Dispose() : _occluderView = Nothing
+        _occTint?.Dispose() : _occTint = Nothing
+        _layerPrev?.Dispose() : _layerPrev = Nothing
+        _shadowPrev?.Dispose() : _shadowPrev = Nothing
+        _placed = False
+        _shadowInit = False
+        _horizon = -1
+        _guides.Clear()
+        _candidates.Clear()
+        _candList.Items.Clear()
+        _bgCurrent.Enabled = _currentBg IsNot Nothing AndAlso (working Is Nothing OrElse file IsNot Nothing OrElse pasted IsNot Nothing)
+        _bgNone.Enabled = working IsNot Nothing
+        _bgInfo.Text = If(working Is Nothing,
+                          Lang.T("不用背景：只做去背，完成時存成透明 PNG、複製到剪貼簿或開成新影像。"),
+                          If(file IsNot Nothing, Lang.F("{0}（{1} × {2}）", IO.Path.GetFileName(file), full.Width, full.Height),
+                             If(pasted IsNot Nothing, Lang.F("貼上的圖片（{0} × {1}）", full.Width, full.Height),
+                                Lang.F("目前的影像（{0} × {1}）", full.Width, full.Height))))
+        UpdateStepLabels()
+        _canvas.Invalidate()
+    End Sub
+
+    Private Sub OpenBackgroundWithDialog()
+        Using dlg As New OpenFileDialog With {.Title = Lang.T("選擇背景圖片"), .Filter = Lang.T("圖片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.tif;*.tiff|所有檔案|*.*")}
+            If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
+            LoadBackgroundFile(dlg.FileName)
+        End Using
+    End Sub
+
+    ''' <summary>換成這個檔案當背景（測試也用這個）。</summary>
+    Friend Function LoadBackgroundFile(file As String) As Boolean
+        Try
+            Using full = CompositeBaker.LoadFullImage(file)
+                UseBackground(WorkingBackground(full), full.Size, file, Nothing)
+            End Using
+            Return True
+        Catch ex As Exception When TypeOf ex Is IO.IOException OrElse TypeOf ex Is ArgumentException OrElse TypeOf ex Is OutOfMemoryException OrElse TypeOf ex Is UnauthorizedAccessException
+            _status.Text = Lang.T("無法開啟圖片：") & ex.Message
+            Return False
+        End Try
+    End Function
+
+    Private Sub PasteBackground()
+        Try
+            Dim data = Clipboard.GetDataObject()
+            Dim file = If(data Is Nothing, Nothing, frmEditor.ImageFile(data))
+            If file IsNot Nothing Then
+                LoadBackgroundFile(file)
+                Return
+            End If
+            Dim bmp = If(data Is Nothing, Nothing, frmEditor.ImageBitmap(data))
+            If bmp Is Nothing Then
+                _status.Text = Lang.T("剪貼簿裡沒有圖片。")
+                Return
+            End If
+            UseBackground(WorkingBackground(bmp), bmp.Size, Nothing, bmp)
+        Catch ex As Exception When TypeOf ex Is Runtime.InteropServices.ExternalException OrElse TypeOf ex Is IO.IOException
+            _status.Text = Lang.T("無法讀取剪貼簿：") & ex.Message
+        End Try
+    End Sub
+
+    ''' <summary>背景的工作尺寸（和主畫面給的一樣，長邊 1600）。</summary>
+    Private Shared Function WorkingBackground(full As Bitmap) As Bitmap
+        Dim k = Math.Min(1.0, 1600 / CDbl(Math.Max(full.Width, full.Height)))
+        Dim w = Math.Max(1, CInt(full.Width * k)), h = Math.Max(1, CInt(full.Height * k))
+        Dim b As New Bitmap(w, h, Imaging.PixelFormat.Format32bppArgb)
+        Using g = Graphics.FromImage(b)
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality
+            g.DrawImage(full, 0, 0, w, h)
+        End Using
+        Return CompositeBaker.FitWorking(b)
+    End Function
+
+    '=====================================================================
+    ' 沒有背景：去背好的人物
+    '=====================================================================
+
+    ''' <summary>去背好的人物（去除殘色、裁到人的範圍、透明背景）；還沒去背時 Nothing。</summary>
+    Friend Function BakeCutout() As Bitmap
+        If _figure Is Nothing OrElse _mask Is Nothing Then
+            _status.Text = Lang.T("請先去背（或使用原圖的透明背景）。")
+            Return Nothing
+        End If
+        Return CompositeBaker.Bake(_figPx, _fw, _fh, _mask, _fig).Image
+    End Function
+
+    Private Sub SaveCutoutWithDialog()
+        Dim cut = BakeCutout()
+        If cut Is Nothing Then Return
+        Using cut
+            Dim name = If(_sourceFile Is Nothing, Lang.T("去背"), IO.Path.GetFileNameWithoutExtension(_sourceFile) & "_" & Lang.T("去背"))
+            Using dlg As New SaveFileDialog With {.Title = Lang.T("存成透明 PNG"), .Filter = Lang.T("PNG 圖片|*.png"), .FileName = name & ".png"}
+                If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
+                SaveCutout(dlg.FileName, cut)
+            End Using
+        End Using
+    End Sub
+
+    ''' <summary>存成透明 PNG（測試也用這個）。</summary>
+    Friend Sub SaveCutout(file As String, Optional cut As Bitmap = Nothing)
+        Dim own = cut Is Nothing
+        If own Then cut = BakeCutout()
+        If cut Is Nothing Then Return
+        Try
+            cut.Save(file, Imaging.ImageFormat.Png)
+            _status.Text = Lang.F("已存成 {0}（{1} × {2}，透明背景）。", file, cut.Width, cut.Height)
+        Catch ex As Exception When TypeOf ex Is IO.IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is Runtime.InteropServices.ExternalException
+            _status.Text = Lang.T("無法儲存：") & ex.Message
+        Finally
+            If own Then cut.Dispose()
+        End Try
+    End Sub
+
+    ''' <summary>複製到剪貼簿（PNG 保留透明，另附白底給不支援透明的程式）。測試也用這個。</summary>
+    Friend Sub CopyCutout()
+        Using cut = BakeCutout()
+            If cut Is Nothing Then Return
+            Try
+                frmEditor.PutOnClipboard(cut)
+                _status.Text = Lang.F("已複製到剪貼簿（{0} × {1}，透明背景）。", cut.Width, cut.Height)
+            Catch ex As Runtime.InteropServices.ExternalException
+                _status.Text = Lang.T("剪貼簿正被其他程式使用，請稍後再試。")
+            End Try
+        End Using
+    End Sub
+
+    '=====================================================================
     ' 套用
     '=====================================================================
 
     ''' <summary>做出結果並關閉（測試也用這個）。</summary>
     Friend Sub Finish()
+        If _bg Is Nothing Then
+            Dim cut = BakeCutout()
+            If cut Is Nothing Then Return
+            Result = New GuideResult With {.NoBackground = True, .Cutout = cut, .SourceFile = _sourceFile}
+            DialogResult = DialogResult.OK
+            Return
+        End If
         If _figure Is Nothing OrElse _mask Is Nothing OrElse Not _placed Then
             _status.Text = Lang.T("還沒完成前面的步驟。")
             Return
@@ -1478,7 +1548,7 @@ Friend Class frmCompositeGuide
         If fa.BottomCropped Then f.Shadow.Enabled = False
         Result = New GuideResult With {
             .Figure = f, .Baked = layer.Image, .ShadowImage = sh.Image, .FigureImage = DirectCast(_figure.Clone(), Bitmap),
-            .Mask = DirectCast(_mask.Clone(), Byte()), .AiMask = If(_aiMaskIsSource, Nothing, _aiMask),
+            .Mask = DirectCast(_mask.Clone(), Byte()), .AiMask = If(_cut.AiMaskIsSource, Nothing, _cut.AiMask),
             .FigureWidth = _fw, .FigureHeight = _fh, .SourceFile = _sourceFile,
             .Occlusion = If(occ Is Nothing, Nothing, DirectCast(occ.Clone(), Byte())), .BackgroundWidth = _bw, .BackgroundHeight = _bh,
             .X = (layer.Rect.X + layer.Rect.Width / 2) / _bw, .Y = (layer.Rect.Y + layer.Rect.Height / 2) / _bh, .Size = layer.Rect.Height / _bh}
@@ -1487,15 +1557,18 @@ Friend Class frmCompositeGuide
             Result.ShadowY = (sh.Rect.Y + sh.Rect.Height / 2) / _bh
             Result.ShadowSize = sh.Rect.Height / _bh
         End If
+        Result.BackgroundFile = _bgFile
+        Result.BackgroundImage = If(_bgPasted Is Nothing, Nothing, DirectCast(_bgPasted.Clone(), Bitmap))
         DialogResult = DialogResult.OK
     End Sub
 
     Protected Overrides Sub Dispose(disposing As Boolean)
         If disposing Then
             _preparedTimer.Dispose()
-            _bg.Dispose()
+            _bg?.Dispose()
+            _currentBg?.Dispose()
+            _bgPasted?.Dispose()
             _figure?.Dispose()
-            _maskView?.Dispose()
             _layerPrev?.Dispose()
             _shadowPrev?.Dispose()
             _occluderView?.Dispose()

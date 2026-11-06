@@ -55,6 +55,12 @@ Partial Friend Class frmEditor
         _help.SetHelp("cutout.auto", _autoCutout)
         L.Add(_autoCutout)
         L.Y += 40
+        ' 怪獸去背小幫手（引導式；見 frmEditor.MonsterCutout.vb）
+        Dim monster = MakeButton(Lang.T("怪獸去背小幫手（引導式）…"), "cutout.monster")
+        monster.SetBounds(8, L.Y, L.Width - 8, 30)
+        AddHandler monster.Click, Sub() ShowMonsterCutout()
+        L.Add(monster)
+        L.Y += 36
         _cutoutStatus.AutoSize = False
         _cutoutStatus.BackColor = Color.Transparent
         _cutoutStatus.ForeColor = Color.FromArgb(105, 110, 120)
@@ -228,7 +234,7 @@ Partial Friend Class frmEditor
         End Set
     End Property
 
-    Private Sub RunAutoCutout()
+    Private Async Sub RunAutoCutout()
         If _photo Is Nothing OrElse _cutoutBusy Then Return
         Dim model = SelectedCutoutModel
         If Not BackgroundRemover.ModelAvailable(model) Then
@@ -240,37 +246,44 @@ Partial Friend Class frmEditor
         _cutoutBusy = True
         _autoCutout.Enabled = False
         _cutoutStatus.Text = Lang.T("去背計算中…（第一次載入模型會久一點）")
-        Cursor = Cursors.AppStarting
         Dim copy = DirectCast(_previewBase.Clone(), Bitmap)
         Dim photo = _photo
         Dim watch = Diagnostics.Stopwatch.StartNew()
-        Task.Run(Function() BackgroundRemover.ComputeMask(copy, model)).ContinueWith(
-            Sub(t)
-                copy.Dispose()
-                Dim mask = If(t.Status = TaskStatus.RanToCompletion, t.Result, Nothing)
-                Dim err = t.Exception?.GetBaseException().Message
-                If Not PostToUi(Sub()
-                                    _cutoutBusy = False
-                                    _autoCutout.Enabled = True
-                                    Cursor = Cursors.Default
-                                    If photo IsNot _photo Then
-                                        mask?.Dispose()
-                                        Return
-                                    End If
-                                    If mask Is Nothing Then
-                                        _cutoutStatus.Text = Lang.T("去背失敗：") & err
-                                        Return
-                                    End If
-                                    SetAiMask(mask, model, dirty:=True)
-                                    _cutoutStatus.Text = Lang.F("完成（{0:0.0} 秒，{1}）", watch.Elapsed.TotalSeconds, CutoutModels.DisplayName(model))
-                                    ApplyChange(Sub(r)
-                                                    ' 新的去背：邊緣精修、去除殘色預設開（舊文件沒有這兩個值，維持原本的樣子）
-                                                    If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.EdgeRefine = 50, .EdgeDecontaminate = True}
-                                                    r.Cutout.Model = model
-                                                    If r.Cutout.Background = CutoutBackground.Original Then r.Cutout.Background = CutoutBackground.Transparent
-                                                End Sub)
-                                End Sub) Then mask?.Dispose()
-            End Sub)
+        Dim mask As Bitmap = Nothing
+        Dim err As String = Nothing
+        Try
+            mask = Await BusyDialog.RunAsync(Me, Lang.T("去背中"),
+                                             Function(p)
+                                                 p.Stage(1, 1, Lang.F("AI 去背：{0}", CutoutModels.DisplayName(model)))
+                                                 Return BackgroundRemover.ComputeMask(copy, model)
+                                             End Function, Lang.T("第一次載入模型會久一點。"))
+        Catch ex As Exception ' 模型、記憶體的各種錯誤都只顯示在狀態列
+            err = ex.Message
+        Finally
+            copy.Dispose()
+        End Try
+        If IsDisposed Then
+            mask?.Dispose()
+            Return
+        End If
+        _cutoutBusy = False
+        _autoCutout.Enabled = True
+        If photo IsNot _photo Then
+            mask?.Dispose()
+            Return
+        End If
+        If mask Is Nothing Then
+            _cutoutStatus.Text = Lang.T("去背失敗：") & err
+            Return
+        End If
+        SetAiMask(mask, model, dirty:=True)
+        _cutoutStatus.Text = Lang.F("完成（{0:0.0} 秒，{1}）", watch.Elapsed.TotalSeconds, CutoutModels.DisplayName(model))
+        ApplyChange(Sub(r)
+                        ' 新的去背：邊緣精修、去除殘色預設開（舊文件沒有這兩個值，維持原本的樣子）
+                        If r.Cutout Is Nothing Then r.Cutout = New CutoutSettings With {.EdgeRefine = 50, .EdgeDecontaminate = True}
+                        r.Cutout.Model = model
+                        If r.Cutout.Background = CutoutBackground.Original Then r.Cutout.Background = CutoutBackground.Transparent
+                    End Sub)
     End Sub
 
     Private Sub SetAiMask(mask As Bitmap, model As CutoutModel, dirty As Boolean)

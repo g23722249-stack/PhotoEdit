@@ -84,9 +84,17 @@ Partial Public NotInheritable Class PortraitRetouch
                     Dim b = ForOpera(recipe.BeautyFor(f.Box))
                     If b.EyeEnlarge > 0 Then EnlargeEyes(px, data.Stride, result.Width, result.Height, f, b.EyeEnlarge / 100.0)
                     If f.Dense IsNot Nothing AndAlso NeedsShapeWarp(b) Then
-                        WarpFaceShape(px, data.Stride, result.Width, result.Height, f.Dense, f.Mesh, b)
+                        Dim ctrls = WarpFaceShape(px, data.Stride, result.Width, result.Height, f.Dense, f.Mesh, b)
+                        ' 吶喊：變形完再上色（眼窩、嘴巴要畫在變形後的位置）
+                        If b.Scream > 0 Then PaintScreamFace(px, data.Stride, result.Width, result.Height, f.Dense, ctrls, b.Scream / 100.0, b.ScreamEyes / 100.0, ScreamShape.FromBeauty(b))
                     End If
                 Next
+                ' 吶喊的背景：整張照片一次（取最強的那張臉的設定）
+                Dim sceneB = faces.Select(Function(x) recipe.BeautyFor(x.Box)).OrderByDescending(Function(x) x.ScreamScene).First()
+                If sceneB.ScreamScene > 0 Then
+                    Dim amount = sceneB.ScreamScene / 100.0
+                    ApplyScreamScene(px, data.Stride, result.Width, result.Height, faces, amount)
+                End If
                 Marshal.Copy(px, 0, data.Scan0, px.Length)
             Finally
                 result.UnlockBits(data)
@@ -625,10 +633,11 @@ Partial Public NotInheritable Class PortraitRetouch
     ' 臉型（68 點）：在控制點放位移，用高斯權重內插成位移場，再反向取樣
     '=====================================================================
 
-    Private Shared Sub WarpFaceShape(px As Byte(), stride As Integer, w As Integer, h As Integer, dense As PointF(), meshN As PointF(), b As BeautySettings)
+    ''' <summary>臉型變形；回傳用到的控制點（之後畫在變形後位置的效果用），臉太小時是空的。</summary>
+    Private Shared Function WarpFaceShape(px As Byte(), stride As Integer, w As Integer, h As Integer, dense As PointF(), meshN As PointF(), b As BeautySettings) As List(Of (C As PointF, D As PointF, R As Double))
         Dim p = dense.Select(Function(q) New PointF(q.X * w, q.Y * h)).ToArray()
         Dim faceW = Math.Sqrt((p(16).X - p(0).X) ^ 2 + (p(16).Y - p(0).Y) ^ 2)
-        If faceW < 12 Then Return
+        If faceW < 12 Then Return New List(Of (C As PointF, D As PointF, R As Double))()
         ' 臉的中線：鼻樑頂（27）往下巴（8），臉歪也跟著歪
         Dim top = p(27), chin = p(8)
         Dim ax As Double = chin.X - top.X, ay As Double = chin.Y - top.Y
@@ -764,8 +773,10 @@ Partial Public NotInheritable Class PortraitRetouch
                 Next
             End If
         End If
+        If b.Scream > 0 Then ctrls.AddRange(ScreamControls(p, b.Scream / 100.0, ScreamShape.FromBeauty(b)))
         If ctrls.Count > 0 Then WarpByControls(px, stride, w, h, ctrls)
-    End Sub
+        Return ctrls
+    End Function
 
     ''' <summary>
     ''' 位移場 D(p) = Σ dᵢ·exp(−|p−cᵢ|²/2rᵢ²)，輸出 dst(p) = src(p − D(p))：控制點附近的內容大約移動 dᵢ，往外平滑變回不動。

@@ -3405,3 +3405,239 @@ AI 動漫	AI anime
 修改科幻美女：背景已經拿掉原本的人物，主畫面上放大過的大小也帶進來了。	Editing the sci-fi girl: the original figure is gone from the background and the size enlarged in the main window is carried over.
 人物原圖、遮罩、遮擋範圍存在「圖片\\PhotoEdit\\合成」，存成 .pedx 專案時會一起放進專案檔，換電腦也能修改。	The figure image, masks and occlusion are stored in "Pictures\\PhotoEdit\\合成" (Composites) and are packed into the .pedx project file when you save, so they can be edited on another computer too.
 一步一步把人物放進目前的照片：選人物、AI 去背、自動推薦位置與大小（會辨認柱頂、屋頂、地面與半身像）、用參考線配合透視、塗出擋在前面的東西、依背景融合色彩、加上陰影。結果是合成圖層與陰影圖層，原照片不變。	Puts a person into the current photo step by step: choose the figure, AI background removal, suggested position and size (recognizes column tops, roofs, the ground and half-length figures), matching perspective with guides, painting what is in front, blending colors with the background and adding a shadow. The result is a composite layer and a shadow layer; the original photo is unchanged.
+記憶體不足，「{0}」模型無法執行。請關掉其他程式再試，或改用較輕的模型（例如「一般（BiRefNet）」或「人像（MODNet）」）。	Not enough memory to run the "{0}" model. Close other programs and try again, or use a lighter model (such as "General (BiRefNet)" or "Portrait (MODNet)").
+吶喊	The Scream
+名畫：孟克《吶喊》	Masterpiece: Munch's The Scream
+吶喊的臉	Scream face
+吶喊的背景	Scream background
+把臉變成孟克《吶喊》裡那張驚恐的臉：兩頰往內凹、下巴和頭頂拉長、嘴張成 O、眼睛瞪大成黑眼窩，膚色換成土黃偏綠。	Turns the face into the terrified face of Munch's The Scream: hollow cheeks, a longer chin and skull, an O-shaped open mouth, wide eyes in dark sockets and sallow warm orange-yellow skin.
+整張照片沿著波浪扭動：上半部換成橘紅、黃色的天空色帶，下半部換成深藍的峽灣，加上順著波浪的筆觸；臉只套一點點。	The whole photo swirls along waves: the top becomes bands of orange-red and yellow sky, the bottom a deep blue fjord, with brush strokes following the waves; the face is only lightly affected.
+整張照片一起處理。	The whole photo is processed.
+眼圈	Eye rings
+《吶喊》眼睛外面那一圈暗的深淺：0＝沒有黑眼圈，100 最黑。	How dark the rings around the eyes are in The Scream: 0 = no dark rings, 100 = darkest.
+「吶喊的臉」是 0 時沒有作用。	Has no effect when "Scream face" is 0.
+背景上放著去背後的人物：拖曳人物移動，滾輪放大縮小。灰色的部分在背景外面，不會出現在結果裡。	The cut-out person on the background: drag to move, use the wheel to resize. The gray area is outside the background and is not part of the result.
+人物要放到哪張圖上：預設是內建的《吶喊》名畫（橘紅的天空、深藍的峽灣、欄杆）；「選擇圖片…」可以換成自己的圖。	The picture the person is placed on: by default the built-in The Scream painting (orange-red sky, deep blue fjord, railing); "Choose picture…" uses your own image.
+結果的大小依背景的比例，長邊至少 2048 像素。	The result follows the background's aspect ratio, at least 2048 pixels on the long side.
+用哪個 AI 模型把人找出來：人像（MODNet）頭髮最自然；一般（BiRefNet）適合有拿東西、穿寬大衣服的人；精細（HR）最細但很慢、很吃記憶體。	Which AI model finds the person: Portrait (MODNet) gives the most natural hair; General (BiRefNet) suits people holding things or in loose clothes; Fine (HR) is the most detailed but slow and memory-hungry.
+換模型會重新去背（每個模型只算一次）。	Changing the model removes the background again (each model is computed once).
+臉變成《吶喊》那張驚恐的臉的程度：兩頰內凹、下巴拉長、嘴張成 O、膚色變暖橘黃。0＝臉不變，只換背景。	How much the face becomes the terrified face of The Scream: hollow cheeks, longer chin, O-shaped mouth, sallow warm orange-yellow skin. 0 = face unchanged, background only.
+需要臉部特徵點模型。	Requires the face landmark model.
+眼睛外面那一圈暗的深淺：0 沒有黑眼圈，100 最黑。	How dark the rings around the eyes are: 0 = none, 100 = darkest.
+人物的高度佔背景高度的百分比。也可以在預覽上用滾輪調。	The person's height as a percentage of the background height. You can also use the wheel on the preview.
+套用後在主畫面還能再拖曳、縮放（人物是一個圖層）。	After applying you can still drag and resize it in the main window (the person is a layer).
+建議位置	Suggested position
+依人物是半身還是全身，建議放的位置與大小：中間（像原畫一樣站在畫面下方中間）、靠左三分之一、靠右三分之一，按一次換一個。	Suggests a position and size depending on whether the person is half- or full-length: center (bottom center like the painting), left third or right third; each click switches to the next.
+人物左右鏡射（原畫的人臉朝右下方，可以讓人物的方向配合背景）。	Mirrors the person (so the person's direction can match the background).
+只調整臉	Face only
+勾選時，下面的色彩只調整臉（邊緣淡出）；不勾時整個人一起調。	When checked the colors below only change the face (with a soft edge); otherwise the whole person changes.
+臉的顏色和背景不搭、衣服不想動時用這個。	Use this when the face color clashes with the background but the clothes should stay.
+人物的顏色轉一個角度（亮度不變）：往左偏紫紅、往右偏黃綠。原畫的臉是土黃色。	Rotates the person's colors (brightness unchanged): left toward magenta, right toward yellow-green. The face in the painting is ochre.
+顏色濃淡：往左變灰、往右更鮮豔。	Color intensity: left is grayer, right is more vivid.
+人物變亮或變暗。背景是暗色調時調暗一點比較融合。	Makes the person brighter or darker. Darken a little on a dark background to blend in.
+明暗反差：往右更強烈（比較像油畫的筆觸），往左比較柔和。	Light-dark contrast: right is stronger (more like oil paint), left is softer.
+往右偏橘（配合《吶喊》的橘紅天空），往左偏藍。	Right is more orange (to match the orange-red sky of The Scream), left is bluer.
+自動配色（建議）	Auto color (suggested)
+依背景的亮度、對比、色溫與主色，算出人物建議的色彩（只往背景靠一半，都有上限）。勾「只調整臉」時只依臉來算。	Suggests colors for the person from the background's brightness, contrast, temperature and main color (moving only halfway toward the background, with limits). With "Face only" checked it is based on the face.
+算完可以再手動微調。	You can fine-tune afterwards.
+重設色彩	Reset colors
+色相、飽和度、亮度、對比、色溫都回到 0。	Sets hue, saturation, brightness, contrast and temperature back to 0.
+筆觸	Strokes
+人身上套一點《吶喊》的波浪色調與筆觸，人看起來比較像畫進去的（臉保留大部分）。0＝不加。	Adds a little of The Scream's swirling tint and strokes to the person so they look painted in (the face is mostly kept). 0 = none.
+邊緣柔和	Soft edge
+去背的邊緣羽化，讓人和背景接得比較自然。	Feathers the cutout edge so the person blends into the background.
+吶喊（孟克）	The Scream (Munch)
+吶喊（孟克）…	The Scream (Munch)…
+《吶喊》名畫（內建）	The Scream painting (built in)
+選擇圖片…	Choose picture…
+人物色彩	Person colors
+融合	Blend
+找不到背景圖，請用「選擇圖片…」挑一張。	Background picture not found; use "Choose picture…" to pick one.
+所有檔案	All files
+無法讀取這張圖片。	Cannot read this picture.
+找臉、去背中…	Finding faces and removing the background…
+處理中…	Processing…
+去背中…（第一次載入模型會久一點）	Removing the background… (the first model load takes longer)
+處理失敗：	Processing failed: 
+去背後沒有找到人，換一個去背模型試試。	No person found after background removal; try another cutout model.
+沒有偵測到臉：只換背景，臉不變。	No face detected: only the background is replaced, the face is unchanged.
+完成。拖曳人物移動、滾輪縮放；右邊可以調色彩。	Done. Drag the person to move, use the wheel to resize; adjust colors on the right.
+沒有臉部特徵點模型：臉不會變形，只換背景與色彩。	No face landmark model: the face is not reshaped, only the background and colors change.
+建議位置：	Suggested position: 
+建議配色：色相 {0}°、飽和度 {1}、亮度 {2}、對比 {3}、色溫 {4}。	Suggested colors: hue {0}°, saturation {1}, brightness {2}, contrast {3}, temperature {4}.
+中間（像原畫）	Center (like the painting)
+靠左三分之一	Left third
+靠右三分之一	Right third
+無法儲存吶喊的檔案：	Cannot save the Scream files: 
+吶喊：背景已存成 	The Scream: background saved as 
+，人物是一個圖層，可以拖曳、縮放。	; the person is a layer you can drag and resize.
+把照片裡的人變成孟克《吶喊》：臉變成驚恐的臉，AI 去背後放到《吶喊》的名畫背景（也可以換別張）。可以調人物的大小、位置、色相、亮度、對比，有建議的位置與配色。結果開成新影像，人物是一個圖層。	Turns the person in the photo into Munch's The Scream: the face becomes the terrified face, and after AI background removal the person is placed on The Scream's painted background (or another picture). Adjust the person's size, position, hue, brightness and contrast, with suggested position and colors. The result opens as a new image with the person as a layer.
+要去背、換成名畫背景，用「影像 → 吶喊（孟克）…」。	To remove the background and use the painting, use "Image → The Scream (Munch)…".
+正在停止…	Stopping…
+步驟 {0}／{1}：	Step {0}/{1}: 
+{0} / {1}	{0} / {1}
+請稍候…	Please wait…
+已經過 {0:0} 秒	{0:0} s elapsed
+去掉零碎小塊	Remove small specks
+填補小破洞	Fill small holes
+復原一筆	Undo stroke
+內縮／外擴	Shrink / grow
+（算過）	 (computed)
+換回「{0}」的去背結果（之前算過）。	Switched back to the "{0}" cutout (computed earlier).
+已選「{0}」：按「{1}」用這個模型重新去背。	"{0}" selected: press "{1}" to cut out again with this model.
+去背計算中…	Removing background…
+去背中	Removing background
+AI 去背：{0}	AI cutout: {0}
+第一次載入模型會久一點。	Loading the model takes longer the first time.
+去背完成（{0:0.0} 秒，{1}）。可以用筆刷修正，或調整邊緣。	Cutout done ({0:0.0} s, {1}). Fix it with the brushes or adjust the edges.
+準備吶喊	Preparing The Scream
+找臉與臉部特徵點	Finding faces and facial landmarks
+找臉中	Finding faces
+{0}：找臉	{0}: finding the face
+{0}：臉部特徵點	{0}: facial landmarks
+第一張	First image
+第二張	Second image
+AI 重繪中	AI redrawing
+打底與畫線稿	Base colors and line art
+顯卡重繪	Redrawing on the GPU
+用顯卡計算；第一次載入模型會久一點。	Runs on the graphics card; loading the model takes longer the first time.
+一般（BiRefNet）人物、動物都適用；人像（MODNet）頭髮最自然、也最快；動漫（ToonOut）適合卡通、插畫角色；精細（HR）最細但很慢、很吃記憶體。	General (BiRefNet) works for people and animals; Portrait (MODNet) gives the most natural hair and is the fastest; Anime (ToonOut) suits cartoon and illustrated characters; Fine (HR) is the most detailed but slow and memory-hungry.
+換模型不會自動重算，要按下面的按鈕；算過的模型標「算過」，切回去直接換。標「未下載」的要先到 設定 → 模型 下載。	Changing the model doesn't recompute by itself; press the button below. Models already computed are marked "computed" and switch back instantly. Models marked "not downloaded" must first be downloaded in Settings → Models.
+用上面選的模型把人物和原本的背景分開。計算時會出現處理中視窗。	Separates the person from the original background with the model above. A progress window appears while it works.
+整圈邊緣往內縮（負）或往外擴（正）幾個像素：邊上留一圈原背景時往內縮，頭髮、手指被切掉時往外擴。	Moves the whole edge in (negative) or out (positive) by a few pixels: shrink when a ring of the old background remains, grow when hair or fingers are cut off.
+把沒和人連在一起的小碎塊（背景裡被誤認成人的小東西）清掉。	Clears small pieces not connected to the person (bits of background mistaken for the person).
+把人身上被誤去掉的小洞補起來（不碰到圖邊的小塊背景）。	Fills small holes wrongly removed from the person (small background areas not touching the image border).
+手臂和身體之間這種大的空隙不會補。	Large gaps, such as between an arm and the body, are left alone.
+大小用「筆刷大小」調整；選了筆刷，預覽會顯示原圖＋遮罩。	Set the size with "Brush size"; with a brush selected, the preview shows the original image and the mask.
+取消最後畫的一筆修正。	Undoes the last brush stroke.
+取消所有筆刷修正，回到去背（含邊緣設定）的結果。	Removes all brush fixes and returns to the cutout result (with the edge settings).
+加一張…	Add image…
+換這張…	Replace…
+中間停	Hold between
+第二張（變成這張）：按「加一張…」	Second image (morph into this): press "Add image…"
+第 {0} 張：{1}（{2}×{3}）	Image {0}: {1} ({2}×{3})
+（目前的影像）	 (current image)
+最多 {0} 張。	At most {0} images.
+換成另一張圖	Replace with another image
+選下一張圖（要變成的圖）	Choose the next image (to morph into)
+已移除第 {0} 張。	Removed image {0}.
+第 {0} 張	Image {0}
+第 {0} 張也找到臉：點位已自動對好，可以再微調。	A face was found in image {0} too: the points are matched automatically; fine-tune them if needed.
+第 {0} 張不是人臉：請依照下方提示，在右邊的圖上依序點 5 個關鍵點。	Image {0} is not a human face: click the 5 key points on the right image in order, following the hint below.
+其他點已依 5 個關鍵點推估過去：請把右邊的點拖到對應的位置（耳朵、輪廓、嘴…）。	The other points were estimated from the 5 key points: drag the points on the right to the matching spots (ears, outline, mouth…).
+按右上「加一張…」選第二張（要變成的圖）；之後還可以再加，連續變下去。	Press "Add image…" at the top right to choose the second image (to morph into); add more to keep morphing in a chain.
+在第 {0} 張圖上點：{1}（{2}/5）	Click on image {0}: {1} ({2}/5)
+第 {0} 張還沒標關鍵點：在上面點它。	Image {0} has no key points yet: click it above.
+其他張也加了，換到那一段再對。	 Added to the other images too; switch to those segments to match it.
+先加第二張圖再讀點位。	Add a second image before loading points.
+點位檔有 {0} 張，現在有 {1} 張。	The points file has {0} images; there are {1} now.
+{0:0.0}	{0:0.0}
+{0}_連續變形_{1}張{2}	{0}_morph_{1}_images{2}
+先加第二張圖、標好點位。	Add a second image and place the points first.
+加一張	Add image
+把要變成的圖加到最後面（例如野狼）；再加就會接著連續變下去（最多 9 張）。是人臉時點位會自動對好；不是人臉時，依提示在圖上依序點兩眼、鼻尖、兩嘴角，其他點從前一張推估過去。	Adds the image to morph into at the end (for example a wolf); add more to keep morphing in a chain (up to 9 images). For a human face the points are matched automatically; otherwise click the eyes, nose tip and mouth corners in order, and the other points are estimated from the previous image.
+圖片順序	Image order
+動畫依這個順序一張變到下一張。點一張選它，下面的兩個編輯區換成它和前一張（藍線＝正在編輯的那一段）；最後的「＋」加一張。	The animation morphs from one image to the next in this order. Click an image to select it; the two editors below show it and the previous image (the blue line marks the segment being edited). The "+" at the end adds an image.
+換這張	Replace
+把選中的那張換成另一張圖，點位重新自動放（第一張是目前的影像，不能換）。	Replaces the selected image with another one and places its points again (the first image is the current image and can't be replaced).
+把選中的那張從順序裡拿掉（第一張不能移除）。	Removes the selected image from the order (the first image can't be removed).
+往前、往後	Move earlier / later
+把選中的那張往前或往後搬一格，改變變形的順序（第一張固定）。	Moves the selected image one step earlier or later to change the morph order (the first image stays first).
+三張以上連續變形時，變到中間每一張後停幾秒再接著變。	With three or more images, how many seconds to pause on each middle image before morphing on.
+把每張圖的點位存成 .morph.json，下次讀回來接著調；圖片大小不同時依比例換算。舊的兩張點位檔套到前兩張。	Saves every image's points as .morph.json to continue later; different image sizes are scaled. Old two-image point files apply to the first two images.
+拖動看變形到一半的樣子（兩張時 0%＝第一張、100%＝第二張；三張以上顯示第幾張，例如 2.5＝第二張變到第三張的一半）；播放會來回播。	Drag to see the morph part-way (with two images 0% = first, 100% = second; with three or more it shows the image number, e.g. 2.5 = halfway from image 2 to image 3). Play goes back and forth.
+變形秒數＝每一段（一張變到下一張）花多久；開頭停、結尾停＝前後各停在原圖幾秒；中間停＝三張以上時中間每張停幾秒。	Morph seconds = how long each segment (one image to the next) takes; hold start / hold end = seconds to stay on the first and last image; hold between = seconds to stay on each middle image with three or more images.
+至少要兩張圖，每張都要有點位。	At least two images are needed, each with points.
+在兩張或多張臉之間連續做出漸變的動畫，可以輸出影片或 GIF。	Creates a morph animation through two or more faces in a row, saved as a video or GIF.
+用這個模型上色	Colorize with this model
+修復褪色（亮度自動拉開）	Fix fading (auto contrast)
+黑白照片上色	Colorize B&W photo
+黑白照片上色…	Colorize B&W photo…
+照片	Photo
+模型（點一張選）	Model (click one)
+色彩強度	Color strength
+保留原本色調	Keep original tone
+黑白照片：可以直接上色。	Black-and-white photo: ready to colorize.
+單色調的舊照片（泛黃、褐色等）：上色時會先去掉原本的色調；想留一點舊照片的味道可以調「保留原本色調」。	Toned old photo (yellowed, sepia…): the original tone is removed before colorizing; raise "Keep original tone" to keep some of the vintage feel.
+這張已經是彩色照片：上色會換掉原本的顏色（適合褪色很嚴重的照片）。	This is already a color photo: colorizing replaces its colors (useful for badly faded photos).
+還沒有上色模型：請到 設定 → 模型 下載「黑白照片上色」的模型。	No colorization model yet: download one under "Colorize B&W photo" in Settings → Models.
+「{0}」模型還沒下載：請到 設定 → 模型 下載。	The "{0}" model isn't downloaded yet: download it in Settings → Models.
+上色中	Colorizing
+AI 上色：{0}	AI colorizing: {0}
+上色完成（{0:0.0} 秒）。點右邊的小圖換模型；拖預覽中間的線對照原圖。	Colorized ({0:0.0} s). Click a thumbnail on the right to switch models; drag the line in the preview to compare with the original.
+上色失敗：	Colorizing failed: 
+模型：{0}	Model: {0}
+上色	Colorized
+計算中…	Computing…
+點一下計算	Click to compute
+未下載	Not downloaded
+無法儲存上色的結果：	Could not save the colorized result: 
+上色完成，已存成 	Colorized and saved as 
+精細（DDColor）	Fine (DDColor)
+柔和（DeOldify）	Soft (DeOldify)
+快速（DDColor 小）	Fast (DDColor tiny)
+記憶體不足，「{0}」模型無法執行。請關掉其他程式再試，或改用「快速（DDColor 小）」。	Not enough memory to run the "{0}" model. Close other programs and try again, or use "Fast (DDColor tiny)".
+對照預覽	Comparison preview
+左邊是原圖、右邊是上色後；拖中間的白線看不同地方。	Original on the left, colorized on the right; drag the white line to compare different areas.
+上色模型	Colorization model
+每個模型一張小圖，點一下用它：快速（DDColor 小）顏色鮮明；精細（DDColor）顏色最準、層次最多；柔和（DeOldify）顏色淡、自然。	One thumbnail per model; click to use it: Fast (DDColor tiny) gives vivid colors; Fine (DDColor) the most accurate and nuanced colors; Soft (DeOldify) lighter, natural colors.
+打開時已下載的模型都會先算一次，挑起來不用等。標「未下載」的要先到 設定 → 模型 下載。	All downloaded models run once when the window opens, so switching is instant. Models marked "Not downloaded" must first be downloaded in Settings → Models.
+用選的模型重新上色一次。	Colorizes again with the selected model.
+AI 的顏色常常偏淡：調高更鮮豔，調低更低調；100%＝模型原本的顏色。	AI colors are often pale: raise for more vivid color, lower for subtler color; 100% = the model's own colors.
+混回一點原本的泛黃、褐色色調，留住舊照片的味道；0%＝全新的彩色。黑白照片調高只會讓顏色變淡。	Mixes back some of the original yellowed or sepia tone to keep the vintage feel; 0% = fully new color. For black-and-white photos raising it only makes colors paler.
+整體偏暖（黃）或偏冷（藍）。	Shifts the whole picture warmer (yellow) or cooler (blue).
+修復褪色	Fix fading
+舊照片常常灰灰的、黑不夠黑：把最暗與最亮拉開，對比回來。	Old photos are often grayish without true blacks: stretches the darkest and brightest tones to restore contrast.
+色彩強度、保留原本色調、色溫、修復褪色回到預設。	Resets color strength, keep original tone, temperature and fix fading to their defaults.
+用 AI 把黑白、泛黃的舊照片變成彩色：三種模型可以挑，拖預覽中間的線對照原圖，色彩強度、保留原本色調、色溫可以調。結果存成新影像。	Uses AI to turn black-and-white or yellowed old photos into color: choose from three models, drag the line in the preview to compare with the original, and adjust color strength, original tone and temperature. The result is saved as a new image.
+開啟背景	Open background
+換一張圖當背景（不用先在主畫面開啟）。套用時背景會開成新影像，人物加成上面的合成圖層。	Uses another picture as the background (no need to open it in the main window first). When applied, the background opens as a new image with the person as a composite layer on it.
+貼上背景	Paste background
+把剪貼簿裡的圖片當背景。	Uses the picture on the clipboard as the background.
+不用背景	No background
+只做去背：完成時把人物存成透明 PNG、複製到剪貼簿，或開成新影像；位置、透視、遮擋、色彩、陰影這幾步會跳過。	Cutout only: when finished, save the person as a transparent PNG, copy it to the clipboard, or open it as a new image; the position, perspective, occlusion, color and shadow steps are skipped.
+目前的影像	Current image
+換回主畫面目前的影像當背景。	Switches back to the image open in the main window as the background.
+存成透明 PNG	Save transparent PNG
+去背好的人物（裁到人的範圍、背景透明）存成 PNG 檔。	Saves the cut-out person (cropped to the person, transparent background) as a PNG file.
+複製到剪貼簿	Copy to clipboard
+去背好的人物複製到剪貼簿，可以貼到其他程式；支援透明的程式（PowerPoint、Word、繪圖軟體）會保留透明。	Copies the cut-out person to the clipboard to paste into other programs; programs that support transparency (PowerPoint, Word, drawing software) keep it transparent.
+開啟背景…	Open background…
+不用背景（透明）	No background (transparent)
+存成透明 PNG…	Save transparent PNG…
+選一張要放進照片的人物圖（照片、插畫、動漫都可以）。已經是透明背景的 PNG 可以直接使用，不用再去背。下面可以換背景，或不用背景只去背。	Choose a picture of a person to put into the photo (photo, illustration or anime all work). A PNG with a transparent background can be used as is without cutting out. Below you can change the background, or use no background to only cut out.
+沒有背景：去背好的人物可以存成透明 PNG、複製到剪貼簿（貼到其他程式），或按「開成新影像」在主畫面繼續編輯。	No background: save the cut-out person as a transparent PNG, copy it to the clipboard (to paste into other programs), or press "Open as new image" to keep editing in the main window.
+按「套用」，背景會開成新影像、人物（和陰影）加成上面的合成圖層。之後可以在主畫面移動、縮放、調整透明度，或刪除。	Press "Apply": the background opens as a new image with the person (and shadow) added as composite layers. You can then move, resize, change opacity or delete them in the main window.
+不用背景：只做去背，完成時存成透明 PNG、複製到剪貼簿或開成新影像。	No background: cutout only; when finished, save as a transparent PNG, copy to the clipboard or open as a new image.
+{0}（{1} × {2}）	{0} ({1} × {2})
+貼上的圖片（{0} × {1}）	Pasted picture ({0} × {1})
+目前的影像（{0} × {1}）	Current image ({0} × {1})
+已存成 {0}（{1} × {2}，透明背景）。	Saved as {0} ({1} × {2}, transparent background).
+無法儲存：	Could not save: 
+已複製到剪貼簿（{0} × {1}，透明背景）。	Copied to the clipboard ({0} × {1}, transparent background).
+去背的人物已存成透明 PNG 並開啟：	The cut-out person was saved as a transparent PNG and opened: 
+「{0}」要處理哪一張圖？	Which picture should "{0}" work on?
+目前沒有開啟影像。開啟一張圖片、從剪貼簿貼上，或直接把圖檔拖進這個視窗。	No image is open. Open a picture, paste one from the clipboard, or drag an image file into this window.
+從剪貼簿貼上	Paste from clipboard
+PNG 圖片|*.png	PNG image|*.png
+無法儲存合成檔案：	Could not save the composite files: 
+油畫感	Oil paint
+人物畫成油畫：色塊、順著形狀的筆觸和厚塗光影，和名畫背景比較融合。0＝保留照片。	Paints the person in oils: color blocks, strokes following the forms and thick-paint lighting, so they blend with the painted background. 0 = keep the photo.
+身體扭曲	Body twist
+脖子以下像原畫一樣扭成 S 形：身體收窄、肩膀往下垮、輪廓帶波浪，頭不動。0＝身體不變。	Twists everything below the neck into an S shape like the painting: a narrower body, drooping shoulders and a wavy outline, with the head unchanged. 0 = body unchanged.
+身體	Body
+照片的身體	Body from the photo
+原作的手和身體	Hands and body from the painting
+照片的身體：用照片裡的身體（可以調身體扭曲）。原作的手和身體：頭接到孟克原畫的手和身體上，臉的輪廓貼著手掌，人物整個畫成油畫。	Body from the photo: uses the body in the photo (body twist applies). Hands and body from the painting: puts the head on the hands and body of Munch's painting, with the face outline fitted to the palms, and paints the whole figure in oils.
+原作身體需要抓得到臉部特徵點。	The painting's body needs facial landmarks to be found.
+這張照片抓不到臉部特徵點，只能用照片的身體。	No facial landmarks were found in this photo, so only the body from the photo can be used.
+原畫的位置	Same spot as in the painting
+眼睛大小	Eye size
+《吶喊》眼睛撐開多少：0＝本人原來的大小，100 最大最圓。眼角不會下垂。	How wide the eyes open in The Scream: 0 = the person's own size, 100 = largest and roundest. The eye corners never droop.
+眼睛撐開多少：0 是本人原來的大小，100 最大最圓。	How wide the eyes open: 0 = the person's own size, 100 = largest and roundest.
+嘴巴大小	Mouth size
+嘴巴圓度	Mouth roundness
+《吶喊》嘴巴張多大：50 是標準，下巴會跟著移動。	How wide the mouth opens in The Scream: 50 is standard, and the chin moves with it.
+《吶喊》嘴巴的形狀：0＝正常嘴型（寬、嘴角尖），100＝圓形。	The mouth shape in The Scream: 0 = a normal mouth (wide with pointed corners), 100 = round.
+嘴巴張多大：50 是標準，下巴會跟著移動。	How wide the mouth opens: 50 is standard, and the chin moves with it.
+嘴巴的形狀：0 是正常嘴型（寬、嘴角尖），100 是圓形。	The mouth shape: 0 = a normal mouth (wide with pointed corners), 100 = round.

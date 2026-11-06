@@ -301,6 +301,14 @@ Friend Class frmBeautyAdjust
         p.Controls.AddRange({lcap, _lightKind, _lightSide})
         Row(p, "light", Lang.T("強度"), 0, 100, Function(b) b.Light, Sub(b, v) b.Light = v)
         Note(p, If(_hasMesh, Lang.T("有 478 點網格時，林布蘭光與側光依臉的立體起伏打光。"), Lang.T("沒有 478 點網格時，光影以左右漸層表現。")))
+        Heading(p, Lang.T("名畫：孟克《吶喊》"))
+        Row(p, "scream", Lang.T("吶喊的臉"), 0, 100, Function(b) b.Scream, Sub(b, v) b.Scream = v, dense:=True)
+        Row(p, "screameyesize", Lang.T("眼睛大小"), 0, 100, Function(b) b.ScreamEyeSize, Sub(b, v) b.ScreamEyeSize = v, dense:=True)
+        Row(p, "screameyes", Lang.T("眼圈"), 0, 100, Function(b) b.ScreamEyes, Sub(b, v) b.ScreamEyes = v, dense:=True)
+        Row(p, "screammouthsize", Lang.T("嘴巴大小"), 0, 100, Function(b) b.ScreamMouthSize, Sub(b, v) b.ScreamMouthSize = v, dense:=True)
+        Row(p, "screammouthround", Lang.T("嘴巴圓度"), 0, 100, Function(b) b.ScreamMouthRound, Sub(b, v) b.ScreamMouthRound = v, dense:=True)
+        Row(p, "screamscene", Lang.T("吶喊的背景"), 0, 100, Function(b) b.ScreamScene, Sub(b, v) b.ScreamScene = v)
+        Note(p, Lang.T("要去背、換成《吶喊》名畫背景，用「影像 → 吶喊（孟克）…」。"))
     End Sub
 
     '---------------------------------------------------------------------

@@ -28,12 +28,14 @@ End Class
 
 ''' <summary>變形動畫的時間軸與輸出設定。</summary>
 Public NotInheritable Class MorphTiming
-    ''' <summary>變形本身幾秒。</summary>
+    ''' <summary>變形本身幾秒（多張連續變形時是每一段）。</summary>
     Public Property Seconds As Double = 3
     Public Property Fps As Integer = 30
     ''' <summary>開頭、結尾各停幾秒。</summary>
     Public Property HoldStart As Double = 0.5
     Public Property HoldEnd As Double = 1
+    ''' <summary>多張連續變形：中間每一張停幾秒。</summary>
+    Public Property HoldBetween As Double = 0.5
     ''' <summary>變過去再變回來。</summary>
     Public Property PingPong As Boolean
     ''' <summary>慢入慢出。</summary>
@@ -45,6 +47,8 @@ End Class
 ''' 解析度不同的處理：輸出畫布用第一張圖的比例（長邊不超過 maxSide，寬高取偶數，MP4 需要）；
 ''' 第二張圖依兩眼位置縮放、旋轉、平移到畫布上（align＝對齊程度：0＝整張填滿畫布，1＝兩眼完全重疊），超出的地方用邊緣延伸補。
 ''' 這樣兩張臉的大小、位置接近，動畫只剩五官的形狀變化，不會整張大幅晃動。
+''' 多張連續變形（A → B → C …）：每張都用同一組點（同名、同順序），第二張以後都對齊第一張的畫布；
+''' 每一段（相鄰兩張）各自做三角形，位置 pos＝0..張數-1（整數＝停在第幾張）。
 ''' </summary>
 Public NotInheritable Class FaceMorph
     Implements IDisposable
@@ -52,15 +56,41 @@ Public NotInheritable Class FaceMorph
     ''' <summary>預設點裡用來對齊、自動推估的 5 個關鍵點。</summary>
     Public Shared ReadOnly KeyNames As String() = {Lang.T("左眼"), Lang.T("右眼"), Lang.T("鼻尖"), Lang.T("左嘴角"), Lang.T("右嘴角")}
 
-    Private ReadOnly _a As Mat, _b As Mat
-    Private ReadOnly _pa As Point2f(), _pb As Point2f()
-    Private ReadOnly _tris As List(Of Integer())
+    ' 每張圖（已放到共同畫布上）、每張的點（含畫布邊緣的固定點）、每一段的三角形
+    Private ReadOnly _imgs As New List(Of Mat)
+    Private ReadOnly _pts As New List(Of Point2f())
+    Private ReadOnly _tris As New List(Of List(Of Integer()))
+    Private ReadOnly _scales As New List(Of Double)
 
     Public ReadOnly Property Width As Integer
     Public ReadOnly Property Height As Integer
-    ''' <summary>第二張圖在畫布上放大的倍數（大於 1 表示放大、會比較糊）。</summary>
+
+    ''' <summary>幾張圖。</summary>
+    Public ReadOnly Property Count As Integer
+        Get
+            Return _imgs.Count
+        End Get
+    End Property
+
+    ''' <summary>第 i 張圖在畫布上的縮放倍數（大於 1 表示放大、會比較糊）。</summary>
+    Public ReadOnly Property Scale(i As Integer) As Double
+        Get
+            Return _scales(i)
+        End Get
+    End Property
+
+    ''' <summary>第二張圖在畫布上放大的倍數。</summary>
     Public ReadOnly Property ScaleB As Double
+        Get
+            Return _scales(1)
+        End Get
+    End Property
+
     Public ReadOnly Property ScaleA As Double
+        Get
+            Return _scales(0)
+        End Get
+    End Property
 
     '---------------------------------------------------------------------
     ' 預設點
@@ -183,27 +213,59 @@ Public NotInheritable Class FaceMorph
     ''' <param name="align">第二張圖依兩眼對齊的程度 0..1。</param>
     Public Sub New(imageA As Bitmap, imageB As Bitmap, pointsA As IList(Of MorphPoint), pointsB As IList(Of MorphPoint),
                    Optional maxSide As Integer = 1080, Optional align As Double = 0.5)
-        If pointsA.Count <> pointsB.Count Then Throw New ArgumentException(Lang.T("兩張圖的點數不同。"))
+        Me.New({imageA, imageB}, New IList(Of MorphPoint)() {pointsA, pointsB}, maxSide, align)
+    End Sub
+
+    ''' <summary>多張連續變形：images(0) → images(1) → …；每張的點數、順序要一樣。</summary>
+    ''' <param name="align">第二張以後依兩眼對齊第一張的程度 0..1。</param>
+    Public Sub New(images As IList(Of Bitmap), points As IList(Of IList(Of MorphPoint)), Optional maxSide As Integer = 1080, Optional align As Double = 0.5)
+        If images.Count < 2 OrElse points.Count <> images.Count Then Throw New ArgumentException(Lang.T("至少要兩張圖，每張都要有點位。"))
+        If points.Any(Function(q) q.Count <> points(0).Count) Then Throw New ArgumentException(Lang.T("兩張圖的點數不同。"))
+        Dim imageA = images(0), pointsA = points(0)
         ' 畫布：第一張的比例，長邊不超過 maxSide、也不超過第一張原本的大小；寬高取偶數
         Dim k = Math.Min(1.0, maxSide / Math.Max(imageA.Width, imageA.Height))
         Width = Math.Max(2, CInt(Math.Round(imageA.Width * k / 2)) * 2)
         Height = Math.Max(2, CInt(Math.Round(imageA.Height * k / 2)) * 2)
         Dim sxA = Width / CDbl(imageA.Width), syA = Height / CDbl(imageA.Height)
-        ScaleA = (sxA + syA) / 2
-        _a = ToBgr(imageA, Width, Height)
-        _pa = pointsA.Select(Function(q) New Point2f(CSng(q.X * sxA), CSng(q.Y * syA))).ToArray()
-        ' 第二張：填滿畫布（cover）與兩眼對齊之間取 align
+        _scales.Add((sxA + syA) / 2)
+        _imgs.Add(ToBgr(imageA, Width, Height))
+        Dim pa = pointsA.Select(Function(q) New Point2f(CSng(q.X * sxA), CSng(q.Y * syA))).ToArray()
+        _pts.Add(pa)
+        For i = 1 To images.Count - 1
+            Dim placed = Place(images(i), points(i), pa, pointsA, align)
+            _imgs.Add(placed.Image)
+            _pts.Add(placed.Points)
+            _scales.Add(placed.Scale)
+        Next
+        ' 畫布邊緣的固定點（四角、每邊三點），背景跟著一起變
+        Dim border As New List(Of Point2f)
+        For i = 0 To 4
+            Dim fx = CSng((Width - 1) * i / 4.0), fy = CSng((Height - 1) * i / 4.0)
+            border.Add(New Point2f(fx, 0)) : border.Add(New Point2f(fx, Height - 1))
+            If i > 0 AndAlso i < 4 Then border.Add(New Point2f(0, fy)) : border.Add(New Point2f(Width - 1, fy))
+        Next
+        For i = 0 To _pts.Count - 1
+            _pts(i) = ClampAll(_pts(i).Concat(border).ToArray())
+        Next
+        For i = 0 To _pts.Count - 2
+            _tris.Add(Triangulate(_pts(i), _pts(i + 1)))
+        Next
+    End Sub
+
+    ''' <summary>
+    ''' 第二張以後放到畫布上：填滿畫布（cover）與兩眼對齊第一張之間取 align（縮放用對數內插、旋轉與平移照比例）。
+    ''' </summary>
+    Private Function Place(imageB As Bitmap, pointsB As IList(Of MorphPoint), pa As Point2f(), pointsA As IList(Of MorphPoint), align As Double) As (Image As Mat, Points As Point2f(), Scale As Double)
         Dim cover = Math.Max(Width / CDbl(imageB.Width), Height / CDbl(imageB.Height))
         Dim coverTx = (Width - imageB.Width * cover) / 2, coverTy = (Height - imageB.Height * cover) / 2
         Dim s = cover, angle = 0.0, tx = coverTx, ty = coverTy
         Dim iL = IndexOfName(pointsA, Lang.T("左眼")), iR = IndexOfName(pointsA, Lang.T("右眼"))
         If align > 0 AndAlso iL >= 0 AndAlso iR >= 0 AndAlso IndexOfName(pointsB, Lang.T("左眼")) = iL AndAlso IndexOfName(pointsB, Lang.T("右眼")) = iR Then
-            Dim aL = _pa(iL), aR = _pa(iR), bL = pointsB(iL).Pt, bR = pointsB(iR).Pt
+            Dim aL = pa(iL), aR = pa(iR), bL = pointsB(iL).Pt, bR = pointsB(iR).Pt
             Dim da = Math.Sqrt((aR.X - aL.X) ^ 2 + (aR.Y - aL.Y) ^ 2), db = Math.Sqrt((bR.X - bL.X) ^ 2 + (bR.Y - bL.Y) ^ 2)
             If da > 1 AndAlso db > 1 Then
                 Dim eyeS = da / db
                 Dim eyeAng = Math.Atan2(aR.Y - aL.Y, aR.X - aL.X) - Math.Atan2(bR.Y - bL.Y, bR.X - bL.X)
-                ' 縮放用對數內插；旋轉照比例
                 s = Math.Exp(Math.Log(cover) * (1 - align) + Math.Log(eyeS) * align)
                 angle = eyeAng * align
                 ' 平移：兩眼中點（照 cover 放上去的位置 → 第一張的兩眼中點）照比例
@@ -215,26 +277,16 @@ Public NotInheritable Class FaceMorph
                 ty = target.Y - (sn * bm.X + c * bm.Y)
             End If
         End If
-        ScaleB = s
         Dim cc = Math.Cos(angle) * s, ss = Math.Sin(angle) * s
+        Dim placed As New Mat()
         Using srcB = ToBgr(imageB, imageB.Width, imageB.Height), m As New Mat(2, 3, MatType.CV_64FC1)
             m.Set(0, 0, cc) : m.Set(0, 1, -ss) : m.Set(0, 2, tx)
             m.Set(1, 0, ss) : m.Set(1, 1, cc) : m.Set(1, 2, ty)
-            _b = New Mat()
-            Cv2.WarpAffine(srcB, _b, m, New OpenCvSharp.Size(Width, Height), If(s > 1, InterpolationFlags.Cubic, InterpolationFlags.Area), BorderTypes.Replicate)
+            Cv2.WarpAffine(srcB, placed, m, New OpenCvSharp.Size(Width, Height), If(s > 1, InterpolationFlags.Cubic, InterpolationFlags.Area), BorderTypes.Replicate)
         End Using
-        _pb = pointsB.Select(Function(q) New Point2f(CSng(cc * q.X - ss * q.Y + tx), CSng(ss * q.X + cc * q.Y + ty))).ToArray()
-        ' 畫布邊緣的固定點（四角、每邊三點），背景跟著一起變
-        Dim border As New List(Of Point2f)
-        For i = 0 To 4
-            Dim fx = CSng((Width - 1) * i / 4.0), fy = CSng((Height - 1) * i / 4.0)
-            border.Add(New Point2f(fx, 0)) : border.Add(New Point2f(fx, Height - 1))
-            If i > 0 AndAlso i < 4 Then border.Add(New Point2f(0, fy)) : border.Add(New Point2f(Width - 1, fy))
-        Next
-        _pa = ClampAll(_pa.Concat(border).ToArray())
-        _pb = ClampAll(_pb.Concat(border).ToArray())
-        _tris = Triangulate()
-    End Sub
+        Dim pb = pointsB.Select(Function(q) New Point2f(CSng(cc * q.X - ss * q.Y + tx), CSng(ss * q.X + cc * q.Y + ty))).ToArray()
+        Return (placed, pb, s)
+    End Function
 
     Private Shared Function IndexOfName(pts As IList(Of MorphPoint), name As String) As Integer
         For i = 0 To pts.Count - 1
@@ -264,9 +316,9 @@ Public NotInheritable Class FaceMorph
         End Using
     End Function
 
-    ''' <summary>在兩組點的平均位置上做 Delaunay（同一組三角形用在每一格，中途不會換連法而跳動）。</summary>
-    Private Function Triangulate() As List(Of Integer())
-        Dim mid = Enumerable.Range(0, _pa.Length).Select(Function(i) New Point2f((_pa(i).X + _pb(i).X) / 2, (_pa(i).Y + _pb(i).Y) / 2)).ToArray()
+    ''' <summary>在兩組點的平均位置上做 Delaunay（同一組三角形用在這一段的每一格，中途不會換連法而跳動）。</summary>
+    Private Function Triangulate(pa As Point2f(), pb As Point2f()) As List(Of Integer())
+        Dim mid = Enumerable.Range(0, pa.Length).Select(Function(i) New Point2f((pa(i).X + pb(i).X) / 2, (pa(i).Y + pb(i).Y) / 2)).ToArray()
         Dim result As New List(Of Integer())
         Using sub2 As New Subdiv2D(New Rect(-1, -1, Width + 2, Height + 2))
             Dim seen As New HashSet(Of Long)
@@ -297,28 +349,34 @@ Public NotInheritable Class FaceMorph
     ' 一格
     '---------------------------------------------------------------------
 
-    ''' <summary>t＝0 第一張、1 第二張。形狀用 t，顏色在中段才交換（看起來比較像「變身」而不是兩張疊在一起）。</summary>
-    Public Function Frame(t As Double) As Mat
-        t = Math.Max(0, Math.Min(1, t))
-        Dim pt = Enumerable.Range(0, _pa.Length).Select(Function(i) New Point2f(CSng(_pa(i).X + (_pb(i).X - _pa(i).X) * t), CSng(_pa(i).Y + (_pb(i).Y - _pa(i).Y) * t))).ToArray()
+    ''' <summary>
+    ''' pos＝0 第一張、1 第二張、2 第三張…（小數＝兩張之間）。形狀照比例變，顏色在每段中間才交換
+    ''' （看起來比較像「變身」而不是兩張疊在一起）。
+    ''' </summary>
+    Public Function Frame(pos As Double) As Mat
+        pos = Math.Max(0, Math.Min(Count - 1, pos))
+        Dim seg = Math.Min(Count - 2, CInt(Math.Floor(pos)))
+        Dim t = pos - seg
+        Dim pa = _pts(seg), pb = _pts(seg + 1), tris = _tris(seg)
+        Dim pt = Enumerable.Range(0, pa.Length).Select(Function(i) New Point2f(CSng(pa(i).X + (pb(i).X - pa(i).X) * t), CSng(pa(i).Y + (pb(i).Y - pa(i).Y) * t))).ToArray()
         Dim alpha = Smooth(t, 0.15, 0.85)
-        Using wa = WarpTo(_a, _pa, pt), wb = WarpTo(_b, _pb, pt)
+        Using wa = WarpTo(_imgs(seg), pa, pt, tris), wb = WarpTo(_imgs(seg + 1), pb, pt, tris)
             Dim r As New Mat()
             Cv2.AddWeighted(wa, 1 - alpha, wb, alpha, 0, r)
             Return r
         End Using
     End Function
 
-    Public Function FrameBitmap(t As Double) As Bitmap
-        Using m = Frame(t)
+    Public Function FrameBitmap(pos As Double) As Bitmap
+        Using m = Frame(pos)
             Return BitmapConverter.ToBitmap(m)
         End Using
     End Function
 
-    Private Function WarpTo(src As Mat, from As Point2f(), [to] As Point2f()) As Mat
+    Private Function WarpTo(src As Mat, from As Point2f(), [to] As Point2f(), tris As List(Of Integer())) As Mat
         Dim dst = src.Clone() ' 三角形沒蓋到的地方（理論上沒有）保留原圖
         Dim bounds As New Rect(0, 0, Width, Height)
-        For Each tri In _tris
+        For Each tri In tris
             Dim d = {[to](tri(0)), [to](tri(1)), [to](tri(2))}
             Dim s = {from(tri(0)), from(tri(1)), from(tri(2))}
             Dim area = (d(1).X - d(0).X) * (d(2).Y - d(0).Y) - (d(2).X - d(0).X) * (d(1).Y - d(0).Y)
@@ -345,29 +403,37 @@ Public NotInheritable Class FaceMorph
     ' 時間軸與輸出
     '---------------------------------------------------------------------
 
-    ''' <summary>每一格的 t 與這格要停多久（秒）；停留的部分合成一格（GIF 用延遲時間，MP4 重複寫）。</summary>
-    Public Shared Function Timeline(timing As MorphTiming, fps As Integer) As List(Of (T As Double, Duration As Double))
+    ''' <summary>
+    ''' 每一格的位置（0..segments）與這格要停多久（秒）；停留的部分合成一格（GIF 用延遲時間，MP4 重複寫）。
+    ''' segments＝段數（張數-1）：每段 Seconds 秒，中間每張停 HoldBetween 秒；變回來時倒著走一遍。
+    ''' </summary>
+    Public Shared Function Timeline(timing As MorphTiming, fps As Integer, Optional segments As Integer = 1) As List(Of (T As Double, Duration As Double))
         Dim list As New List(Of (T As Double, Duration As Double))
+        segments = Math.Max(1, segments)
         Dim n = Math.Max(2, CInt(Math.Round(timing.Seconds * fps)))
         Dim one = 1.0 / fps
         Dim ease = Function(x As Double) If(timing.Ease, Smooth(x, 0, 1), x)
         list.Add((0, Math.Max(one, timing.HoldStart)))
-        For i = 1 To n - 1
-            list.Add((ease(i / CDbl(n)), one))
-        Next
-        list.Add((1, Math.Max(one, timing.HoldEnd)))
-        If timing.PingPong Then
-            For i = n - 1 To 1 Step -1
-                list.Add((ease(i / CDbl(n)), one))
+        For s = 0 To segments - 1
+            For i = 1 To n - 1
+                list.Add((s + ease(i / CDbl(n)), one))
             Next
-            list.Add((0, Math.Max(one, timing.HoldStart)))
+            list.Add((s + 1, Math.Max(one, If(s = segments - 1, timing.HoldEnd, timing.HoldBetween))))
+        Next
+        If timing.PingPong Then
+            For s = segments - 1 To 0 Step -1
+                For i = n - 1 To 1 Step -1
+                    list.Add((s + ease(i / CDbl(n)), one))
+                Next
+                list.Add((s, Math.Max(one, If(s = 0, timing.HoldStart, timing.HoldBetween))))
+            Next
         End If
         Return list
     End Function
 
     ''' <summary>時間軸換成 VideoExport 用的格子（每格現算）。</summary>
     Private Function Frames(timing As MorphTiming, fps As Integer) As List(Of (Render As Func(Of Mat), Duration As Double))
-        Return Timeline(timing, fps).Select(Function(x) (Render:=CType(Function() Frame(x.T), Func(Of Mat)), Duration:=x.Duration)).ToList()
+        Return Timeline(timing, fps, Count - 1).Select(Function(x) (Render:=CType(Function() Frame(x.T), Func(Of Mat)), Duration:=x.Duration)).ToList()
     End Function
 
     ''' <summary>寫 MP4（見 VideoExport）。回傳實際用的編碼。</summary>
@@ -383,7 +449,9 @@ Public NotInheritable Class FaceMorph
         VideoExport.WriteGif(path, sz.W, sz.H, Frames(timing, gifFps), progress, ct)
     End Sub
     Public Sub Dispose() Implements IDisposable.Dispose
-        _a?.Dispose()
-        _b?.Dispose()
+        For Each m In _imgs
+            m.Dispose()
+        Next
+        _imgs.Clear()
     End Sub
 End Class

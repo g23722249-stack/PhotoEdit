@@ -689,7 +689,7 @@ Partial Friend Class frmEditor
         End Try
     End Function
 
-    Private Shared Sub PutOnClipboard(image As Bitmap)
+    Friend Shared Sub PutOnClipboard(image As Bitmap)
         Using opaque As New Bitmap(image.Width, image.Height, PixelFormat.Format24bppRgb), png As New MemoryStream()
             Using g = Graphics.FromImage(opaque)
                 g.Clear(Color.White)

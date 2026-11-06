@@ -22,6 +22,8 @@
     <None Include="..\Stick\**\*" LinkBase="stick" CopyToOutputDirectory="PreserveNewest" />
     <!-- 使用手冊的套用前／後範例圖（uismoke manualimages 產生）。 -->
     <None Include="..\Manual\**\*" LinkBase="manual" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 名畫背景（一鍵美顏「吶喊」去背後換上的背景）。 -->
+    <None Include="..\Backdrops\**\*" LinkBase="backdrops" CopyToOutputDirectory="PreserveNewest" />
     <!-- 說明 → 關於 的 logo（frmAbout.LoadLogo）。 -->
     <EmbeddedResource Include="Assets\logo.png" LogicalName="PhotoEditApp.logo.png" />
   </ItemGroup>
@@ -35,6 +37,8 @@
     <ProjectReference Include="..\PhotoEdit.Core\PhotoEdit.Core.vbproj" />
     <ProjectReference Include="..\PhotoEdit.Vision\PhotoEdit.Vision.vbproj" />
     <ProjectReference Include="..\..\RunTime\Aqua.Net\Aqua.Net.vbproj" />
+    <!-- 怪獸去背小幫手（影像 → 怪獸去背小幫手…）：C:\專案\Monster 的引導式去背工具，用這裡的 CPU 版 ONNX Runtime -->
+    <ProjectReference Include="..\..\Monster\MonsterCutout.Tool\MonsterCutout.Tool.vbproj" />
   </ItemGroup>
 
   <!--

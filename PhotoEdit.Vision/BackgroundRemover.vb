@@ -76,19 +76,22 @@ Public NotInheritable Class BackgroundRemover
             Next
         End Using
 
-        Dim output As Single()
+        Dim output As Single() = Nothing
         SyncLock SessionLock
-            Dim session = GetSession(model)
-            Dim name = session.InputMetadata.Keys.First()
-            Dim dims = {1, 3, ih, iw}
-            Dim input = If(session.InputMetadata(name).ElementDataType = TensorElementType.Float16,
-                           NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Float16)(data.Select(Function(v) CType(v, Float16)).ToArray(), dims)),
-                           NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Single)(data, dims)))
-            Using results = session.Run({input})
-                Dim first = results.First()
-                Dim half = TryCast(first.Value, DenseTensor(Of Float16))
-                output = If(half IsNot Nothing, half.ToArray().Select(Function(x) CType(x, Single)).ToArray(), first.AsTensor(Of Single)().ToArray())
-            End Using
+            ' 大模型（BiRefNet 系列）推論中途要好幾 GB：記憶體不夠時先關掉其他模型的工作階段再試一次，還是不夠就給看得懂的訊息。
+            For attempt = 1 To 2
+                Try
+                    output = RunSession(model, data, iw, ih)
+                    Exit For
+                Catch ex As OnnxRuntimeException When IsAllocationFailure(ex)
+                    ReleaseSessions()
+                    GC.Collect()
+                    GC.WaitForPendingFinalizers()
+                    If attempt = 2 Then
+                        Throw New InsufficientMemoryException(Lang.F("記憶體不足，「{0}」模型無法執行。請關掉其他程式再試，或改用較輕的模型（例如「一般（BiRefNet）」或「人像（MODNet）」）。", CutoutModels.DisplayName(model)), ex)
+                    End If
+                End Try
+            Next
         End SyncLock
 
         ' 後處理：第一個輸出的前 寬×高 個值轉成 0..255。
@@ -125,10 +128,42 @@ Public NotInheritable Class BackgroundRemover
         End Using
     End Function
 
+    ''' <summary>跑一次推論，回傳第一個輸出（轉成 Single）。呼叫端要拿著 SessionLock。</summary>
+    Private Shared Function RunSession(model As CutoutModel, data As Single(), iw As Integer, ih As Integer) As Single()
+        Dim session = GetSession(model)
+        Dim name = session.InputMetadata.Keys.First()
+        Dim dims = {1, 3, ih, iw}
+        Dim input = If(session.InputMetadata(name).ElementDataType = TensorElementType.Float16,
+                       NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Float16)(data.Select(Function(v) CType(v, Float16)).ToArray(), dims)),
+                       NamedOnnxValue.CreateFromTensor(name, New DenseTensor(Of Single)(data, dims)))
+        Using results = session.Run({input})
+            Dim first = results.First()
+            Dim half = TryCast(first.Value, DenseTensor(Of Float16))
+            Return If(half IsNot Nothing, half.ToArray().Select(Function(x) CType(x, Single)).ToArray(), first.AsTensor(Of Single)().ToArray())
+        End Using
+    End Function
+
+    Private Shared Function IsAllocationFailure(ex As OnnxRuntimeException) As Boolean
+        Dim m = If(ex.Message, "")
+        Return m.IndexOf("allocate", StringComparison.OrdinalIgnoreCase) >= 0 OrElse m.IndexOf("bad_alloc", StringComparison.OrdinalIgnoreCase) >= 0
+    End Function
+
+    ''' <summary>關掉所有快取的工作階段（釋放模型權重佔的記憶體）；下次用到時重新載入。</summary>
+    Public Shared Sub ReleaseSessions()
+        SyncLock SessionLock
+            For Each s In Sessions.Values
+                s.Dispose()
+            Next
+            Sessions.Clear()
+        End SyncLock
+    End Sub
+
     Private Shared Function GetSession(model As CutoutModel) As InferenceSession
         Dim s As InferenceSession = Nothing
         If Sessions.TryGetValue(model, s) Then Return s
-        Dim options As New SessionOptions With {.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL}
+        ' 不用 CPU 記憶體池：預設的 BFC 池跑完不會還記憶體，大模型跑一次就一直佔著好幾 GB（多個模型會疊加）。
+        Dim options As New SessionOptions With {.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+                                                .EnableCpuMemArena = False}
         s = New InferenceSession(File.ReadAllBytes(ModelPath(model)), options)
         Sessions(model) = s
         Return s

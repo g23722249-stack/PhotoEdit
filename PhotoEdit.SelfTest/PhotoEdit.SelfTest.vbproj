@@ -20,4 +20,9 @@
     <ProjectReference Include="..\PhotoEdit.Vision\PhotoEdit.Vision.vbproj" />
   </ItemGroup>
 
+  <!-- 名畫背景（「吶喊」換背景的測試用）。 -->
+  <ItemGroup>
+    <None Include="..\Backdrops\**\*" LinkBase="backdrops" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

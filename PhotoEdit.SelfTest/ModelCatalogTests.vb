@@ -9,7 +9,7 @@ Module ModelCatalogTests
         Console.WriteLine("模型清單")
         ' ---- 隨程式發佈的清單 ----
         Dim real = ModelCatalog.Load()
-        Check("ModelCatalog.json 跟著程式：14 個模型", real.Models.Count = 14, real.Models.Count.ToString())
+        Check("ModelCatalog.json 跟著程式：17 個模型", real.Models.Count = 17, real.Models.Count.ToString())
         Dim files = real.Models.SelectMany(Function(m) m.Files).ToList()
         Check("每個檔案都有路徑與大小、路徑不重複", files.All(Function(f) f.Path <> "" AndAlso f.Size > 0) AndAlso files.Select(Function(f) f.Path.ToLowerInvariant()).Distinct().Count() = files.Count)
         Check("每個模型都有名稱、用途、授權、來源", real.Models.All(Function(m) m.Name <> "" AndAlso m.Use.Length > 20 AndAlso m.License <> "" AndAlso m.Source.StartsWith("https://")))

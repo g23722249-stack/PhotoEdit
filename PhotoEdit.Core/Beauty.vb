@@ -170,6 +170,19 @@ Public Class BeautySettings
     Public Property LipFull As Integer
     ''' <summary>開眼角 0..100。</summary>
     Public Property EyeCorner As Integer
+    ' ---- 名畫 ----
+    ''' <summary>孟克《吶喊》的臉 0..100（需要 68 點）：臉拉長、兩頰內凹、嘴張成 O、眼睛瞪大成黑眼窩、膚色換成土黃偏綠。</summary>
+    Public Property Scream As Integer
+    ''' <summary>《吶喊》眼窩那一圈暗的深淺 0..100（形狀參數，不隨強度縮放）。</summary>
+    Public Property ScreamEyes As Integer = 40
+    ''' <summary>《吶喊》眼睛撐開多少 0..100：0＝本人原來的大小，100＝撐到最圓（形狀參數，再乘上強度）。</summary>
+    Public Property ScreamEyeSize As Integer = 40
+    ''' <summary>《吶喊》嘴巴張多大 0..100（50 是標準，形狀參數，再乘上強度）。</summary>
+    Public Property ScreamMouthSize As Integer = 50
+    ''' <summary>《吶喊》嘴巴多圓 0..100：0＝正常嘴型（寬、嘴角尖），100＝圓形。</summary>
+    Public Property ScreamMouthRound As Integer = 100
+    ''' <summary>《吶喊》的背景 0..100：整張照片扭成波浪筆觸，上半部橘紅天空、下半部深藍峽灣（臉保留大部分）。</summary>
+    Public Property ScreamScene As Integer
     ' ---- 光影 ----
     Public Property LightKind As BeautyLight
     ''' <summary>光影強度 0..100。</summary>
@@ -281,7 +294,7 @@ Public Class BeautySettings
         "Smoothing", "Brighten", "Even", "Redness", "Whiten", "Tone", "Shine", "Blemish", "DarkCircles",
         "Eyes", "EyeEnlarge", "Teeth", "Blush", "Contour", "FaceSlim", "VFace", "Chin", "NoseSlim", "Lips", "Brows",
         "EyeShadow", "EyeLiner", "EyeBag", "Light", "LipGloss", "ShadowGlitter", "Lash", "Iris", "Fold", "Highlight", "Hair",
-        "Smile", "LipFull", "EyeCorner", "Tan", "UnderEye", "WhiteNose", "Opera", "OperaLift"}
+        "Smile", "LipFull", "EyeCorner", "Tan", "UnderEye", "WhiteNose", "Opera", "OperaLift", "Scream", "ScreamScene"}
     Private Shared ReadOnly AmountProps As Reflection.PropertyInfo() =
         AmountNames.Select(Function(n) GetType(BeautySettings).GetProperty(n)).ToArray()
     ''' <summary>可以寫入的欄位（複製用；臉的位置除外）。</summary>
@@ -293,7 +306,7 @@ Public Class BeautySettings
         Get
             Return FaceSlim <> 0 OrElse VFace <> 0 OrElse Chin <> 0 OrElse NoseSlim <> 0 OrElse Lips <> 0 OrElse Brows <> 0 OrElse
                    EyeShadow <> 0 OrElse EyeLiner <> 0 OrElse EyeBag <> 0 OrElse Lash <> 0 OrElse Fold <> 0 OrElse Highlight <> 0 OrElse
-                   Smile <> 0 OrElse LipFull <> 0 OrElse EyeCorner <> 0 OrElse Iris <> 0 OrElse UnderEye <> 0 OrElse WhiteNose <> 0 OrElse Opera <> 0
+                   Smile <> 0 OrElse LipFull <> 0 OrElse EyeCorner <> 0 OrElse Iris <> 0 OrElse UnderEye <> 0 OrElse WhiteNose <> 0 OrElse Opera <> 0 OrElse Scream <> 0
         End Get
     End Property
 

@@ -38,22 +38,79 @@ Partial Friend Class frmEditor
         End Using
     End Function
 
+    ''' <summary>人物合成：有開啟影像時背景預設是它；沒有時先不用背景（引導視窗裡可以選背景，或只去背）。</summary>
     Private Sub ShowCompositeGuide()
-        If _photo Is Nothing Then Return
-        ExitCropMode(apply:=True)
-        Dim bg As Bitmap
-        Cursor = Cursors.WaitCursor
-        Try
-            bg = CompositeBackground()
-        Finally
-            Cursor = Cursors.Default
-        End Try
-        Using dlg As New frmCompositeGuide(bg, _help, FullOutputSize())
-            bg.Dispose() ' 引導視窗自己複製了一份
+        Dim bg As Bitmap = Nothing
+        If _photo IsNot Nothing Then
+            ExitCropMode(apply:=True)
+            Cursor = Cursors.WaitCursor
+            Try
+                bg = CompositeBackground()
+            Finally
+                Cursor = Cursors.Default
+            End Try
+        End If
+        Using dlg As New frmCompositeGuide(bg, _help, If(_photo Is Nothing, Size.Empty, FullOutputSize()))
+            bg?.Dispose() ' 引導視窗自己複製了一份
             If dlg.ShowDialog(Me) <> DialogResult.OK OrElse dlg.Result Is Nothing Then Return
-            AddCompositeLayer(dlg.Result)
+            OpenCompositeResult(dlg.Result)
         End Using
     End Sub
+
+    ''' <summary>
+    ''' 引導視窗的結果：沒有背景→去背好的人物存成透明 PNG 開成新影像；背景是另一張→背景開成新影像再加合成圖層；
+    ''' 背景是目前的影像→直接加合成圖層。測試也用這個。
+    ''' </summary>
+    Friend Sub OpenCompositeResult(r As frmCompositeGuide.GuideResult)
+        If r.NoBackground Then
+            Dim file As String
+            Try
+                file = UniqueCompositeFile(If(r.SourceFile Is Nothing, Lang.T("去背"), Path.GetFileNameWithoutExtension(r.SourceFile) & "_" & Lang.T("去背")))
+                r.Cutout.Save(file, ImageFormat.Png)
+            Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is Runtime.InteropServices.ExternalException
+                MessageBox.Show(Me, Lang.T("無法儲存合成檔案：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            Finally
+                r.Cutout.Dispose()
+            End Try
+            OpenPhoto(file, remember:=False)
+            SetStatusMessage(Lang.T("去背的人物已存成透明 PNG 並開啟：") & file)
+            Return
+        End If
+        If r.BackgroundFile IsNot Nothing OrElse r.BackgroundImage IsNot Nothing Then
+            Dim file = r.BackgroundFile
+            If file Is Nothing Then
+                Try
+                    file = UniqueCompositeFile(Lang.T("背景"))
+                    r.BackgroundImage.Save(file, ImageFormat.Png)
+                Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is Runtime.InteropServices.ExternalException
+                    MessageBox.Show(Me, Lang.T("無法儲存合成檔案：") & ex.Message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    Return
+                Finally
+                    r.BackgroundImage.Dispose()
+                End Try
+            End If
+            OpenPhoto(file)
+            If _photo Is Nothing OrElse Not String.Equals(_photo.Path, file, StringComparison.OrdinalIgnoreCase) Then Return
+        End If
+        AddCompositeLayer(r)
+    End Sub
+
+    ''' <summary>合成資料夾裡不重複的 PNG 檔名（名稱_時間.png）。</summary>
+    Private Shared Function UniqueCompositeFile(name As String) As String
+        Directory.CreateDirectory(CompositeFolder)
+        For Each c In Path.GetInvalidFileNameChars()
+            name = name.Replace(c, "_"c)
+        Next
+        Dim stem = name & "_" & DateTime.Now.ToString("yyyyMMdd_HHmmss")
+        Dim file = Path.Combine(CompositeFolder, stem & ".png")
+        Dim n = 2
+        While IO.File.Exists(file)
+            file = Path.Combine(CompositeFolder, $"{stem}_{n}.png")
+            n += 1
+        End While
+        Return file
+    End Function
 
     ''' <summary>合成圖層的陰影圖層（依 ShadowLayerPath 找）；沒有時 Nothing。</summary>
     Private Function CompositeShadowOf(figure As Overlay) As Overlay

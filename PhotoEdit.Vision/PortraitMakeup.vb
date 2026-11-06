@@ -49,7 +49,7 @@ Partial Public NotInheritable Class PortraitRetouch
     Private Shared Function NeedsShapeWarp(b As BeautySettings) As Boolean
         Return b.FaceSlim <> 0 OrElse b.VFace <> 0 OrElse b.Chin <> 0 OrElse b.NoseSlim <> 0 OrElse b.Smile <> 0 OrElse b.LipFull <> 0 OrElse
                b.EyeCorner <> 0 OrElse (b.Brows > 0 AndAlso (b.BrowStyle <> BrowStyle.Darken OrElse b.BrowThick <> 50)) OrElse
-               (b.HasOpera AndAlso b.OperaLift > 0)
+               (b.HasOpera AndAlso b.OperaLift > 0) OrElse b.Scream > 0
     End Function
 
     ''' <summary>有沒有任何要在縮小的臉上算的顏色類效果。</summary>

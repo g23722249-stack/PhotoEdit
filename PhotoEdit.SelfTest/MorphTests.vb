@@ -56,6 +56,25 @@ Module MorphTests
             Check("時間軸：總長 4.5 秒、頭尾是 0 與 1", Math.Abs(tl.Sum(Function(x) x.Duration) - 4.5) < 0.05 AndAlso tl.First().T = 0 AndAlso tl.Last().T = 1, $"{tl.Sum(Function(x) x.Duration):0.00} 秒、{tl.Count} 格")
             Dim tl2 = FaceMorph.Timeline(New MorphTiming With {.Seconds = 2, .Fps = 10, .PingPong = True}, 10)
             Check("來回：最後回到 0", tl2.Last().T = 0 AndAlso tl2.Max(Function(x) x.T) = 1)
+            ' 多張連續變形：第三張 200×200 綠底；中間停在第二張的那一格和兩張版本的結尾一樣
+            Using c = Pic(200, 200, Color.FromArgb(0, 160, 0), Color.Yellow, New PointF(60, 140))
+                Dim pc = Pts(200, 200, New PointF(60, 140))
+                Using chain As New FaceMorph({a, b, c}, New IList(Of MorphPoint)() {pa, pb, pc}, 1080, 0.5), two As New FaceMorph(a, b, pa, pb, 1080, 0.5)
+                    Using c0 = chain.FrameBitmap(0), c1 = chain.FrameBitmap(1), t1 = two.FrameBitmap(1), c2 = chain.FrameBitmap(2), cm = chain.FrameBitmap(1.5)
+                        Check("連續變形：三張、第 0 格是第一張", chain.Count = 3 AndAlso MeanDiff(c0, a) < 3, $"{MeanDiff(c0, a):0.0}")
+                        Check("連續變形：停在第二張時和兩張版本的結尾相同（段與段接得上）", MeanDiff(c1, t1) < 1, $"{MeanDiff(c1, t1):0.00}")
+                        Check("連續變形：最後是第三張（綠底）", c2.GetPixel(5, 5).G > 120 AndAlso c2.GetPixel(5, 5).R < 30, c2.GetPixel(5, 5).ToString())
+                        Check("連續變形：1.5 是第二、三張中間（背景暗綠）", cm.GetPixel(5, 5).G > 40 AndAlso cm.GetPixel(5, 5).G < 120, cm.GetPixel(5, 5).ToString())
+                    End Using
+                End Using
+            End Using
+            Dim tl3 = FaceMorph.Timeline(New MorphTiming With {.Seconds = 1, .Fps = 10, .HoldStart = 0.5, .HoldBetween = 0.7, .HoldEnd = 1, .Ease = False}, 10, 2)
+            Dim mid = tl3.FirstOrDefault(Function(x) x.T = 1)
+            Check("連續變形的時間軸：0 → 1（中間停）→ 2，總長＝頭停＋2 段＋中間停＋尾停",
+                  tl3.First().T = 0 AndAlso tl3.Last().T = 2 AndAlso Math.Abs(mid.Duration - 0.7) < 0.001 AndAlso Math.Abs(tl3.Sum(Function(x) x.Duration) - (0.5 + 0.9 + 0.7 + 0.9 + 1)) < 0.01,
+                  $"{tl3.Sum(Function(x) x.Duration):0.00} 秒、{tl3.Count} 格")
+            Dim tl4 = FaceMorph.Timeline(New MorphTiming With {.Seconds = 1, .Fps = 10, .PingPong = True}, 10, 2)
+            Check("連續變形來回：走到 2 再倒回 0", tl4.Max(Function(x) x.T) = 2 AndAlso tl4.Last().T = 0 AndAlso tl4.Where(Function(x) x.T = 1).Count() = 2)
             ' GIF
             Dim gifPath = Path.Combine(tempDir, "morph.gif")
             Using m As New FaceMorph(a, b, pa, pb, 1080, 0.5)

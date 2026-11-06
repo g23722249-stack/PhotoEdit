@@ -662,38 +662,41 @@ Friend Class frmStickerHelper
     End Sub
 
     ''' <summary>AI 去背在背景執行，算好後套用（這張貼圖還是 AI 模式時）。</summary>
-    Private Sub ComputeAi(it As StickerItem, model As CutoutModel)
+    Private Async Sub ComputeAi(it As StickerItem, model As CutoutModel)
         If Not BackgroundRemover.ModelAvailable(model) Then
             MessageBox.Show(Me, Lang.F("「{0}」模型還沒下載：請到 設定 → 模型 下載（或換一個已下載的模型）。", CutoutModels.DisplayName(model)) & vbCrLf & BackgroundRemover.ModelPath(model),
                             Text, MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
         _status.Text = Lang.T("AI 去背計算中…（第一次載入模型會久一點）")
-        Cursor = Cursors.AppStarting
         Dim copy = DirectCast(it.Crop.Clone(), Bitmap)
-        Task.Run(Function() BackgroundRemover.ComputeMask(copy, model)).ContinueWith(
-            Sub(t)
-                copy.Dispose()
-                Dim mask = If(t.Status = TaskStatus.RanToCompletion, t.Result, Nothing)
-                Try
-                    If IsDisposed Then mask?.Dispose() : Return
-                    BeginInvoke(Sub()
-                                    Cursor = Cursors.Default
-                                    If mask Is Nothing OrElse Not _items.Contains(it) Then
-                                        _status.Text = Lang.T("AI 去背失敗。")
-                                        mask?.Dispose()
-                                        Return
-                                    End If
-                                    it.AiMasks(model) = mask
-                                    _status.Text = Lang.T("AI 去背完成。")
-                                    Recompose(it)
-                                    RefreshTiles()
-                                    If it Is Current Then RefreshDetailImage()
-                                End Sub)
-                Catch ex As InvalidOperationException
-                    mask?.Dispose()
-                End Try
-            End Sub)
+        Dim mask As Bitmap = Nothing
+        Dim err As String = Nothing
+        Try
+            mask = Await BusyDialog.RunAsync(Me, Lang.T("去背中"),
+                                             Function(p)
+                                                 p.Stage(1, 1, Lang.F("AI 去背：{0}", CutoutModels.DisplayName(model)))
+                                                 Return BackgroundRemover.ComputeMask(copy, model)
+                                             End Function, Lang.T("第一次載入模型會久一點。"))
+        Catch ex As Exception ' 模型、記憶體的各種錯誤都只顯示在狀態列
+            err = ex.Message
+        Finally
+            copy.Dispose()
+        End Try
+        If IsDisposed Then
+            mask?.Dispose()
+            Return
+        End If
+        If mask Is Nothing OrElse Not _items.Contains(it) Then
+            _status.Text = Lang.T("AI 去背失敗。") & If(err Is Nothing, "", err)
+            mask?.Dispose()
+            Return
+        End If
+        it.AiMasks(model) = mask
+        _status.Text = Lang.T("AI 去背完成。")
+        Recompose(it)
+        RefreshTiles()
+        If it Is Current Then RefreshDetailImage()
     End Sub
 
     ''' <summary>改設定（滑桿）：同一個滑桿連續拖曳只記一筆復原。</summary>

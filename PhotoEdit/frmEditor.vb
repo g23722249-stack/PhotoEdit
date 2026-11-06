@@ -172,8 +172,6 @@ Partial Friend Class frmEditor
         fileMenu.AddItem(Item("exportsvg", Lang.T("匯出 SVG（向量圖形）…")))
         fileMenu.AddItem(Item("importsvg", Lang.T("匯入 SVG…")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
-        fileMenu.AddItem(Item("collage", Lang.T("拼貼…")))
-        fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("revert", Lang.T("回復原圖")))
         fileMenu.AddItem(New Aqua.MenuItem("-"))
         fileMenu.AddItem(Item("settings", Lang.T("設定… (Ctrl+,)")))
@@ -200,24 +198,35 @@ Partial Friend Class frmEditor
         editMenu.AddItem(Item("resetadj", Lang.T("重設調整")))
 
         Dim imageMenu = root.AddItem(New Aqua.MenuItem(Lang.T("影像")))
+        ' 方向
         imageMenu.AddItem(Item("rotl", Lang.T("向左轉 (Ctrl+L)")))
         imageMenu.AddItem(Item("rotr", Lang.T("向右轉 (Ctrl+R)")))
         imageMenu.AddItem(Item("fliph", Lang.T("水平翻轉")))
         imageMenu.AddItem(Item("flipv", Lang.T("垂直翻轉")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
+        ' 構圖
         imageMenu.AddItem(Item("crop", Lang.T("裁切… (Ctrl+K)")))
         imageMenu.AddItem(Item("smartcrop", Lang.T("智慧構圖")))
         imageMenu.AddItem(Item("autostraighten", Lang.T("自動拉直")))
-        imageMenu.AddItem(Item("heal", Lang.T("修補筆刷 (H)")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
+        ' 修正
         imageMenu.AddItem(Item("auto", Lang.T("自動增強")))
         imageMenu.AddItem(Item("autowb", Lang.T("自動白平衡")))
+        imageMenu.AddItem(Item("colorize", Lang.T("黑白照片上色…")))
         imageMenu.AddItem(New Aqua.MenuItem("-"))
+        ' 合成與轉換
         imageMenu.AddItem(Item("composite", Lang.T("人物合成…")))
-        imageMenu.AddItem(Item("airedraw", Lang.T("宮崎風 AI 重繪…")))
-        imageMenu.AddItem(Item("morph", Lang.T("變形動畫…")))
-        imageMenu.AddItem(Item("trace", Lang.T("描圖（轉成向量）…")))
+        imageMenu.AddItem(Item("monstercutout", Lang.T("怪獸去背小幫手…")))
+        imageMenu.AddItem(Item("collage", Lang.T("拼貼…")))
         imageMenu.AddItem(Item("pixelscale", Lang.T("像素圖放大（xBR／HQx）…")))
+        imageMenu.AddItem(Item("trace", Lang.T("描圖（轉成向量）…")))
+        imageMenu.AddItem(New Aqua.MenuItem("-"))
+        ' 藝術風格
+        imageMenu.AddItem(Item("airedraw", Lang.T("宮崎風 AI 重繪…")))
+        imageMenu.AddItem(Item("scream", Lang.T("吶喊（孟克）…")))
+        imageMenu.AddItem(New Aqua.MenuItem("-"))
+        ' 動畫
+        imageMenu.AddItem(Item("morph", Lang.T("變形動畫…")))
         imageMenu.AddItem(Item("facechange", Lang.T("川劇變臉…")))
 
         Dim selectMenu = root.AddItem(New Aqua.MenuItem(Lang.T("選取")))
@@ -271,6 +280,8 @@ Partial Friend Class frmEditor
     Private Sub RunCommand(name As String)
         If HandleMdiCommand(name) Then Return
         If HandleRecentCommand(name) Then Return
+        ' 影像選單的功能：沒有開啟影像時先選一張圖（見 frmEditor.ToolSource.vb）
+        If ImageToolCommands.Contains(name) AndAlso Not EnsurePhotoForTool(name) Then Return
         Select Case name
             Case "new" : NewImageWithDialog()
             Case "open" : OpenWithDialog()
@@ -281,9 +292,12 @@ Partial Friend Class frmEditor
             Case "airedraw" : ShowAnimeRedraw()
             Case "morph" : ShowMorph()
             Case "trace" : ShowTrace()
+            Case "colorize" : ShowColorize() ' 見 frmEditor.Colorize.vb
             Case "pixelscale" : ShowPixelScale() ' 見 frmEditor.PixelScale.vb
             Case "composite" : ShowCompositeGuide() ' 見 frmEditor.Composite.vb
+            Case "monstercutout" : ShowMonsterCutout() ' 見 frmEditor.MonsterCutout.vb
             Case "facechange" : ShowFaceChange()
+            Case "scream" : ShowScream() ' 見 frmEditor.Scream.vb
             Case "exit" : Close()
             Case "settings" : OpenSettings() ' 沒開圖片也能設定
             Case "manual" : ShowManual() ' 見 frmEditor.Manual.vb

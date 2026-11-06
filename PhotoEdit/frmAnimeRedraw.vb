@@ -192,7 +192,8 @@ Friend Class frmAnimeRedraw
         _note.Text = p.Note
     End Sub
 
-    Private Sub StartGenerate()
+    ''' <summary>生成（處理中視窗：打底線稿 → 顯卡重繪的每一步，可以取消）。</summary>
+    Private Async Sub StartGenerate()
         If _cts IsNot Nothing Then Return
         _cts = New CancellationTokenSource()
         Dim ct = _cts.Token
@@ -202,39 +203,47 @@ Friend Class frmAnimeRedraw
         _progress.Value = 0
         _status.Text = Lang.T("打底與畫線稿…")
         Dim t0 = Environment.TickCount
-        Threading.Tasks.Task.Run(Function() AnimeRedraw.Generate(_source, preset, strength, seed, subject,
-                                                                   Sub(cur, total)
-                                                                       If IsDisposed OrElse Not IsHandleCreated Then Return
-                                                                       BeginInvoke(Sub()
-                                                                                       _progress.Value = Math.Min(100, CInt(cur * 100.0 / Math.Max(1, total)))
-                                                                                       _status.Text = Lang.F("重繪中 {0}/{1}…", cur, total)
-                                                                                   End Sub)
-                                                                   End Sub, ct)).ContinueWith(
-            Sub(task)
-                If IsDisposed OrElse Not IsHandleCreated Then
-                    If task.Status = Threading.Tasks.TaskStatus.RanToCompletion Then task.Result.Dispose()
-                    Return
-                End If
-                BeginInvoke(Sub()
-                                _cts.Dispose()
-                                _cts = Nothing
-                                SetBusy(False)
-                                If task.Status = Threading.Tasks.TaskStatus.RanToCompletion Then
-                                    _result?.Dispose()
-                                    _result = task.Result
-                                    _after.Image = _result
-                                    _progress.Value = 100
-                                    _status.Text = Lang.F("完成（{0:0} 秒）。不滿意可以換種子或強度再生成。", (Environment.TickCount - t0) / 1000.0)
-                                    _open.Enabled = True
-                                ElseIf task.IsCanceled OrElse (task.Exception IsNot Nothing AndAlso TypeOf task.Exception.InnerException Is OperationCanceledException) Then
-                                    _progress.Value = 0
-                                    _status.Text = Lang.T("已停止。")
-                                Else
-                                    _progress.Value = 0
-                                    _status.Text = Lang.T("生成失敗：") & task.Exception?.InnerException?.Message
-                                End If
-                            End Sub)
-            End Sub)
+        Dim result As Bitmap = Nothing
+        Dim err As Exception = Nothing
+        Try
+            result = Await BusyDialog.RunAsync(Me, Lang.T("AI 重繪中"),
+                                               Function(p)
+                                                   p.Stage(1, 2, Lang.T("打底與畫線稿"))
+                                                   Return AnimeRedraw.Generate(_source, preset, strength, seed, subject,
+                                                                               Sub(cur, total)
+                                                                                   If cur <= 1 Then p.Stage(2, 2, Lang.T("顯卡重繪"))
+                                                                                   p.Report(cur, total)
+                                                                                   If IsDisposed OrElse Not IsHandleCreated Then Return
+                                                                                   BeginInvoke(Sub()
+                                                                                                   _progress.Value = Math.Min(100, CInt(cur * 100.0 / Math.Max(1, total)))
+                                                                                                   _status.Text = Lang.F("重繪中 {0}/{1}…", cur, total)
+                                                                                               End Sub)
+                                                                               End Sub, ct)
+                                               End Function, Lang.T("用顯卡計算；第一次載入模型會久一點。"), _cts)
+        Catch ex As Exception
+            err = ex
+        End Try
+        _cts.Dispose()
+        _cts = Nothing
+        If IsDisposed Then
+            result?.Dispose()
+            Return
+        End If
+        SetBusy(False)
+        If result IsNot Nothing Then
+            _result?.Dispose()
+            _result = result
+            _after.Image = _result
+            _progress.Value = 100
+            _status.Text = Lang.F("完成（{0:0} 秒）。不滿意可以換種子或強度再生成。", (Environment.TickCount - t0) / 1000.0)
+            _open.Enabled = True
+        ElseIf TypeOf err Is OperationCanceledException OrElse TypeOf err?.InnerException Is OperationCanceledException Then
+            _progress.Value = 0
+            _status.Text = Lang.T("已停止。")
+        Else
+            _progress.Value = 0
+            _status.Text = Lang.T("生成失敗：") & err?.Message
+        End If
     End Sub
 
     Private Sub SetBusy(busy As Boolean)

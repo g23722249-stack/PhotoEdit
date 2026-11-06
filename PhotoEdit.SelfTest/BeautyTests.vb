@@ -222,11 +222,91 @@ Module BeautyTests
               Not BeautySettings.PresetNames.Any(Function(n) n.StartsWith("戲曲")))
         OperaTests()
 
+        ScreamTests()
         DenseTests()
         LightTests()
         MakeupDetailTests()
         LiquifyTests()
     End Sub
+
+    Private Sub ScreamTests()
+        Console.WriteLine("吶喊")
+        Dim face = DenseFace()
+        Using src = Skin()
+            Using out = Run(src, New BeautySettings With {.Scream = 100}, {face})
+                Dim cheek = out.GetPixel(86, 100), orig = src.GetPixel(86, 100)
+                Check("吶喊的臉：膚色換成暖橘黃（紅＞綠＞藍）", cheek.B < cheek.G AndAlso cheek.G < cheek.R AndAlso cheek <> orig, $"{orig} → {cheek}")
+                ' 嘴會跟著下巴往下移：在嘴巴下方一段範圍找深色的 O
+                Dim mouth = DenseMouthCenter(face, src.Width, src.Height)
+                Dim column = Enumerable.Range(CInt(mouth.Y) - 6, 40).Select(Function(y) Luma(out.GetPixel(CInt(mouth.X), y))).ToArray()
+                ' 上唇留在原位（以前下巴把上唇和人中一起往下拖）：由上往下第一個紅色像素就在原本的上唇附近
+                Dim lipTop = CInt(face.Dense(51).Y * src.Height)
+                Dim firstRed = Enumerable.Range(lipTop - 20, 50).FirstOrDefault(Function(y)
+                                                                                    Dim c = out.GetPixel(CInt(mouth.X), y)
+                                                                                    Return CInt(c.R) - c.G > 50 AndAlso CInt(c.G) - c.B < 35 ' 紅唇；橘色皮膚的綠比藍多很多
+                                                                                End Function)
+                Check("吶喊的嘴：有紅色的上唇，而且留在原本的位置（人中沒有拉長）", firstRed > 0 AndAlso Math.Abs(firstRed - lipTop) <= 6, $"原本 {lipTop}，現在 {firstRed}")
+                Check("吶喊的臉：嘴巴張成深色的 O（往下移、但還在下巴上面）", column.Count(Function(v) v < 70) >= 10 AndAlso Luma(out.GetPixel(CInt(mouth.X), CInt(mouth.Y) - 12)) > 120,
+                      $"深色 {column.Count(Function(v) v < 70)} 格")
+            End Using
+            Using light = Run(src, New BeautySettings With {.Scream = 100, .ScreamEyes = 0}, {face}),
+                  dark = Run(src, New BeautySettings With {.Scream = 100, .ScreamEyes = 100}, {face})
+                ' 眼睛會跟著額頭往上移：在眼睛那一欄找最暗的地方比
+                Dim darkest = Function(bmp As Bitmap) Enumerable.Range(56, 40).Min(Function(y) Luma(bmp.GetPixel(78, y)))
+                Dim l0 = darkest(light), l1 = darkest(dark)
+                Check("吶喊的眼圈：可調深淺（0 沒有黑眼圈、100 最黑）", l1 < l0 - 25, $"0：{l0:0}，100：{l1:0}")
+            End Using
+            ' 嘴巴：深色的口腔的範圍（圓度 100 接近圓，圓度 0 比較扁；大小 100 比 0 大）
+            Dim mouthBox = Function(mouthSize As Integer, round As Integer) As Rectangle
+                               Using bmp = Run(src, New BeautySettings With {.Scream = 100, .ScreamEyes = 0, .ScreamMouthSize = mouthSize, .ScreamMouthRound = round}, {face})
+                                   Dim x0 = 9999, y0 = 9999, x1 = -1, y1 = -1
+                                   For y = 0 To bmp.Height - 1
+                                       For x = 0 To bmp.Width - 1
+                                           If Luma(bmp.GetPixel(x, y)) < 60 Then x0 = Math.Min(x0, x) : y0 = Math.Min(y0, y) : x1 = Math.Max(x1, x) : y1 = Math.Max(y1, y)
+                                       Next
+                                   Next
+                                   Return Rectangle.FromLTRB(x0, y0, x1 + 1, y1 + 1)
+                               End Using
+                           End Function
+            Dim mSmall = mouthBox(0, 100), mBig = mouthBox(100, 100), mFlat = mouthBox(50, 0), mRound = mouthBox(50, 100)
+            Check("吶喊的嘴巴大小：100 比 0 大", mBig.Width * mBig.Height > mSmall.Width * mSmall.Height * 2, $"0：{mSmall.Size}，100：{mBig.Size}")
+            Check("吶喊的嘴巴圓度：0 比 100 扁", mFlat.Width / CDbl(mFlat.Height) > mRound.Width / CDbl(mRound.Height) * 1.3, $"0：{mFlat.Size}，100：{mRound.Size}")
+            ' 單色的皮膚變形後看不出來，畫上深色的眼睛比面積
+            Using eyed = CType(src.Clone(), Bitmap)
+                Using g = Graphics.FromImage(eyed), dark As New SolidBrush(Color.FromArgb(20, 15, 15))
+                    g.FillEllipse(dark, 81, 73, 14, 6) : g.FillEllipse(dark, 125, 73, 14, 6)
+                End Using
+                Dim area = Function(bmp As Bitmap) As Integer
+                               Dim n = 0
+                               For y = 40 To 98
+                                   For x = 60 To 160
+                                       If Luma(bmp.GetPixel(x, y)) < 70 Then n += 1
+                                   Next
+                               Next
+                               Return n
+                           End Function
+                Using small = Run(eyed, New BeautySettings With {.Scream = 100, .ScreamEyes = 0, .ScreamEyeSize = 0}, {face}),
+                      big = Run(eyed, New BeautySettings With {.Scream = 100, .ScreamEyes = 0, .ScreamEyeSize = 100}, {face})
+                    Dim a0 = area(small), a1 = area(big)
+                    Check("吶喊的眼睛大小：100 的眼睛比 0 大", a0 > 0 AndAlso a1 > a0 * 1.3, $"0：{a0} 格，100：{a1} 格")
+                End Using
+            End Using
+            Using out = Run(src, New BeautySettings With {.Scream = 100})
+                Check("吶喊的臉：沒有特徵點時不畫", out.GetPixel(86, 100) = src.GetPixel(86, 100))
+            End Using
+            Using out = Run(src, New BeautySettings With {.ScreamScene = 100}, {face})
+                Dim corner = out.GetPixel(5, 5)
+                Check("吶喊的背景：上方變成橘紅的天空", CInt(corner.R) - corner.B > 60, $"{corner}")
+                Dim bottom = out.GetPixel(5, src.Height - 5)
+                Check("吶喊的背景：下方變成藍色的峽灣", CInt(bottom.B) > bottom.R, $"{bottom}")
+            End Using
+        End Using
+        Check("吶喊的臉需要特徵點、背景不用", New BeautySettings With {.Scream = 50}.NeedsDense AndAlso Not New BeautySettings With {.ScreamScene = 50}.NeedsDense)
+    End Sub
+
+    Private Function DenseMouthCenter(f As FaceRegion, w As Integer, h As Integer) As PointF
+        Return New PointF((f.Dense(51).X + f.Dense(57).X) / 2 * w, (f.Dense(51).Y + f.Dense(57).Y) / 2 * h)
+    End Function
 
     Private Sub OperaTests()
         Console.WriteLine("戲曲妝")

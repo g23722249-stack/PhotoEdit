@@ -15,6 +15,11 @@ Public NotInheritable Class CompositeBaker
 
     ''' <summary>讀人物圖（不鎖檔），縮到長邊 MaxSide，回傳 32bpp。GDI+ 讀不了的格式（WebP）改用 OpenCV。</summary>
     Public Shared Function LoadFigure(file As String) As Bitmap
+        Return FitWorking(LoadFullImage(file))
+    End Function
+
+    ''' <summary>讀整張圖（不鎖檔、原尺寸）。GDI+ 讀不了的格式（WebP）改用 OpenCV。</summary>
+    Public Shared Function LoadFullImage(file As String) As Bitmap
         Dim bytes = IO.File.ReadAllBytes(file)
         Dim img As Bitmap
         Try
@@ -27,7 +32,7 @@ Public NotInheritable Class CompositeBaker
                 img = Extensions.BitmapConverter.ToBitmap(m)
             End Using
         End Try
-        Return FitWorking(img)
+        Return img
     End Function
 
     ''' <summary>把圖縮到長邊 MaxSide 以內並轉成 32bpp（傳入的圖由這裡處理掉）。</summary>
